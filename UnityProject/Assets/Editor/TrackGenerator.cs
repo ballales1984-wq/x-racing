@@ -29,8 +29,14 @@ namespace Project0.Unity.Setup
 
             if (meshRenderer.sharedMaterial == null)
             {
-            meshRenderer.material = new Material(Shader.Find("Legacy Shaders/Diffuse"));
-            meshRenderer.material.color = new Color(0.25f, 0.25f, 0.25f);
+                meshRenderer.sharedMaterial = new Material(Shader.Find("Legacy Shaders/Diffuse"));
+                meshRenderer.sharedMaterial.color = new Color(0.2f, 0.2f, 0.2f);
+            }
+
+            var points = GenerateTrackPoints();
+            float trackWidth = 6f;
+
+            CreateTrackBorders(points, trackWidth);
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -42,7 +48,7 @@ namespace Project0.Unity.Setup
                 lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
 
-            var trackMesh = BuildTrackMesh();
+            var trackMesh = BuildTrackMesh(points, trackWidth);
             meshFilter.mesh = trackMesh;
 
             var collider = trackObj.GetComponent<MeshCollider>();
@@ -55,14 +61,12 @@ namespace Project0.Unity.Setup
             Debug.Log("Track generated successfully!");
         }
 
-        private static Mesh BuildTrackMesh()
+        private static Mesh BuildTrackMesh(System.Collections.Generic.List<Vector3> points, float trackWidth)
         {
-            var points = GenerateTrackPoints();
             var vertices = new System.Collections.Generic.List<Vector3>();
             var triangles = new System.Collections.Generic.List<int>();
             var uvs = new System.Collections.Generic.List<Vector2>();
 
-            float trackWidth = 6f;
             float segmentLength = 2f;
 
             for (int i = 0; i < points.Count - 1; i++)
@@ -107,6 +111,82 @@ namespace Project0.Unity.Setup
             mesh.RecalculateBounds();
 
             return mesh;
+        }
+
+        private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, float trackWidth)
+        {
+            var borderMaterial = new Material(Shader.Find("Legacy Shaders/Diffuse"));
+            borderMaterial.color = new Color(0.8f, 0.2f, 0f);
+
+            var leftVertices = new System.Collections.Generic.List<Vector3>();
+            var rightVertices = new System.Collections.Generic.List<Vector3>();
+            var leftTriangles = new System.Collections.Generic.List<int>();
+            var rightTriangles = new System.Collections.Generic.List<int>();
+
+            float borderWidth = 0.5f;
+            float borderHeight = 0.1f;
+
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                Vector3 p0 = points[i];
+                Vector3 p1 = points[i + 1];
+                Vector3 dir = (p1 - p0).normalized;
+                Vector3 right = new Vector3(-dir.z, 0f, dir.x);
+
+                Vector3 leftOuter = p0 + right * (trackWidth * 0.5f + borderWidth);
+                Vector3 leftInner = p0 + right * (trackWidth * 0.5f);
+                Vector3 rightOuter = p0 - right * (trackWidth * 0.5f + borderWidth);
+                Vector3 rightInner = p0 - right * (trackWidth * 0.5f);
+
+                int leftBase = leftVertices.Count;
+                leftVertices.Add(leftOuter);
+                leftVertices.Add(leftInner);
+                leftVertices.Add(leftOuter + Vector3.up * borderHeight);
+                leftVertices.Add(leftInner + Vector3.up * borderHeight);
+
+                leftTriangles.Add(leftBase);
+                leftTriangles.Add(leftBase + 1);
+                leftTriangles.Add(leftBase + 2);
+
+                leftTriangles.Add(leftBase + 1);
+                leftTriangles.Add(leftBase + 3);
+                leftTriangles.Add(leftBase + 2);
+
+                int rightBase = rightVertices.Count;
+                rightVertices.Add(rightOuter);
+                rightVertices.Add(rightInner);
+                rightVertices.Add(rightOuter + Vector3.up * borderHeight);
+                rightVertices.Add(rightInner + Vector3.up * borderHeight);
+
+                rightTriangles.Add(rightBase);
+                rightTriangles.Add(rightBase + 2);
+                rightTriangles.Add(rightBase + 1);
+
+                rightTriangles.Add(rightBase + 1);
+                rightTriangles.Add(rightBase + 2);
+                rightTriangles.Add(rightBase + 3);
+            }
+
+            CreateBorderMesh("TrackBorderLeft", leftVertices, leftTriangles, borderMaterial);
+            CreateBorderMesh("TrackBorderRight", rightVertices, rightTriangles, borderMaterial);
+        }
+
+        private static void CreateBorderMesh(string name, System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<int> triangles, Material material)
+        {
+            var borderObj = new GameObject(name);
+            var meshFilter = borderObj.AddComponent<MeshFilter>();
+            var meshRenderer = borderObj.AddComponent<MeshRenderer>();
+
+            var mesh = new Mesh
+            {
+                vertices = vertices.ToArray(),
+                triangles = triangles.ToArray()
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            meshFilter.mesh = mesh;
+            meshRenderer.material = material;
         }
 
         private static System.Collections.Generic.List<Vector3> GenerateTrackPoints()
