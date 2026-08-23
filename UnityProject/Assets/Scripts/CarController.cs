@@ -14,6 +14,7 @@ namespace Project0.Unity
         public float speedScale = 1.0f;
         public bool loop = true;
         public bool useDirectControl = true;
+        public bool useSimPlugin = true;
 
         [Header("Follow Camera")]
         public Camera followCamera;
@@ -52,7 +53,11 @@ namespace Project0.Unity
                 UpdateCameraMode();
             }
 
-            if (useDirectControl)
+            if (useSimPlugin)
+            {
+                UpdateSimPlugin();
+            }
+            else if (useDirectControl)
             {
                 UpdateDirectControl();
             }
@@ -78,6 +83,42 @@ namespace Project0.Unity
             {
                 followCamera.transform.SetParent(null);
             }
+        }
+
+        void UpdateSimPlugin()
+        {
+            if (!SimPlugin.Initialize())
+            {
+                Debug.LogError("Failed to initialize sim plugin");
+                return;
+            }
+
+            float throttle = 0f;
+            float brake = 0f;
+            float steer = 0f;
+
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+            {
+                throttle = 1f;
+            }
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+            {
+                brake = 1f;
+            }
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            {
+                steer = 1f;
+            }
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            {
+                steer = -1f;
+            }
+
+            var state = SimPlugin.Update(Time.deltaTime, throttle, brake, steer);
+
+            transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
+            float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 90f);
+            transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
         }
 
         void UpdateDirectControl()
@@ -272,11 +313,21 @@ namespace Project0.Unity
             elapsedTime = 0f;
             currentSpeed = 0f;
             currentHeading = transform.eulerAngles.y * Mathf.Deg2Rad;
+
+            if (useSimPlugin)
+            {
+                SimPlugin.Initialize();
+            }
+
             UpdateCameraMode();
         }
 
         public string GetStatus()
         {
+            if (useSimPlugin)
+            {
+                return $"Sim Plugin | Speed={currentSpeed:F1} km/h";
+            }
             if (useDirectControl)
             {
                 return $"Direct Control | Speed={currentSpeed:F1} km/h | Heading={currentHeading * Mathf.Rad2Deg:F1} deg";
@@ -287,7 +338,7 @@ namespace Project0.Unity
 
         private void OnValidate()
         {
-            if (autoReload && !loaded && File.Exists(telemetryPath) && !useDirectControl)
+            if (autoReload && !loaded && File.Exists(telemetryPath) && !useDirectControl && !useSimPlugin)
             {
                 LoadTelemetry();
             }
