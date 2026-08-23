@@ -196,3 +196,78 @@ TEST(Grip, ReturningToCenterReducesSlip) {
   const double slip_after = std::abs(sim.state().front_slip_angle);
   EXPECT_LT(slip_after, slip_before);
 }
+
+// M4: Tire temperature should rise when slip is present
+TEST(Tire, TemperatureRisesWithSlip) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 30.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.8;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().front_tire_temp, sim.state().rear_tire_temp);
+  EXPECT_GT(sim.state().front_tire_temp, vehicle::VehicleParams{}.ambient_temperature);
+}
+
+// M4: Tire wear should decrease over time with slip
+TEST(Tire, WearIncreasesWithSlip) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.9;
+
+  for (int i = 0; i < 500; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_LT(sim.state().front_tire_wear, 1.0);
+  EXPECT_LT(sim.state().rear_tire_wear, 1.0);
+}
+
+// M4: Reset should restore tire temperature and wear to defaults
+TEST(Tire, ResetRestoresTireState) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.9;
+
+  for (int i = 0; i < 200; ++i) {
+    sim.step(input);
+  }
+
+  sim.reset(initial);
+
+  EXPECT_DOUBLE_EQ(sim.state().front_tire_temp, sim.state().rear_tire_temp);
+  EXPECT_DOUBLE_EQ(sim.state().front_tire_wear, 1.0);
+  EXPECT_DOUBLE_EQ(sim.state().rear_tire_wear, 1.0);
+}

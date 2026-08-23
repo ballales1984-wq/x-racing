@@ -43,9 +43,10 @@ class Simulation {
   // Physics update stages (called in order each sub-step)
   void update_engine_forces();            // engine torque -> longitudinal force
   void update_aerodynamics();             // drag and lift
-  void update_tire_forces();              // longitudinal + lateral Pacejka forces
+  void update_tire_temperature();         // tire thermal model + wear
+  void update_tire_forces();              // Pacejka forces with temp/wear grip
   void update_braking();                  // brake deceleration
-  void update_steering();                 // bicycle model: slip angles + lateral forces
+  void update_steering();                 // bicycle model slip angles + lateral forces
   void integrate(double dt);              // velocity-space integration
 
   SimulationParams params_;

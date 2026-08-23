@@ -37,6 +37,13 @@ struct VehicleParams {
   double suspension_stiffness = 30000.0; // N/m (reserved for future use)
   double suspension_damping = 2500.0;    // Ns/m (reserved for future use)
   double anti_roll_bar = 15000.0;        // Nm/deg (reserved for future use)
+  double ambient_temperature = 300.0;    // K, track/air temperature
+  double tire_optimal_temp = 350.0;      // K, optimal operating temperature
+  double tire_temp_curve_width = 20.0;   // K, width of the grip-vs-temp bell curve
+  double tire_cooling_rate = 0.5;        // K/s per K of temperature difference
+  double tire_heat_per_slip = 2.0;       // K per unit of slip angle
+  double tire_wear_per_slip = 0.0001;    // wear per unit of slip angle
+  double tire_wear_per_lap = 0.001;      // base wear per lap
 };
 
 // Vehicle state: instantaneous values updated each simulation step
@@ -57,6 +64,10 @@ struct VehicleState {
   double rear_slip_angle = 0.0;          // rear axle slip angle, rad
   double lateral_velocity = 0.0;         // m/s, velocity perpendicular to heading
   double speed = 0.0;                    // m/s, scalar speed
+  double front_tire_temp = 300.0;        // K, front tire temperature
+  double rear_tire_temp = 300.0;         // K, rear tire temperature
+  double front_tire_wear = 1.0;          // [0,1], front tire wear (1=new)
+  double rear_tire_wear = 1.0;           // [0,1], rear tire wear (1=new)
   double distance_along_track = 0.0;     // m, progress along track centerline
   int lap = 0;                           // completed laps
 };

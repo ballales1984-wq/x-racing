@@ -24,6 +24,10 @@ void Telemetry::record(const vehicle::VehicleState& state, double dt) {
   frame.velocity = state.velocity;
   frame.acceleration = state.acceleration;
   frame.heading = state.heading;
+  frame.front_tire_temp = state.front_tire_temp;
+  frame.rear_tire_temp = state.rear_tire_temp;
+  frame.front_tire_wear = state.front_tire_wear;
+  frame.rear_tire_wear = state.rear_tire_wear;
 
   if (frames_.empty()) {
     frame.time = 0.0;
@@ -47,13 +51,15 @@ void Telemetry::record(const vehicle::VehicleState& state, double dt) {
 // Export recorded frames to a CSV file for external analysis.
 // Columns: time, distance, speed, rpm, gear, throttle, brake, steer,
 //          slip_angle, slip_ratio, pos_x, pos_y, vel_x, vel_y,
-//          acc_x, acc_y, heading, lateral_g, longitudinal_g
+//          acc_x, acc_y, heading, lateral_g, longitudinal_g,
+//          front_tire_temp, rear_tire_temp, front_tire_wear, rear_tire_wear
 void Telemetry::save_csv(const std::string& path) const {
   std::ofstream file(path);
   if (!file.is_open()) return;
 
   file << "time,distance,speed,rpm,gear,throttle,brake,steer,slip_angle,slip_ratio,"
-       << "pos_x,pos_y,vel_x,vel_y,acc_x,acc_y,heading,lateral_g,longitudinal_g\n";
+       << "pos_x,pos_y,vel_x,vel_y,acc_x,acc_y,heading,lateral_g,longitudinal_g,"
+       << "front_tire_temp,rear_tire_temp,front_tire_wear,rear_tire_wear\n";
 
   for (const auto& frame : frames_) {
     file << std::fixed << std::setprecision(6)
@@ -75,7 +81,11 @@ void Telemetry::save_csv(const std::string& path) const {
          << frame.acceleration.y() << ","
          << frame.heading << ","
          << frame.lateral_g << ","
-         << frame.longitudinal_g << "\n";
+         << frame.longitudinal_g << ","
+         << frame.front_tire_temp << ","
+         << frame.rear_tire_temp << ","
+         << frame.front_tire_wear << ","
+         << frame.rear_tire_wear << "\n";
   }
 }
 

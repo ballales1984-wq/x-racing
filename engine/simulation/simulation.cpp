@@ -22,6 +22,10 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.rpm = vehicle_params_.idle_rpm;
   state_.gear = 1;
   state_.lateral_velocity = 0.0;
+  state_.front_tire_temp = vehicle_params_.ambient_temperature;
+  state_.rear_tire_temp = vehicle_params_.ambient_temperature;
+  state_.front_tire_wear = 1.0;
+  state_.rear_tire_wear = 1.0;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -49,6 +53,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
     update_engine_forces();
     update_aerodynamics();
+    update_tire_temperature();
     update_tire_forces();
     update_braking();
     update_steering();
@@ -71,11 +76,12 @@ SimulationResult Simulation::step(const input::InputState& input) {
 }
 
 // Engine model: torque curve based on RPM, mapped to longitudinal force.
+// Includes auto-shift and soft RPM limiter.
 void Simulation::update_engine_forces() {
   const double speed = state_.velocity.norm();
-  state_.rpm = vehicle_params_.idle_rpm;
 
   if (speed < kEpsilon) {
+    state_.rpm = vehicle_params_.idle_rpm;
     const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
     const double torque = vehicle_params_.max_torque * state_.throttle * 0.8;
     const double engine_force = torque / vehicle_params_.wheel_radius;
@@ -83,11 +89,23 @@ void Simulation::update_engine_forces() {
     return;
   }
 
-  double gear_ratio = vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0,
-    static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)];
-  double total_ratio = gear_ratio * vehicle_params_.final_drive;
-  double wheel_rpm = (speed / (2.0 * kPi * vehicle_params_.wheel_radius)) * 60.0;
-  state_.rpm = std::clamp(wheel_rpm * total_ratio, vehicle_params_.idle_rpm, vehicle_params_.max_rpm);
+  auto compute_rpm = [&](int gear) {
+    const double gear_ratio = vehicle_params_.gear_ratios[std::clamp(gear - 1, 0,
+      static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)];
+    const double total_ratio = gear_ratio * vehicle_params_.final_drive;
+    const double wheel_rpm = (speed / (2.0 * kPi * vehicle_params_.wheel_radius)) * 60.0;
+    return std::clamp(wheel_rpm * total_ratio, vehicle_params_.idle_rpm, vehicle_params_.max_rpm);
+  };
+
+  state_.rpm = compute_rpm(state_.gear);
+
+  if (state_.rpm >= vehicle_params_.max_rpm * 0.92 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+    state_.gear++;
+    state_.rpm = compute_rpm(state_.gear);
+  } else if (state_.rpm <= vehicle_params_.idle_rpm * 1.8 && state_.gear > 1) {
+    state_.gear--;
+    state_.rpm = compute_rpm(state_.gear);
+  }
 
   double torque = 0.0;
   const double rpm_frac = (state_.rpm - vehicle_params_.idle_rpm) /
@@ -97,6 +115,13 @@ void Simulation::update_engine_forces() {
     torque = vehicle_params_.max_torque * state_.throttle * std::sin(rpm_frac * kHalfPi);
   }
 
+  if (state_.rpm >= vehicle_params_.max_rpm) {
+    torque *= vehicle_params_.max_rpm / state_.rpm;
+  }
+
+  const double gear_ratio = vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0,
+    static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)];
+  const double total_ratio = gear_ratio * vehicle_params_.final_drive;
   double engine_force = (torque * total_ratio) / vehicle_params_.wheel_radius;
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
   state_.acceleration = forward_dir * engine_force / vehicle_params_.mass;
@@ -117,7 +142,32 @@ void Simulation::update_aerodynamics() {
   state_.acceleration += drag_dir * drag_decel;
 }
 
-// Bicycle model tire forces with Pacejka lateral grip.
+// Simple tire thermal model.
+// Temperature increases with slip and speed, cools towards ambient.
+// Wear increases with slip and accumulates per lap.
+void Simulation::update_tire_temperature() {
+  const double speed = state_.speed;
+  const double abs_front_slip = std::abs(state_.front_slip_angle);
+  const double abs_rear_slip = std::abs(state_.rear_slip_angle);
+
+  double heat_front = vehicle_params_.tire_heat_per_slip * abs_front_slip + speed * 0.01;
+  double heat_rear = vehicle_params_.tire_heat_per_slip * abs_rear_slip + speed * 0.01;
+
+  double cool_front = vehicle_params_.tire_cooling_rate * (state_.front_tire_temp - vehicle_params_.ambient_temperature);
+  double cool_rear = vehicle_params_.tire_cooling_rate * (state_.rear_tire_temp - vehicle_params_.ambient_temperature);
+
+  state_.front_tire_temp += (heat_front - cool_front) * (params_.dt / params_.substeps);
+  state_.rear_tire_temp += (heat_rear - cool_rear) * (params_.dt / params_.substeps);
+
+  double wear_rate = vehicle_params_.tire_wear_per_slip * (abs_front_slip + abs_rear_slip) * 0.5;
+  state_.front_tire_wear -= wear_rate * (params_.dt / params_.substeps);
+  state_.rear_tire_wear -= wear_rate * (params_.dt / params_.substeps);
+
+  state_.front_tire_wear = clamp(state_.front_tire_wear, 0.0, 1.0);
+  state_.rear_tire_wear = clamp(state_.rear_tire_wear, 0.0, 1.0);
+}
+
+// Bicycle model tire forces with Pacejka lateral grip, temperature and wear.
 //
 // The vehicle is modeled as a single track (bicycle) with:
 //   - front axle at distance a_f from CG
@@ -156,26 +206,49 @@ void Simulation::update_tire_forces() {
 
   state_.front_slip_angle = alpha_f;
   state_.rear_slip_angle = alpha_r;
+  state_.slip_angle = (std::abs(alpha_f) + std::abs(alpha_r)) * 0.5;
 
-  const double mu = vehicle_params_.tire_mu;
   const double m = vehicle_params_.mass;
   const double g = kGravity;
 
-  const double fz_front = m * g * (a_r / (a_f + a_r));
-  const double fz_rear = m * g * (a_f / (a_f + a_r));
+  auto tire_grip_factor = [](double temp, double wear, const vehicle::VehicleParams& p) {
+    double temp_diff = temp - p.tire_optimal_temp;
+    double temp_factor = std::exp(-0.5 * std::pow(temp_diff / p.tire_temp_curve_width, 2));
+    double wear_factor = 0.5 + 0.5 * wear;
+    return temp_factor * wear_factor;
+  };
 
-  const double f_yf_raw = mu * fz_front *
+  double grip_front = tire_grip_factor(state_.front_tire_temp, state_.front_tire_wear, vehicle_params_);
+  double grip_rear = tire_grip_factor(state_.rear_tire_temp, state_.rear_tire_wear, vehicle_params_);
+  double mu_front = vehicle_params_.tire_mu * grip_front;
+  double mu_rear = vehicle_params_.tire_mu * grip_rear;
+
+  const double a_long = state_.acceleration.dot(forward_dir);
+  const double a_lat = state_.acceleration.dot(right_dir);
+  const double dFz_long = (m * a_long * vehicle_params_.cg_height) / vehicle_params_.wheelbase;
+  const double dFz_lat = (m * a_lat * vehicle_params_.cg_height) / vehicle_params_.track_width;
+
+  double fz_front = m * g * (a_r / (a_f + a_r)) + dFz_long * (a_r / (a_f + a_r)) + dFz_lat * 0.5;
+  double fz_rear = m * g * (a_f / (a_f + a_r)) - dFz_long * (a_f / (a_f + a_r)) - dFz_lat * 0.5;
+  fz_front = std::max(fz_front, m * g * 0.1);
+  fz_rear = std::max(fz_rear, m * g * 0.1);
+
+  const auto& tp = track_->at(state_.distance_along_track);
+  const double banking_factor = std::cos(tp.banking);
+  const double friction_factor = tp.friction;
+
+  const double f_yf_raw = mu_front * fz_front * friction_factor * banking_factor *
     physics::pacejka_tire_model(alpha_f, 1.0,
       vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
       vehicle_params_.tire_pacejka_e);
 
-  const double f_yr_raw = mu * fz_rear *
+  const double f_yr_raw = mu_rear * fz_rear * friction_factor * banking_factor *
     physics::pacejka_tire_model(alpha_r, 1.0,
       vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
       vehicle_params_.tire_pacejka_e);
 
   const double f_y_total = f_yf_raw + f_yr_raw;
-  const double f_y_max = mu * m * g;
+  const double f_y_max = (mu_front + mu_rear) * 0.5 * m * g * banking_factor * friction_factor;
 
   double f_yf = f_yf_raw;
   double f_yr = f_yr_raw;

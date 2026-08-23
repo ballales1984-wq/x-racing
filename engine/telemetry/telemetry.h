@@ -26,6 +26,10 @@ struct TelemetryFrame {
   double heading = 0.0;                   // rad, yaw angle
   double lateral_g = 0.0;                 // g, lateral acceleration
   double longitudinal_g = 0.0;            // g, longitudinal acceleration
+  double front_tire_temp = 0.0;           // K, front tire temperature
+  double rear_tire_temp = 0.0;            // K, rear tire temperature
+  double front_tire_wear = 0.0;           // [0,1], front tire wear
+  double rear_tire_wear = 0.0;            // [0,1], rear tire wear
 };
 
 // Telemetry recorder: accumulates frames and exports to CSV.
