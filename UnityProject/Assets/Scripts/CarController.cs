@@ -13,11 +13,20 @@ namespace Project0.Unity
         [Header("Movement")]
         public float speedScale = 1.0f;
         public bool loop = true;
+        public bool useDirectControl = true;
 
         [Header("Follow Camera")]
         public Camera followCamera;
         public Vector3 cameraOffset = new Vector3(-8f, 4f, -8f);
         public float cameraSmoothTime = 0.2f;
+
+        [Header("Direct Control Physics")]
+        public float maxSpeed = 30f;
+        public float acceleration = 8f;
+        public float brakeForce = 15f;
+        public float steerSpeed = 60f;
+        public float maxSteerAngle = 30f;
+        public float naturalDeceleration = 5f;
 
         private TelemetryFrame[] frames;
         private int currentIndex = 0;
@@ -26,7 +35,79 @@ namespace Project0.Unity
         private string lastError = "";
         private Vector3 cameraVelocity;
 
+        private float currentSpeed = 0f;
+        private float currentSteer = 0f;
+        private float currentHeading = 0f;
+
         void Update()
+        {
+            if (useDirectControl)
+            {
+                UpdateDirectControl();
+            }
+            else
+            {
+                UpdateTelemetryPlayback();
+            }
+
+            UpdateCamera();
+        }
+
+        void UpdateDirectControl()
+        {
+            float throttle = 0f;
+            float brake = 0f;
+            float steer = 0f;
+
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+            {
+                throttle = 1f;
+            }
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+            {
+                brake = 1f;
+            }
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            {
+                steer = 1f;
+            }
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            {
+                steer = -1f;
+            }
+
+            if (throttle > 0f)
+            {
+                currentSpeed += acceleration * Time.deltaTime;
+            }
+            else if (brake > 0f)
+            {
+                currentSpeed -= brakeForce * Time.deltaTime;
+            }
+            else
+            {
+                currentSpeed -= naturalDeceleration * Time.deltaTime;
+            }
+
+            currentSpeed = Mathf.Clamp(currentSpeed, -maxSpeed * 0.3f, maxSpeed);
+
+            if (Mathf.Abs(currentSpeed) > 0.1f)
+            {
+                float steerFactor = Mathf.Clamp01(Mathf.Abs(currentSpeed) / (maxSpeed * 0.5f));
+                float effectiveSteer = steer * maxSteerAngle * (1f - steerFactor * 0.7f);
+                currentHeading -= effectiveSteer * Time.deltaTime * Mathf.Sign(currentSpeed);
+            }
+
+            currentHeading = NormalizeAngle(currentHeading);
+
+            Vector3 forward = new Vector3(Mathf.Sin(currentHeading), 0f, Mathf.Cos(currentHeading));
+            Vector3 move = forward * currentSpeed * Time.deltaTime;
+
+            transform.position += move;
+            transform.eulerAngles = new Vector3(0f, currentHeading * Mathf.Rad2Deg, 0f);
+        }
+
+        void UpdateTelemetryPlayback()
         {
             if (!loaded || frames == null || frames.Length == 0)
             {
@@ -61,7 +142,10 @@ namespace Project0.Unity
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
             transform.eulerAngles = new Vector3(0f, (float)(frame.heading * Mathf.Rad2Deg), 0f);
+        }
 
+        void UpdateCamera()
+        {
             if (followCamera != null)
             {
                 var targetPos = transform.position + cameraOffset;
@@ -142,20 +226,34 @@ namespace Project0.Unity
         {
             currentIndex = 0;
             elapsedTime = 0f;
+            currentSpeed = 0f;
+            currentSteer = 0f;
+            currentHeading = transform.eulerAngles.y * Mathf.Deg2Rad;
         }
 
         public string GetStatus()
         {
+            if (useDirectControl)
+            {
+                return $"Direct Control | Speed={currentSpeed:F1} km/h | Heading={currentHeading * Mathf.Rad2Deg:F1} deg";
+            }
             if (!loaded) return $"Not loaded. {lastError}";
             return $"Frame {currentIndex}/{frames.Length} | t={elapsedTime:F2}s | Speed={(frames[currentIndex].speed * 3.6f):F1} km/h";
         }
 
         private void OnValidate()
         {
-            if (autoReload && !loaded && File.Exists(telemetryPath))
+            if (autoReload && !loaded && File.Exists(telemetryPath) && !useDirectControl)
             {
                 LoadTelemetry();
             }
+        }
+
+        private float NormalizeAngle(float angle)
+        {
+            while (angle > Mathf.PI) angle -= 2f * Mathf.PI;
+            while (angle < -Mathf.PI) angle += 2f * Mathf.PI;
+            return angle;
         }
     }
 
