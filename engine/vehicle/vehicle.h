@@ -28,7 +28,7 @@ struct VehicleParams {
   double drag_coefficient = 0.35;        // aerodynamic drag coefficient Cd
   double frontal_area = 2.0;             // m^2, frontal cross-section
   double lift_coefficient = 0.1;         // aerodynamic lift coefficient Cl
-  double downforce_coefficient = 0.0;    // aerodynamic downforce coefficient Cz
+  double downforce_coefficient = 0.5;    // aerodynamic downforce coefficient Cz
   double front_wing_area = 0.5;          // m^2, front wing area
   double rear_wing_area = 0.5;           // m^2, rear wing area
   double ride_height_sensitivity = 2.0;  // downforce per meter of ride height

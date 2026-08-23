@@ -271,3 +271,79 @@ TEST(Tire, ResetRestoresTireState) {
   EXPECT_DOUBLE_EQ(sim.state().front_tire_wear, 1.0);
   EXPECT_DOUBLE_EQ(sim.state().rear_tire_wear, 1.0);
 }
+
+// M6: Aerodynamic drag should increase with speed
+TEST(Aerodynamics, DragIncreasesWithSpeed) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  for (int i = 0; i < 200; ++i) {
+    sim.step(input);
+  }
+
+  const double speed = sim.state().speed;
+  EXPECT_GT(speed, 30.0);
+  EXPECT_GT(sim.state().aero_drag, 0.0);
+}
+
+// M6: Downforce should increase with speed
+TEST(Aerodynamics, DownforceIncreasesWithSpeed) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 60.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.5;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().aero_downforce, 0.0);
+}
+
+// M6: Higher wing angle should produce more downforce
+TEST(Aerodynamics, WingAngleAffectsDownforce) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 60.0;
+  sim.reset(initial);
+
+  vehicle::VehicleParams params;
+  params.wing_angle = 0.3;
+  sim = simulation::Simulation(simulation::SimulationParams{});
+  sim.set_track(track);
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.5;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().aero_downforce, 0.0);
+}
