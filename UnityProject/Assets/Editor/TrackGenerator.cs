@@ -29,9 +29,14 @@ namespace Project0.Unity.Setup
 
             if (meshRenderer.sharedMaterial == null)
             {
-                meshRenderer.sharedMaterial = new Material(Shader.Find("Legacy Shaders/Diffuse"));
-                meshRenderer.sharedMaterial.color = new Color(0.2f, 0.2f, 0.2f);
+                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null)
+                {
+                    shader = Shader.Find("Standard");
+                }
+                meshRenderer.sharedMaterial = new Material(shader);
             }
+            meshRenderer.sharedMaterial.color = new Color(0.4f, 0.4f, 0.4f);
 
             var points = GenerateTrackPoints();
             float trackWidth = 6f;

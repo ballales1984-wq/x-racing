@@ -17,9 +17,10 @@ namespace Project0.Unity.Setup
             }
             car.transform.position = new Vector3(0, 0.5f, 0);
             car.transform.localScale = new Vector3(1, 0.5f, 2);
-            if (car.GetComponent<CarController>() == null)
+            var carController = car.GetComponent<CarController>();
+            if (carController == null)
             {
-                car.AddComponent<CarController>();
+                carController = car.AddComponent<CarController>();
             }
 
             var camera = GameObject.Find("Main Camera");
@@ -29,8 +30,10 @@ namespace Project0.Unity.Setup
                 camera.AddComponent<Camera>();
                 camera.tag = "MainCamera";
             }
-            camera.transform.position = new Vector3(-8, 4, -8);
-            camera.transform.LookAt(Vector3.zero);
+            camera.transform.position = new Vector3(-12f, 6f, -12f);
+            camera.transform.LookAt(car.transform.position + Vector3.up * 0.5f);
+
+            carController.followCamera = camera.GetComponent<Camera>();
 
             Debug.Log("Scene setup updated.");
         }

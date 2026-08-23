@@ -17,8 +17,11 @@ namespace Project0.Unity
 
         [Header("Follow Camera")]
         public Camera followCamera;
-        public Vector3 cameraOffset = new Vector3(-8f, 4f, -8f);
-        public float cameraSmoothTime = 0.2f;
+        public bool firstPersonView = true;
+        public float cameraFollowDistance = 6f;
+        public float cameraFollowHeight = 2f;
+        public float cameraSmoothTime = 0.15f;
+        public Vector3 firstPersonOffset = new Vector3(0f, 1.2f, 0.3f);
 
         [Header("Direct Control Physics")]
         public float maxSpeed = 30f;
@@ -145,10 +148,31 @@ namespace Project0.Unity
 
         void UpdateCamera()
         {
-            if (followCamera != null)
+            if (followCamera == null) return;
+
+            float heading = transform.eulerAngles.y * Mathf.Deg2Rad;
+            Vector3 targetPos;
+
+            if (firstPersonView)
             {
-                var targetPos = transform.position + cameraOffset;
-                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+                Vector3 forward = new Vector3(Mathf.Sin(heading), 0f, Mathf.Cos(heading));
+                targetPos = transform.position + forward * firstPersonOffset.z + Vector3.up * firstPersonOffset.y;
+            }
+            else
+            {
+                Vector3 behind = new Vector3(Mathf.Sin(heading + Mathf.PI), 0f, Mathf.Cos(heading + Mathf.PI));
+                targetPos = transform.position + behind * cameraFollowDistance + Vector3.up * cameraFollowHeight;
+            }
+
+            followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+
+            if (firstPersonView)
+            {
+                float lookHeading = heading * Mathf.Rad2Deg;
+                followCamera.transform.eulerAngles = new Vector3(0f, lookHeading, 0f);
+            }
+            else
+            {
                 followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
             }
         }
