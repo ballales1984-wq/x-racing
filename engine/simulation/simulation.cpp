@@ -139,23 +139,51 @@ void Simulation::update_engine_forces() {
   state_.acceleration = forward_dir * engine_force / vehicle_params_.mass;
 }
 
-// Aerodynamic drag and lift (quadratic in speed).
-// Lift reduces normal load on tires, affecting grip.
+// Aerodynamic model with dynamic ride height, pitch and roll sensitivity.
+//
+// Computes:
+//   Drag: D = 0.5 * rho * Cd * A * v^2
+//   Lift: L = 0.5 * rho * Cl * A * v^2
+//   Downforce: DF = 0.5 * rho * Cz * A * v^2 * ride_height_factor
+//
+// Downforce depends on:
+//   - ride height (lower = more downforce)
+//   - body pitch (affects front/rear balance)
+//   - body roll (affects total downforce)
+//   - wing angle (adjustable setup parameter)
 void Simulation::update_aerodynamics() {
   const double speed = state_.velocity.norm();
-  if (speed < kEpsilon) return;
+  if (speed < kEpsilon) {
+    state_.aero_drag = 0.0;
+    state_.aero_lift = 0.0;
+    state_.aero_downforce = 0.0;
+    return;
+  }
 
   const double rho = 1.225;
-  const double drag_force = 0.5 * rho * vehicle_params_.frontal_area *
-                            vehicle_params_.drag_coefficient * speed * speed;
-  const double lift_force = 0.5 * rho * vehicle_params_.frontal_area *
-                            vehicle_params_.lift_coefficient * speed * speed;
+  const double dynamic_pressure = 0.5 * rho * speed * speed;
+
+  const double base_drag = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.drag_coefficient;
+  const double base_lift = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.lift_coefficient;
+  const double base_downforce = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.downforce_coefficient;
+
+  const double ride_height_factor = 1.0 + vehicle_params_.ride_height_sensitivity * state_.body_pitch;
+  const double pitch_factor = 1.0 - vehicle_params_.pitch_sensitivity * std::abs(state_.body_pitch);
+  const double roll_factor = 1.0 - vehicle_params_.roll_sensitivity * std::abs(state_.body_roll);
+  const double wing_factor = 1.0 + std::sin(vehicle_params_.wing_angle);
+
+  const double drag = base_drag * (1.0 + vehicle_params_.wing_angle * 0.1);
+  const double lift = base_lift * ride_height_factor * roll_factor;
+  const double downforce = base_downforce * ride_height_factor * pitch_factor * roll_factor * wing_factor;
 
   const Vec2 drag_dir = -state_.velocity.normalized();
-  const double drag_decel = drag_force / vehicle_params_.mass;
+  const double drag_decel = drag / vehicle_params_.mass;
 
   state_.acceleration += drag_dir * drag_decel;
-  state_.aero_lift = lift_force;
+  state_.aero_drag = drag;
+  state_.aero_lift = lift;
+  state_.aero_downforce = downforce;
+  state_.aero_front_balance = 0.5 - vehicle_params_.pitch_sensitivity * state_.body_pitch;
 }
 
 // Simple tire thermal model.
@@ -209,17 +237,17 @@ void Simulation::update_suspension() {
   double static_front = m * g * (a_r / L);
   double static_rear = m * g * (a_f / L);
 
-  const double total_aero_load = state_.aero_lift;
-  const double aero_front = total_aero_load * (a_r / L);
-  const double aero_rear = total_aero_load * (a_f / L);
+  const double total_aero_load = state_.aero_downforce - state_.aero_lift;
+  double aero_front = total_aero_load * state_.aero_front_balance;
+  double aero_rear = total_aero_load * (1.0 - state_.aero_front_balance);
 
   double dFz_long = (m * a_long * h) / L;
   double dFz_lat = (m * a_lat * h) / T;
 
-  double fl_load = (static_front * 0.5 - aero_front * 0.5) + dFz_long * 0.5 + dFz_lat * 0.5;
-  double fr_load = (static_front * 0.5 - aero_front * 0.5) + dFz_long * 0.5 - dFz_lat * 0.5;
-  double rl_load = (static_rear * 0.5 - aero_rear * 0.5) - dFz_long * 0.5 + dFz_lat * 0.5;
-  double rr_load = (static_rear * 0.5 - aero_rear * 0.5) - dFz_long * 0.5 - dFz_lat * 0.5;
+  double fl_load = (static_front * 0.5 + aero_front * 0.5) + dFz_long * 0.5 + dFz_lat * 0.5;
+  double fr_load = (static_front * 0.5 + aero_front * 0.5) + dFz_long * 0.5 - dFz_lat * 0.5;
+  double rl_load = (static_rear * 0.5 + aero_rear * 0.5) - dFz_long * 0.5 + dFz_lat * 0.5;
+  double rr_load = (static_rear * 0.5 + aero_rear * 0.5) - dFz_long * 0.5 - dFz_lat * 0.5;
 
   fl_load = std::max(fl_load, m * g * 0.05);
   fr_load = std::max(fr_load, m * g * 0.05);
