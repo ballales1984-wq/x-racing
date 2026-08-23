@@ -181,7 +181,11 @@ namespace Project0.Unity.Setup
 
         private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, float trackWidth)
         {
-            var borderMaterial = new Material(Shader.Find("Legacy Shaders/Diffuse"));
+            var borderMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            if (borderMaterial.shader == null)
+            {
+                borderMaterial = new Material(Shader.Find("Standard"));
+            }
             borderMaterial.color = new Color(0.8f, 0.2f, 0f);
 
             var leftVertices = new System.Collections.Generic.List<Vector3>();
