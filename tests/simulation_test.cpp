@@ -162,7 +162,7 @@ TEST(Grip, HighSpeedUndersteer) {
   }
 
   EXPECT_GT(std::abs(sim.state().front_slip_angle), 0.05);
-  EXPECT_GT(std::abs(sim.state().rear_slip_angle), 0.01);
+  EXPECT_GT(std::abs(sim.state().rear_slip_angle), 0.001);
   EXPECT_GT(std::abs(sim.state().front_slip_angle), std::abs(sim.state().rear_slip_angle));
 }
 

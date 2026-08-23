@@ -7,3 +7,6 @@ set(TEST_SOURCES
 add_executable(project0_tests ${TEST_SOURCES})
 target_link_libraries(project0_tests PRIVATE project0_engine GTest::gtest_main)
 target_include_directories(project0_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+include(GoogleTest)
+gtest_discover_tests(project0_tests)

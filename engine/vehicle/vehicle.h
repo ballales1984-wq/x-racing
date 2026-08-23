@@ -37,6 +37,12 @@ struct VehicleParams {
   double suspension_stiffness = 30000.0; // N/m (reserved for future use)
   double suspension_damping = 2500.0;    // Ns/m (reserved for future use)
   double anti_roll_bar = 15000.0;        // Nm/deg (reserved for future use)
+  double front_spring_rate = 30000.0;    // N/m, front suspension stiffness
+  double rear_spring_rate = 30000.0;     // N/m, rear suspension stiffness
+  double front_damping = 2500.0;         // Ns/m, front suspension damping
+  double rear_damping = 2500.0;          // Ns/m, rear suspension damping
+  double ride_height = 0.15;             // m, static ride height
+  double anti_roll_bar_stiffness = 15000.0; // Nm/rad, anti-roll bar
   double ambient_temperature = 300.0;    // K, track/air temperature
   double tire_optimal_temp = 350.0;      // K, optimal operating temperature
   double tire_temp_curve_width = 20.0;   // K, width of the grip-vs-temp bell curve
@@ -70,6 +76,12 @@ struct VehicleState {
   double rear_tire_wear = 1.0;           // [0,1], rear tire wear (1=new)
   double distance_along_track = 0.0;     // m, progress along track centerline
   int lap = 0;                           // completed laps
+  double fl_tire_load = 0.0;             // N, front-left tire normal force
+  double fr_tire_load = 0.0;             // N, front-right tire normal force
+  double rl_tire_load = 0.0;             // N, rear-left tire normal force
+  double rr_tire_load = 0.0;             // N, rear-right tire normal force
+  double body_roll = 0.0;                // rad, body roll angle
+  double body_pitch = 0.0;               // rad, body pitch angle
 };
 
 }

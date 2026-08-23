@@ -26,6 +26,12 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.rear_tire_temp = vehicle_params_.ambient_temperature;
   state_.front_tire_wear = 1.0;
   state_.rear_tire_wear = 1.0;
+  state_.fl_tire_load = 0.0;
+  state_.fr_tire_load = 0.0;
+  state_.rl_tire_load = 0.0;
+  state_.rr_tire_load = 0.0;
+  state_.body_roll = 0.0;
+  state_.body_pitch = 0.0;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -54,6 +60,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
     update_engine_forces();
     update_aerodynamics();
     update_tire_temperature();
+    update_suspension();
     update_tire_forces();
     update_braking();
     update_steering();
@@ -167,25 +174,64 @@ void Simulation::update_tire_temperature() {
   state_.rear_tire_wear = clamp(state_.rear_tire_wear, 0.0, 1.0);
 }
 
-// Bicycle model tire forces with Pacejka lateral grip, temperature and wear.
+// Simplified suspension model: quasi-static weight transfer.
 //
-// The vehicle is modeled as a single track (bicycle) with:
-//   - front axle at distance a_f from CG
-//   - rear axle at distance a_r from CG
+// Calculates 4-corner normal forces based on:
+//   - Static load distribution (from CG position)
+//   - Longitudinal weight transfer (acceleration/braking)
+//   - Lateral weight transfer (cornering)
+//   - Anti-roll bar effect
 //
-// Slip angles:
-//   alpha_f = delta - atan((v_y + a_f * omega) / v_x)
-//   alpha_r = -atan((v_y - a_r * omega) / v_x)
-//
-// Lateral forces:
-//   F_yf = Pacejka(alpha_f)
-//   F_yr = Pacejka(alpha_r)
-//
-// Yaw moment:
-//   M_z = a_f * F_yf - a_r * F_yr
-//
-// If total lateral force exceeds available grip (mu * m * g),
-// forces are proportionally limited (understeer behavior).
+// The model is fast and deterministic, suitable for real-time simulation.
+// It captures the essential effect of suspension on tire grip without
+// requiring full multibody dynamics.
+void Simulation::update_suspension() {
+  const double m = vehicle_params_.mass;
+  const double g = kGravity;
+  const double a_f = vehicle_params_.cg_to_front;
+  const double a_r = vehicle_params_.cg_to_rear;
+  const double L = vehicle_params_.wheelbase;
+  const double T = vehicle_params_.track_width;
+  const double h = vehicle_params_.cg_height;
+
+  const double a_long = state_.acceleration.dot(Vec2(std::cos(state_.heading), std::sin(state_.heading)));
+  const double a_lat = state_.acceleration.dot(Vec2(-std::sin(state_.heading), std::cos(state_.heading)));
+
+  double static_front = m * g * (a_r / L);
+  double static_rear = m * g * (a_f / L);
+
+  double dFz_long = (m * a_long * h) / L;
+  double dFz_lat = (m * a_lat * h) / T;
+
+  double fl_load = static_front * 0.5 + dFz_long * 0.5 + dFz_lat * 0.5;
+  double fr_load = static_front * 0.5 + dFz_long * 0.5 - dFz_lat * 0.5;
+  double rl_load = static_rear * 0.5 - dFz_long * 0.5 + dFz_lat * 0.5;
+  double rr_load = static_rear * 0.5 - dFz_long * 0.5 - dFz_lat * 0.5;
+
+  fl_load = std::max(fl_load, m * g * 0.05);
+  fr_load = std::max(fr_load, m * g * 0.05);
+  rl_load = std::max(rl_load, m * g * 0.05);
+  rr_load = std::max(rr_load, m * g * 0.05);
+
+  const double anti_roll_moment = vehicle_params_.anti_roll_bar_stiffness * a_lat;
+  const double anti_roll_distribution = anti_roll_moment / T;
+
+  fl_load -= anti_roll_distribution * 0.5;
+  fr_load += anti_roll_distribution * 0.5;
+  rl_load -= anti_roll_distribution * 0.5;
+  rr_load += anti_roll_distribution * 0.5;
+
+  state_.fl_tire_load = std::max(fl_load, 0.0);
+  state_.fr_tire_load = std::max(fr_load, 0.0);
+  state_.rl_tire_load = std::max(rl_load, 0.0);
+  state_.rr_tire_load = std::max(rr_load, 0.0);
+
+  state_.body_roll = a_lat * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
+  state_.body_pitch = -a_long * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
+}
+
+// Bicycle model tire forces with Pacejka lateral grip.
+// Tire loads come from the suspension model (update_suspension).
 void Simulation::update_tire_forces() {
   const double speed = state_.speed;
   if (speed < kEpsilon) return;
@@ -223,19 +269,12 @@ void Simulation::update_tire_forces() {
   double mu_front = vehicle_params_.tire_mu * grip_front;
   double mu_rear = vehicle_params_.tire_mu * grip_rear;
 
-  const double a_long = state_.acceleration.dot(forward_dir);
-  const double a_lat = state_.acceleration.dot(right_dir);
-  const double dFz_long = (m * a_long * vehicle_params_.cg_height) / vehicle_params_.wheelbase;
-  const double dFz_lat = (m * a_lat * vehicle_params_.cg_height) / vehicle_params_.track_width;
-
-  double fz_front = m * g * (a_r / (a_f + a_r)) + dFz_long * (a_r / (a_f + a_r)) + dFz_lat * 0.5;
-  double fz_rear = m * g * (a_f / (a_f + a_r)) - dFz_long * (a_f / (a_f + a_r)) - dFz_lat * 0.5;
-  fz_front = std::max(fz_front, m * g * 0.1);
-  fz_rear = std::max(fz_rear, m * g * 0.1);
-
   const auto& tp = track_->at(state_.distance_along_track);
   const double banking_factor = std::cos(tp.banking);
   const double friction_factor = tp.friction;
+
+  double fz_front = state_.fl_tire_load + state_.fr_tire_load;
+  double fz_rear = state_.rl_tire_load + state_.rr_tire_load;
 
   const double f_yf_raw = mu_front * fz_front * friction_factor * banking_factor *
     physics::pacejka_tire_model(alpha_f, 1.0,
@@ -303,6 +342,8 @@ void Simulation::integrate(double dt) {
   new_long_speed = clamp(new_long_speed, 0.0, 150.0);
 
   double new_lat_speed = state_.lateral_velocity + a_lat * dt;
+  const double damping_coeff = vehicle_params_.suspension_damping / vehicle_params_.mass;
+  new_lat_speed -= damping_coeff * state_.lateral_velocity * dt;
   const double lat_speed_max = 30.0;
   new_lat_speed = clamp(new_lat_speed, -lat_speed_max, lat_speed_max);
 

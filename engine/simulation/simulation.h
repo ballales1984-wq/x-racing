@@ -44,7 +44,8 @@ class Simulation {
   void update_engine_forces();            // engine torque -> longitudinal force
   void update_aerodynamics();             // drag and lift
   void update_tire_temperature();         // tire thermal model + wear
-  void update_tire_forces();              // Pacejka forces with temp/wear grip
+  void update_suspension();               // spring-damper + weight transfer
+  void update_tire_forces();              // Pacejka forces with dynamic Fz
   void update_braking();                  // brake deceleration
   void update_steering();                 // bicycle model slip angles + lateral forces
   void integrate(double dt);              // velocity-space integration
