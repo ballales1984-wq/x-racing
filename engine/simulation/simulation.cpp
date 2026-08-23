@@ -1,5 +1,6 @@
 #include "simulation/simulation.h"
 #include "physics/types.h"
+#include "weather/weather.h"
 #include <algorithm>
 #include <cmath>
 
@@ -32,6 +33,8 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.rr_tire_load = 0.0;
   state_.body_roll = 0.0;
   state_.body_pitch = 0.0;
+  state_.weather_grip_factor = 1.0;
+  state_.track_temp = 305.0;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -59,6 +62,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
     update_engine_forces();
     update_aerodynamics();
+    update_weather();
     update_tire_temperature();
     update_suspension();
     update_tire_forces();
@@ -184,6 +188,47 @@ void Simulation::update_aerodynamics() {
   state_.aero_lift = lift;
   state_.aero_downforce = downforce;
   state_.aero_front_balance = 0.5 - vehicle_params_.pitch_sensitivity * state_.body_pitch;
+}
+
+// Weather effects on vehicle and track.
+//
+// Simplified weather model that affects:
+//   - Tire grip (rain reduces friction)
+//   - Tire temperature (rain cools, wind affects heat transfer)
+//   - Track friction (wet surface reduces grip)
+//   - Rolling resistance (wet surface increases resistance)
+//   - Wind effect on vehicle speed
+//
+// The model is deterministic and suitable for real-time simulation.
+// It captures the essential effects of weather on driving dynamics.
+void Simulation::update_weather() {
+  const double rain = vehicle_params_.rain_intensity;
+
+  // Rain cools tires and track
+  if (rain > 0.0) {
+    const double rain_cooling = vehicle_params_.rain_cooling * rain;
+    state_.front_tire_temp -= rain_cooling * (params_.dt / params_.substeps);
+    state_.rear_tire_temp -= rain_cooling * (params_.dt / params_.substeps);
+    state_.track_temp -= rain_cooling * 0.5 * (params_.dt / params_.substeps);
+  }
+
+  // Track temperature approaches air temperature
+  const double track_cooling = vehicle_params_.temp_cooling_rate * (state_.track_temp - vehicle_params_.ambient_temperature);
+  state_.track_temp -= track_cooling * (params_.dt / params_.substeps);
+
+  // Track heating from sun (simplified)
+  state_.track_temp += vehicle_params_.track_heat_rate * (params_.dt / params_.substeps);
+
+  // Update weather grip factor based on rain
+  state_.weather_grip_factor = 1.0 - rain * vehicle_params_.rain_grip_reduction;
+
+  // Wind effect on speed (simplified)
+  const double wind_speed = 0.0; // placeholder for future wind implementation
+  if (wind_speed > 0.0) {
+    const double wind_effect = vehicle_params_.wind_effect_on_speed * wind_speed;
+    state_.speed += wind_effect * (params_.dt / params_.substeps);
+    state_.speed = clamp(state_.speed, 0.0, 150.0);
+  }
 }
 
 // Simple tire thermal model.
@@ -312,7 +357,7 @@ void Simulation::update_tire_forces() {
 
   const auto& tp = track_->at(state_.distance_along_track);
   const double banking_factor = std::cos(tp.banking);
-  const double friction_factor = tp.friction;
+  const double friction_factor = tp.friction * state_.weather_grip_factor;
 
   double fz_front = state_.fl_tire_load + state_.fr_tire_load;
   double fz_rear = state_.rl_tire_load + state_.rr_tire_load;

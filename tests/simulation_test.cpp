@@ -347,3 +347,85 @@ TEST(Aerodynamics, WingAngleAffectsDownforce) {
 
   EXPECT_GT(sim.state().aero_downforce, 0.0);
 }
+
+// M7: Rain intensity should reduce weather grip factor
+TEST(Weather, RainReducesGrip) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  sim.mutable_params().rain_intensity = 0.5;
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.5;
+
+  for (int i = 0; i < 100; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_LT(sim.state().weather_grip_factor, 1.0);
+}
+
+// M7: Rain should cool tires
+TEST(Weather, RainCoolsTires) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  initial.front_tire_temp = 340.0;
+  initial.rear_tire_temp = 340.0;
+  sim.reset(initial);
+
+  sim.mutable_params().rain_intensity = 0.8;
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.5;
+
+  const double start_front_temp = sim.state().front_tire_temp;
+  const double start_rear_temp = sim.state().rear_tire_temp;
+
+  for (int i = 0; i < 200; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_LT(sim.state().front_tire_temp, start_front_temp);
+  EXPECT_LT(sim.state().rear_tire_temp, start_rear_temp);
+}
+
+// M7: Track temperature should change over time
+TEST(Weather, TrackTemperatureChanges) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  initial.track_temp = 300.0;
+  sim.reset(initial);
+
+  sim.mutable_params().ambient_temperature = 310.0;
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.5;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().track_temp, 300.0);
+}

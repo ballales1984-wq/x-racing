@@ -38,11 +38,13 @@ class Simulation {
 
   const vehicle::VehicleState& state() const { return state_; }
   const track::Track& track() const { return *track_; }
+  vehicle::VehicleParams& mutable_params() { return vehicle_params_; }
 
  private:
   // Physics update stages (called in order each sub-step)
   void update_engine_forces();            // engine torque -> longitudinal force
   void update_aerodynamics();             // drag and lift
+  void update_weather();                  // rain, wind, temperature effects
   void update_tire_temperature();         // tire thermal model + wear
   void update_suspension();               // spring-damper + weight transfer
   void update_tire_forces();              // Pacejka forces with dynamic Fz

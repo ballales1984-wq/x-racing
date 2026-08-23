@@ -57,6 +57,13 @@ struct VehicleParams {
   double tire_heat_per_slip = 2.0;       // K per unit of slip angle
   double tire_wear_per_slip = 0.0001;    // wear per unit of slip angle
   double tire_wear_per_lap = 0.001;      // base wear per lap
+  double rain_intensity = 0.0;            // [0, 1], rain intensity
+  double rain_grip_reduction = 0.4;       // grip reduction factor in rain [0, 1]
+  double rain_rolling_resistance = 1.3;   // rolling resistance multiplier in rain
+  double wind_effect_on_speed = 0.1;      // wind effect on vehicle speed
+  double temp_cooling_rate = 0.2;         // K/s per K of temperature difference
+  double rain_cooling = 2.0;              // K/s cooling from rain
+  double track_heat_rate = 0.05;          // K/s track heating from sun
 };
 
 // Vehicle state: instantaneous values updated each simulation step
@@ -93,6 +100,8 @@ struct VehicleState {
   double rr_tire_load = 0.0;             // N, rear-right tire normal force
   double body_roll = 0.0;                // rad, body roll angle
   double body_pitch = 0.0;               // rad, body pitch angle
+  double weather_grip_factor = 1.0;       // [-], weather-based grip reduction
+  double track_temp = 305.0;             // K, local track temperature
 };
 
 }
