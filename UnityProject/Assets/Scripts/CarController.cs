@@ -14,11 +14,17 @@ namespace Project0.Unity
         public float speedScale = 1.0f;
         public bool loop = true;
 
+        [Header("Follow Camera")]
+        public Camera followCamera;
+        public Vector3 cameraOffset = new Vector3(-8f, 4f, -8f);
+        public float cameraSmoothTime = 0.2f;
+
         private TelemetryFrame[] frames;
         private int currentIndex = 0;
         private float elapsedTime = 0f;
         private bool loaded = false;
         private string lastError = "";
+        private Vector3 cameraVelocity;
 
         void Update()
         {
@@ -55,6 +61,13 @@ namespace Project0.Unity
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
             transform.eulerAngles = new Vector3(0f, (float)(frame.heading * Mathf.Rad2Deg), 0f);
+
+            if (followCamera != null)
+            {
+                var targetPos = transform.position + cameraOffset;
+                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+                followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
+            }
         }
 
         void LoadTelemetry()

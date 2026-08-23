@@ -29,7 +29,7 @@ namespace Project0.Unity.Setup
                 camera.AddComponent<Camera>();
                 camera.tag = "MainCamera";
             }
-            camera.transform.position = new Vector3(-10, 8, -10);
+            camera.transform.position = new Vector3(-8, 4, -8);
             camera.transform.LookAt(Vector3.zero);
 
             Debug.Log("Scene setup updated.");
