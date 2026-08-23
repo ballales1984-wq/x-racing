@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(PROJECT0_BUILD_TESTS "Build tests" ON)
 option(PROJECT0_BUILD_RENDERER "Build renderer" OFF)
 option(PROJECT0_BUILD_EXPERIMENTS "Build experiments" ON)
+option(PROJECT0_BUILD_GAMEPLAY "Build gameplay" ON)
 
 add_subdirectory(engine)
 
@@ -19,6 +20,10 @@ endif()
 
 if(PROJECT0_BUILD_EXPERIMENTS)
   add_subdirectory(experiments)
+endif()
+
+if(PROJECT0_BUILD_GAMEPLAY)
+  add_subdirectory(game)
 endif()
 
 if(PROJECT0_BUILD_RENDERER)
