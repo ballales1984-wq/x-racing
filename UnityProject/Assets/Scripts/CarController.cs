@@ -21,14 +21,15 @@ namespace Project0.Unity
         public float cameraFollowDistance = 6f;
         public float cameraFollowHeight = 2f;
         public float cameraSmoothTime = 0.15f;
+        public float cameraRotationSmoothTime = 0.1f;
         public Vector3 firstPersonOffset = new Vector3(0f, 1.2f, 0.3f);
 
         [Header("Direct Control Physics")]
         public float maxSpeed = 30f;
         public float acceleration = 8f;
         public float brakeForce = 15f;
-        public float steerSpeed = 60f;
-        public float maxSteerAngle = 30f;
+        public float steerSpeed = 40f;
+        public float maxSteerAngle = 18f;
         public float naturalDeceleration = 5f;
 
         private TelemetryFrame[] frames;
@@ -40,6 +41,7 @@ namespace Project0.Unity
 
         private float currentSpeed = 0f;
         private float currentHeading = 0f;
+        private float cameraRotationVelocity;
 
         void Update()
         {
@@ -157,22 +159,18 @@ namespace Project0.Unity
             {
                 Vector3 forward = new Vector3(Mathf.Sin(heading), 0f, Mathf.Cos(heading));
                 targetPos = transform.position + forward * firstPersonOffset.z + Vector3.up * firstPersonOffset.y;
+                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+
+                float targetYaw = heading * Mathf.Rad2Deg;
+                float currentYaw = followCamera.transform.eulerAngles.y;
+                float smoothedYaw = Mathf.SmoothDampAngle(currentYaw, targetYaw, ref cameraRotationVelocity, cameraRotationSmoothTime);
+                followCamera.transform.eulerAngles = new Vector3(0f, smoothedYaw, 0f);
             }
             else
             {
                 Vector3 behind = new Vector3(Mathf.Sin(heading + Mathf.PI), 0f, Mathf.Cos(heading + Mathf.PI));
                 targetPos = transform.position + behind * cameraFollowDistance + Vector3.up * cameraFollowHeight;
-            }
-
-            followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
-
-            if (firstPersonView)
-            {
-                float lookHeading = heading * Mathf.Rad2Deg;
-                followCamera.transform.eulerAngles = new Vector3(0f, lookHeading, 0f);
-            }
-            else
-            {
+                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
                 followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
             }
         }
