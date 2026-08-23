@@ -15,9 +15,11 @@ namespace Project0.Unity.Setup
                 car = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 car.name = "Car";
             }
-            car.transform.position = new Vector3(0f, 0.5f, 0f);
-            car.transform.localScale = new Vector3(1, 0.5f, 2);
+
+            car.transform.position = new Vector3(0f, 0.9f, 0f);
+            car.transform.localScale = new Vector3(1.8f, 1.2f, 4.5f);
             car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
+
             var carController = car.GetComponent<CarController>();
             if (carController == null)
             {
@@ -31,8 +33,9 @@ namespace Project0.Unity.Setup
                 camera.AddComponent<Camera>();
                 camera.tag = "MainCamera";
             }
+
             camera.transform.SetParent(car.transform, false);
-            camera.transform.localPosition = new Vector3(0f, 1.2f, 0.3f);
+            camera.transform.localPosition = new Vector3(0f, 1.0f, 0.2f);
             camera.transform.localRotation = Quaternion.identity;
 
             carController.followCamera = camera.GetComponent<Camera>();

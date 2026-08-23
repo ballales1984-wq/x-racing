@@ -36,10 +36,10 @@ namespace Project0.Unity.Setup
                 }
                 meshRenderer.sharedMaterial = new Material(shader);
             }
-            meshRenderer.sharedMaterial.color = new Color(0.4f, 0.4f, 0.4f);
+            meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
 
+            float trackWidth = 12f;
             var points = GenerateTrackPoints();
-            float trackWidth = 6f;
 
             CreateTrackBorders(points, trackWidth);
 
@@ -63,7 +63,64 @@ namespace Project0.Unity.Setup
             }
             collider.sharedMesh = trackMesh;
 
-            Debug.Log("Track generated successfully!");
+            Debug.Log($"Track generated: {points.Count} points, length ~{CalculateTrackLength(points):F0}m");
+        }
+
+        private static float CalculateTrackLength(System.Collections.Generic.List<Vector3> points)
+        {
+            float length = 0f;
+            for (int i = 1; i < points.Count; i++)
+            {
+                length += Vector3.Distance(points[i - 1], points[i]);
+            }
+            return length;
+        }
+
+        private static System.Collections.Generic.List<Vector3> GenerateTrackPoints()
+        {
+            var points = new System.Collections.Generic.List<Vector3>();
+            float straightLength = 200f;
+            float curveRadius = 75f;
+            int segmentsPerStraight = 100;
+            int segmentsPerCurve = 50;
+
+            // Bottom straight: from (0, 0, 0) to (200, 0, 0)
+            for (int i = 0; i <= segmentsPerStraight; i++)
+            {
+                float t = (float)i / segmentsPerStraight;
+                points.Add(new Vector3(t * straightLength, 0f, 0f));
+            }
+
+            // Right curve: semicircle from (200, 0, 0) to (200, 0, 150)
+            // Center: (200, 0, 75), radius 75
+            for (int i = 1; i <= segmentsPerCurve; i++)
+            {
+                float t = (float)i / segmentsPerCurve;
+                float angle = -Mathf.PI / 2 + t * Mathf.PI;
+                float x = 200f + curveRadius * Mathf.Cos(angle);
+                float z = 75f + curveRadius * Mathf.Sin(angle);
+                points.Add(new Vector3(x, 0f, z));
+            }
+
+            // Top straight: from (200, 0, 150) to (0, 0, 150)
+            for (int i = 1; i <= segmentsPerStraight; i++)
+            {
+                float t = (float)i / segmentsPerStraight;
+                points.Add(new Vector3(200f - t * straightLength, 0f, 150f));
+            }
+
+            // Left curve: semicircle from (0, 0, 150) to (0, 0, 0)
+            // Center: (0, 0, 75), radius 75
+            for (int i = 1; i <= segmentsPerCurve; i++)
+            {
+                float t = (float)i / segmentsPerCurve;
+                float angle = Mathf.PI / 2 + t * Mathf.PI;
+                float x = curveRadius * Mathf.Cos(angle);
+                float z = 75f + curveRadius * Mathf.Sin(angle);
+                points.Add(new Vector3(x, 0f, z));
+            }
+
+            return points;
         }
 
         private static Mesh BuildTrackMesh(System.Collections.Generic.List<Vector3> points, float trackWidth)
@@ -72,7 +129,7 @@ namespace Project0.Unity.Setup
             var triangles = new System.Collections.Generic.List<int>();
             var uvs = new System.Collections.Generic.List<Vector2>();
 
-            float segmentLength = 2f;
+            float segmentLength = 1f;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -129,7 +186,7 @@ namespace Project0.Unity.Setup
             var rightTriangles = new System.Collections.Generic.List<int>();
 
             float borderWidth = 0.5f;
-            float borderHeight = 0.1f;
+            float borderHeight = 0.5f;
 
             for (int i = 0; i < points.Count - 1; i++)
             {
@@ -192,53 +249,6 @@ namespace Project0.Unity.Setup
 
             meshFilter.mesh = mesh;
             meshRenderer.material = material;
-        }
-
-        private static System.Collections.Generic.List<Vector3> GenerateTrackPoints()
-        {
-            var points = new System.Collections.Generic.List<Vector3>();
-            int numPoints = 400;
-
-            for (int i = 0; i <= numPoints; i++)
-            {
-                float t = (float)i / numPoints;
-                Vector3 pos;
-
-                if (t < 0.25f)
-                {
-                    float lt = t / 0.25f;
-                    pos = new Vector3(lt * 200f, 0f, 0f);
-                }
-                else if (t < 0.5f)
-                {
-                    float lt = (t - 0.25f) / 0.25f;
-                    float cx = 200f;
-                    float cz = -150f;
-                    float r = 150f;
-                    float angle = -90f + lt * 180f;
-                    float rad = angle * Mathf.Deg2Rad;
-                    pos = new Vector3(cx + r * Mathf.Cos(rad), 0f, cz + r * Mathf.Sin(rad));
-                }
-                else if (t < 0.75f)
-                {
-                    float lt = (t - 0.5f) / 0.25f;
-                    pos = new Vector3(200f - lt * 400f, 0f, -300f);
-                }
-                else
-                {
-                    float lt = (t - 0.75f) / 0.25f;
-                    float cx = -200f;
-                    float cz = -150f;
-                    float r = 150f;
-                    float angle = 180f + lt * 180f;
-                    float rad = angle * Mathf.Deg2Rad;
-                    pos = new Vector3(cx + r * Mathf.Cos(rad), 0f, cz + r * Mathf.Sin(rad));
-                }
-
-                points.Add(pos);
-            }
-
-            return points;
         }
     }
 }
