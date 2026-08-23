@@ -36,7 +36,6 @@ namespace Project0.Unity
         private Vector3 cameraVelocity;
 
         private float currentSpeed = 0f;
-        private float currentSteer = 0f;
         private float currentHeading = 0f;
 
         void Update()
