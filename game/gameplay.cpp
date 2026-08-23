@@ -8,29 +8,11 @@
 
 namespace p0::gameplay {
 
-Gameplay::Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel)
-    : sim_(sim), tel_(tel) {}
+Gameplay::Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel, std::unique_ptr<input::InputManager> input_manager)
+    : sim_(sim), tel_(tel), input_manager_(std::move(input_manager)) {}
 
 input::InputState Gameplay::poll_input() {
-  input::InputState input;
-
-  if (GetAsyncKeyState('W') & 0x8000) input.throttle = 1.0;
-  if (GetAsyncKeyState('S') & 0x8000) input.brake = 1.0;
-  if (GetAsyncKeyState('A') & 0x8000) input.steering = -1.0;
-  if (GetAsyncKeyState('D') & 0x8000) input.steering = 1.0;
-  if (GetAsyncKeyState(VK_UP) & 0x8000) input.throttle = 1.0;
-  if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.brake = 1.0;
-  if (GetAsyncKeyState(VK_LEFT) & 0x8000) input.steering = -1.0;
-  if (GetAsyncKeyState(VK_RIGHT) & 0x8000) input.steering = 1.0;
-  if (GetAsyncKeyState(VK_SHIFT) & 0x8000) input.upshift = true;
-  if (GetAsyncKeyState(VK_CONTROL) & 0x8000) input.downshift = true;
-  if (GetAsyncKeyState('R') & 0x8000) input.reset = true;
-
-  if (std::abs(input.steering) < 0.1 && std::abs(input.steering) > 0.0) {
-    input.steering = input.steering > 0 ? 1.0 : -1.0;
-  }
-
-  return input;
+  return input_manager_->poll();
 }
 
 void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
@@ -136,7 +118,7 @@ void Gameplay::run() {
       last_lap_distance_ = 0.0;
     }
 
-    if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+    if (input_manager_->is_key_down(VK_ESCAPE)) {
       state_.running = false;
       break;
     }

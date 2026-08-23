@@ -3,7 +3,9 @@
 #include "common.h"
 #include "simulation/simulation.h"
 #include "telemetry/telemetry.h"
+#include "../engine/input/input_manager.h"
 #include <chrono>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,7 +30,7 @@ struct GameplayState {
 
 class Gameplay {
  public:
-  Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel);
+  Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel, std::unique_ptr<input::InputManager> input_manager);
   ~Gameplay() = default;
 
   void run();
@@ -43,8 +45,10 @@ class Gameplay {
 
   simulation::Simulation& sim_;
   telemetry::Telemetry& tel_;
+  std::unique_ptr<input::InputManager> input_manager_;
   GameplayState state_;
   double last_lap_distance_ = 0.0;
 };
 
 }
+

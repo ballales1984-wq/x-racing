@@ -1,4 +1,5 @@
 #include "game/gameplay.h"
+#include "engine/input/platform/windows_input.h"
 #include <iostream>
 
 int main() {
@@ -19,7 +20,8 @@ int main() {
   sim.reset(initial);
   tel.clear();
 
-  p0::gameplay::Gameplay gameplay(sim, tel);
+  p0::input::WindowsInputManager windows_input;
+  p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::WindowsInputManager>(std::move(windows_input)));
   gameplay.run();
 
   std::cout << "Exiting.\n";

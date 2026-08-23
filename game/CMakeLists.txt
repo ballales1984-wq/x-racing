@@ -16,10 +16,5 @@ target_link_libraries(project0_gameplay INTERFACE project0_engine)
 
 if(PROJECT0_BUILD_GAMEPLAY)
   add_executable(project0_gameplay_exe main.cpp gameplay.cpp)
-  target_link_libraries(project0_gameplay_exe PRIVATE project0_engine)
-  target_include_directories(project0_gameplay_exe PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../vendor
-  )
+  target_link_libraries(project0_gameplay_exe PRIVATE project0_gameplay)
 endif()
