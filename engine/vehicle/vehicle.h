@@ -53,6 +53,9 @@ struct VehicleState {
   int gear = 1;                          // current gear (1-based)
   double slip_ratio = 0.0;               // longitudinal slip [-1, +1]
   double slip_angle = 0.0;               // lateral slip angle, rad
+  double front_slip_angle = 0.0;         // front axle slip angle, rad
+  double rear_slip_angle = 0.0;          // rear axle slip angle, rad
+  double lateral_velocity = 0.0;         // m/s, velocity perpendicular to heading
   double speed = 0.0;                    // m/s, scalar speed
   double distance_along_track = 0.0;     // m, progress along track centerline
   int lap = 0;                           // completed laps

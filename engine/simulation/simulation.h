@@ -43,15 +43,16 @@ class Simulation {
   // Physics update stages (called in order each sub-step)
   void update_engine_forces();            // engine torque -> longitudinal force
   void update_aerodynamics();             // drag and lift
-  void update_tire_forces();              // longitudinal Pacejka grip
+  void update_tire_forces();              // longitudinal + lateral Pacejka forces
   void update_braking();                  // brake deceleration
-  void update_steering();                 // bicycle model yaw rate + grip limit
-  void integrate(double dt);              // semi-implicit Euler integration
+  void update_steering();                 // bicycle model: slip angles + lateral forces
+  void integrate(double dt);              // velocity-space integration
 
   SimulationParams params_;
   const track::Track* track_ = nullptr;
   vehicle::VehicleState state_;
   vehicle::VehicleParams vehicle_params_;
+  double total_time_ = 0.0;
 };
 
 }
