@@ -90,7 +90,16 @@ namespace Project0.Unity
             }
             else
             {
-                currentSpeed -= naturalDeceleration * Time.deltaTime;
+                if (currentSpeed > 0f)
+                {
+                    currentSpeed -= naturalDeceleration * Time.deltaTime;
+                    if (currentSpeed < 0f) currentSpeed = 0f;
+                }
+                else if (currentSpeed < 0f)
+                {
+                    currentSpeed += naturalDeceleration * Time.deltaTime;
+                    if (currentSpeed > 0f) currentSpeed = 0f;
+                }
             }
 
             currentSpeed = Mathf.Clamp(currentSpeed, -maxSpeed * 0.3f, maxSpeed);
