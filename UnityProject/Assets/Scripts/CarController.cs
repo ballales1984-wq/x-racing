@@ -26,11 +26,11 @@ namespace Project0.Unity
         public KeyCode toggleCameraKey = KeyCode.C;
 
         [Header("Direct Control Physics")]
-        public float maxSpeed = 30f;
+        public float maxSpeed = 80f;
         public float acceleration = 8f;
-        public float brakeForce = 15f;
-        public float steerSpeed = 40f;
-        public float maxSteerAngle = 18f;
+        public float brakeForce = 50f;
+        public float steerSpeed = 30f;
+        public float maxSteerAngle = 7f;
         public float naturalDeceleration = 5f;
 
         private TelemetryFrame[] frames;
