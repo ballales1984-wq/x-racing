@@ -5,22 +5,28 @@
 #include "track/track.h"
 #include "input/input.h"
 
+// Project 0 — simulation loop
+// Namespace: p0::simulation
 namespace p0::simulation {
 
+// Simulation configuration
 struct SimulationParams {
-  double dt = 1.0 / 120.0;
-  double substeps = 4.0;
-  bool use_abs = true;
-  bool use_tcs = true;
+  double dt = 1.0 / 120.0;               // s, base timestep (120 Hz)
+  double substeps = 4.0;                 // number of physics sub-steps per frame
+  bool use_abs = true;                   // enable ABS (placeholder)
+  bool use_tcs = true;                   // enable TCS (placeholder)
 };
 
+// Result of a single simulation step
 struct SimulationResult {
-  vehicle::VehicleState state;
-  bool collision = false;
-  bool off_track = false;
-  double time = 0.0;
+  vehicle::VehicleState state;           // vehicle state after step
+  bool collision = false;                // collision detected (placeholder)
+  bool off_track = false;                // vehicle outside track bounds
+  double time = 0.0;                     // accumulated simulation time
 };
 
+// Core simulation loop: physics + integration + track constraint checks.
+// The simulation is independent of any renderer; it can run headless.
 class Simulation {
  public:
   explicit Simulation(const SimulationParams& params = {});
@@ -34,12 +40,13 @@ class Simulation {
   const track::Track& track() const { return *track_; }
 
  private:
-  void update_engine_forces();
-  void update_aerodynamics();
-  void update_tire_forces();
-  void update_braking();
-  void update_steering();
-  void integrate(double dt);
+  // Physics update stages (called in order each sub-step)
+  void update_engine_forces();            // engine torque -> longitudinal force
+  void update_aerodynamics();             // drag and lift
+  void update_tire_forces();              // longitudinal Pacejka grip
+  void update_braking();                  // brake deceleration
+  void update_steering();                 // bicycle model yaw rate + grip limit
+  void integrate(double dt);              // semi-implicit Euler integration
 
   SimulationParams params_;
   const track::Track* track_ = nullptr;

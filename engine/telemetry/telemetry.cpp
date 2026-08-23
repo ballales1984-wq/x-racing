@@ -3,11 +3,14 @@
 #include <iomanip>
 #include <sstream>
 
+// Project 0 — telemetry recording and CSV export
+// Designed for offline analysis with Python, NumPy, and Matplotlib.
 namespace p0::telemetry {
 
+// Record one frame of telemetry data from the current vehicle state.
+// dt is the timestep since the last frame (used for cumulative time).
 void Telemetry::record(const vehicle::VehicleState& state, double dt) {
   TelemetryFrame frame;
-  frame.time += dt;
   frame.distance = state.distance_along_track;
   frame.speed = state.speed;
   frame.rpm = state.rpm;
@@ -28,6 +31,7 @@ void Telemetry::record(const vehicle::VehicleState& state, double dt) {
     frame.time = frames_.back().time + dt;
   }
 
+  // Compute lateral and longitudinal acceleration in g-forces
   const double speed = state.speed;
   if (speed > kEpsilon) {
     const Vec2 lateral_axis(-std::sin(state.heading), std::cos(state.heading));
@@ -40,6 +44,10 @@ void Telemetry::record(const vehicle::VehicleState& state, double dt) {
   frames_.push_back(frame);
 }
 
+// Export recorded frames to a CSV file for external analysis.
+// Columns: time, distance, speed, rpm, gear, throttle, brake, steer,
+//          slip_angle, slip_ratio, pos_x, pos_y, vel_x, vel_y,
+//          acc_x, acc_y, heading, lateral_g, longitudinal_g
 void Telemetry::save_csv(const std::string& path) const {
   std::ofstream file(path);
   if (!file.is_open()) return;

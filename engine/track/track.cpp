@@ -4,6 +4,7 @@
 #include <cmath>
 #include <numeric>
 
+// Project 0 — parametric track implementation
 namespace p0::track {
 
 Track::Track(const TrackParams& params) {
@@ -13,10 +14,14 @@ Track::Track(const TrackParams& params) {
   build_default_track();
 }
 
+// Build a default closed-loop track composed of:
+//   - straight section (0..25%)
+//   - right-hand corner (25..50%)
+//   - straight section (50..75%)
+//   - left-hand corner (75..100%)
 void Track::build_default_track() {
   points_.clear();
   const int num_points = 200;
-  const double step = total_length_ / num_points;
 
   for (int i = 0; i <= num_points; ++i) {
     const double t = static_cast<double>(i) / num_points;
@@ -26,10 +31,12 @@ void Track::build_default_track() {
     Vec2 tangent;
 
     if (t < 0.25) {
+      // Straight section heading east
       double lt = t / 0.25;
       pos = Vec2(lt * 200.0, 0.0);
       tangent = Vec2(1.0, 0.0);
     } else if (t < 0.5) {
+      // Right-hand 180-degree corner, radius 150 m
       double lt = (t - 0.25) / 0.25;
       const double cx = 200.0;
       const double cy = -150.0;
@@ -38,10 +45,12 @@ void Track::build_default_track() {
       pos = Vec2(cx + r * std::cos(angle), cy + r * std::sin(angle));
       tangent = Vec2(-std::sin(angle), std::cos(angle));
     } else if (t < 0.75) {
+      // Straight section heading west
       double lt = (t - 0.5) / 0.25;
       pos = Vec2(200.0 - lt * 400.0, -300.0);
       tangent = Vec2(-1.0, 0.0);
     } else {
+      // Left-hand 180-degree corner, radius 150 m
       double lt = (t - 0.75) / 0.25;
       const double cx = -200.0;
       const double cy = -150.0;
@@ -67,6 +76,7 @@ void Track::build_default_track() {
     points_.push_back(point);
   }
 
+  // Compute signed curvature from adjacent segment directions
   for (size_t i = 0; i < points_.size(); ++i) {
     const auto& prev = points_[(i > 0) ? i - 1 : points_.size() - 2];
     const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 1];
@@ -81,6 +91,8 @@ void Track::build_default_track() {
   }
 }
 
+// Query track data at distance d (wraps around the loop).
+// Returns linearly interpolated geometry between stored points.
 TrackPoint Track::at(double distance) const {
   if (points_.empty()) {
     return TrackPoint{};
@@ -101,6 +113,7 @@ TrackPoint Track::at(double distance) const {
   return interpolate(distance);
 }
 
+// Linear interpolation between two adjacent track points
 TrackPoint Track::interpolate(double distance) const {
   const double step = total_length_ / (points_.size() - 1);
   const double raw_index = distance / step;

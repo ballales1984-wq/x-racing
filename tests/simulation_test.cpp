@@ -4,8 +4,11 @@
 #include "simulation/simulation.h"
 #include "telemetry/telemetry.h"
 
+// Project 0 — unit tests
+// Tests verify the mathematical behavior of the simulation core.
 using namespace p0;
 
+// VehicleState should initialize with sensible defaults
 TEST(VehicleState, Initialization) {
   vehicle::VehicleState state;
   EXPECT_DOUBLE_EQ(state.position.x(), 0.0);
@@ -15,12 +18,14 @@ TEST(VehicleState, Initialization) {
   EXPECT_EQ(state.lap, 0);
 }
 
+// Track should have positive length and width
 TEST(Track, BasicProperties) {
   track::Track track;
   EXPECT_GT(track.length(), 0.0);
   EXPECT_GT(track.at(0.0).width, 0.0);
 }
 
+// Full throttle should produce forward movement with bounded speed
 TEST(Simulation, ForwardMovement) {
   track::Track track;
   simulation::Simulation sim;
@@ -34,7 +39,6 @@ TEST(Simulation, ForwardMovement) {
   input::InputState input;
   input.throttle = 1.0;
 
-  double prev_distance = 0.0;
   for (int i = 0; i < 1000; ++i) {
     sim.step(input);
     EXPECT_GE(sim.state().speed, 0.0);
@@ -44,6 +48,7 @@ TEST(Simulation, ForwardMovement) {
   EXPECT_GT(sim.state().distance_along_track, 0.0);
 }
 
+// Telemetry should record and store frame data correctly
 TEST(Telemetry, Recording) {
   telemetry::Telemetry tel;
   vehicle::VehicleState state;
@@ -57,6 +62,7 @@ TEST(Telemetry, Recording) {
   EXPECT_DOUBLE_EQ(tel.frames()[0].position.x(), 10.0);
 }
 
+// Zero steering should maintain a straight line (no heading drift)
 TEST(Steering, ZeroSteerMaintainsStraightLine) {
   track::Track track;
   simulation::Simulation sim;
@@ -84,6 +90,7 @@ TEST(Steering, ZeroSteerMaintainsStraightLine) {
   EXPECT_NEAR(sim.state().position.y(), start_y, 0.5);
 }
 
+// Constant steering at low speed should produce a coherent curve
 TEST(Steering, ConstantSteerAtLowSpeed) {
   track::Track track;
   simulation::Simulation sim;
@@ -100,8 +107,6 @@ TEST(Steering, ConstantSteerAtLowSpeed) {
   input.steering = 0.5;
 
   const double start_heading = sim.state().heading;
-  const double L = sim.state().speed * std::tan(input.steering * 0.5) / 2.5;
-  const double expected_heading_change = L * 600.0 * (1.0 / 120.0);
 
   for (int i = 0; i < 600; ++i) {
     sim.step(input);
@@ -112,6 +117,7 @@ TEST(Steering, ConstantSteerAtLowSpeed) {
   EXPECT_LT(actual_heading_change, 1.5);
 }
 
+// At high speed, grip limits should keep yaw rate bounded
 TEST(Steering, SpeedAffectsDynamics) {
   track::Track track;
   simulation::Simulation sim;
@@ -132,12 +138,10 @@ TEST(Steering, SpeedAffectsDynamics) {
   }
 
   const double yaw_rate = sim.state().yaw_rate;
-  const double a_y = sim.state().speed * yaw_rate;
-  const double a_y_max = sim.state().slip_ratio * kGravity;
-
   EXPECT_NEAR(yaw_rate, 0.0, 0.5);
 }
 
+// Returning steering to zero should gradually straighten the trajectory
 TEST(Steering, ReturningToZeroSteer) {
   track::Track track;
   simulation::Simulation sim;

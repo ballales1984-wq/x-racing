@@ -2,6 +2,8 @@
 #include <iostream>
 #include <iomanip>
 
+// Project 0 — track geometry analysis experiment
+// Prints track length, position, and curvature at regular intervals.
 using namespace p0::track;
 
 int main() {

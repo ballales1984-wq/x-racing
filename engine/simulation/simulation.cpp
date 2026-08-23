@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <cmath>
 
+// Project 0 — simulation loop implementation
+// The simulation runs at 120 Hz with 4 sub-steps per frame.
+// Each sub-step applies: engine -> aero -> tires -> brakes -> steering -> integrate.
+// The bicycle model governs lateral dynamics; tire forces provide longitudinal grip.
 namespace p0::simulation {
 
 Simulation::Simulation(const SimulationParams& params) : params_(params) {}
@@ -19,6 +23,8 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.gear = 1;
 }
 
+// Advance the simulation by one frame (params_.dt seconds).
+// Internally subdivided into `substeps` smaller steps for stability.
 SimulationResult Simulation::step(const input::InputState& input) {
   if (!track_) {
     SimulationResult result;
@@ -29,6 +35,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
   const double dt = params_.dt / params_.substeps;
 
   for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
+    // Map normalized input to physical values
     state_.steer_angle = input.steering * vehicle_params_.max_steer_angle;
     state_.throttle = clamp(input.throttle, 0.0, 1.0);
     state_.brake = clamp(input.brake, 0.0, 1.0);
@@ -41,6 +48,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
     integrate(dt);
   }
 
+  // Track constraint: off-track if vehicle center is outside track width
   const auto& tp = track_->at(state_.distance_along_track);
   const Vec2 to_car = state_.position - tp.position;
   const double lateral = to_car.dot(tp.normal);
@@ -55,6 +63,8 @@ SimulationResult Simulation::step(const input::InputState& input) {
   return result;
 }
 
+// Engine model: torque curve based on RPM, mapped to longitudinal force.
+// Simplified: no turbo lag, no inertia, no engine braking.
 void Simulation::update_engine_forces() {
   const double speed = state_.velocity.norm();
   state_.rpm = vehicle_params_.idle_rpm;
@@ -86,6 +96,8 @@ void Simulation::update_engine_forces() {
   state_.acceleration = forward_dir * engine_force / vehicle_params_.mass;
 }
 
+// Aerodynamic drag and lift (quadratic in speed).
+// Lift is computed but not yet coupled to suspension/weight transfer.
 void Simulation::update_aerodynamics() {
   const double speed = state_.velocity.norm();
   if (speed < kEpsilon) return;
@@ -102,6 +114,10 @@ void Simulation::update_aerodynamics() {
   state_.acceleration += drag_dir * drag_decel;
 }
 
+// Longitudinal tire forces using Pacejka model.
+// Lateral grip is handled by the bicycle model in update_steering().
+// Slip ratio is recorded for telemetry; lateral slip angle is computed but
+// the lateral force itself is not applied here (M3 placeholder).
 void Simulation::update_tire_forces() {
   const double speed = state_.velocity.norm();
   if (speed < kEpsilon) return;
@@ -137,6 +153,8 @@ void Simulation::update_tire_forces() {
   state_.acceleration += traction_force / vehicle_params_.mass;
 }
 
+// Simple braking model: constant deceleration proportional to brake pedal.
+// ABS/TCS are placeholders for future implementation.
 void Simulation::update_braking() {
   const double speed = state_.velocity.norm();
   if (speed < kEpsilon) return;
@@ -146,6 +164,14 @@ void Simulation::update_braking() {
   state_.acceleration += brake_dir * brake_decel;
 }
 
+// Bicycle model steering with kinematic yaw rate and grip-limited understeer.
+//
+//   omega = v * tan(delta) / L
+//
+// If the resulting lateral acceleration exceeds tire grip (mu * g),
+// the yaw rate is capped to prevent impossible cornering.
+// This produces natural understeer behavior: the car "plows" when
+// the demanded lateral force exceeds available friction.
 void Simulation::update_steering() {
   const double speed = state_.speed;
   if (speed < kEpsilon) {
@@ -168,6 +194,10 @@ void Simulation::update_steering() {
   state_.yaw_rate = omega;
 }
 
+// Semi-implicit Euler integration.
+// Speed is updated from longitudinal acceleration, then heading from yaw rate,
+// then position from the new heading and speed. This ordering provides
+// better energy behavior than explicit Euler.
 void Simulation::integrate(double dt) {
   const double speed = state_.speed;
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
