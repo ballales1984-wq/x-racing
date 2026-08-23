@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEditor;
 using System.IO;
 
 namespace Project0.Unity

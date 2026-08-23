@@ -50,3 +50,15 @@ data/telemetry/
 # OS
 .DS_Store
 Thumbs.db
+
+# Unity cache
+UnityProject/Library/
+UnityProject/Temp/
+UnityProject/Logs/
+UnityProject/UserSettings/
+
+
+# Unity generated folders
+UnityProject/Assets/Materials/
+UnityProject/Assets/Settings/
+
