@@ -428,7 +428,7 @@ void Simulation::integrate(double dt) {
   new_long_speed = clamp(new_long_speed, 0.0, 150.0);
 
   double new_lat_speed = state_.lateral_velocity + a_lat * dt;
-  const double damping_coeff = vehicle_params_.suspension_damping / vehicle_params_.mass;
+  const double damping_coeff = vehicle_params_.front_damping / vehicle_params_.mass;
   new_lat_speed -= damping_coeff * state_.lateral_velocity * dt;
   const double lat_speed_max = 30.0;
   new_lat_speed = clamp(new_lat_speed, -lat_speed_max, lat_speed_max);

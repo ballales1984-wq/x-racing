@@ -41,9 +41,6 @@ struct VehicleParams {
   double tire_pacejka_b = 10.0;          // Pacejka stiffness factor
   double tire_pacejka_c = 1.9;           // Pacejka shape factor
   double tire_pacejka_e = 0.97;          // Pacejka curvature factor
-  double suspension_stiffness = 30000.0; // N/m (reserved for future use)
-  double suspension_damping = 2500.0;    // Ns/m (reserved for future use)
-  double anti_roll_bar = 15000.0;        // Nm/deg (reserved for future use)
   double front_spring_rate = 30000.0;    // N/m, front suspension stiffness
   double rear_spring_rate = 30000.0;     // N/m, rear suspension stiffness
   double front_damping = 2500.0;         // Ns/m, front suspension damping
