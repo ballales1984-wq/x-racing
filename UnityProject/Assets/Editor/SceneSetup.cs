@@ -15,8 +15,9 @@ namespace Project0.Unity.Setup
                 car = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 car.name = "Car";
             }
-            car.transform.position = new Vector3(0, 0.5f, 0);
+            car.transform.position = new Vector3(0f, 0.5f, 0f);
             car.transform.localScale = new Vector3(1, 0.5f, 2);
+            car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
             var carController = car.GetComponent<CarController>();
             if (carController == null)
             {
