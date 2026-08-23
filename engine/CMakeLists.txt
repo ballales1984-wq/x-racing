@@ -3,6 +3,7 @@ add_library(project0_engine STATIC
   simulation/simulation.cpp
   telemetry/telemetry.cpp
   input/platform/windows_input.cpp
+  input/platform/auto_input.cpp
 )
 
 target_include_directories(project0_engine PUBLIC

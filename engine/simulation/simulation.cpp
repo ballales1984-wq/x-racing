@@ -123,7 +123,8 @@ void Simulation::update_engine_forces() {
                           (vehicle_params_.max_rpm - vehicle_params_.idle_rpm);
 
   if (state_.throttle > 0.0) {
-    torque = vehicle_params_.max_torque * state_.throttle * std::sin(rpm_frac * kHalfPi);
+    const double curve_input = std::max(rpm_frac, 0.05);
+    torque = vehicle_params_.max_torque * state_.throttle * std::sin(curve_input * kHalfPi);
   }
 
   if (state_.rpm >= vehicle_params_.max_rpm) {

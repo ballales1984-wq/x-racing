@@ -6,30 +6,33 @@ namespace Project0.Unity.Setup
 {
     public static class SceneSetup
     {
-        public static void CreateScene()
+        [MenuItem("Project0/Setup Scene")]
+        public static void SetupScene()
         {
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene);
-
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            ground.name = "Ground";
-            ground.transform.position = Vector3.zero;
-            ground.transform.localScale = new Vector3(50, 1, 50);
-
-            var car = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            car.name = "Car";
+            var car = GameObject.Find("Car");
+            if (car == null)
+            {
+                car = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                car.name = "Car";
+            }
             car.transform.position = new Vector3(0, 0.5f, 0);
             car.transform.localScale = new Vector3(1, 0.5f, 2);
-            car.AddComponent<CarController>();
-
-            var camera = GameObject.Find("Main Camera");
-            if (camera != null)
+            if (car.GetComponent<CarController>() == null)
             {
-                camera.transform.position = new Vector3(-10, 8, -10);
-                camera.transform.LookAt(Vector3.zero);
+                car.AddComponent<CarController>();
             }
 
-            EditorSceneManager.SaveScene(scene, "Assets/Scenes/MainScene.unity");
-            Debug.Log("Scene created successfully!");
+            var camera = GameObject.Find("Main Camera");
+            if (camera == null)
+            {
+                camera = new GameObject("Main Camera");
+                camera.AddComponent<Camera>();
+                camera.tag = "MainCamera";
+            }
+            camera.transform.position = new Vector3(-10, 8, -10);
+            camera.transform.LookAt(Vector3.zero);
+
+            Debug.Log("Scene setup updated.");
         }
     }
 }

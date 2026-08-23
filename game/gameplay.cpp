@@ -111,11 +111,8 @@ void Gameplay::run() {
     input::InputState input = poll_input();
 
     if (input.reset) {
-      sim_.reset(initial);
-      tel_.clear();
-      state_.current_lap_time = 0.0;
-      state_.off_track_warning = false;
-      last_lap_distance_ = 0.0;
+      state_.running = false;
+      break;
     }
 
     if (input_manager_->is_key_down(VK_ESCAPE)) {
