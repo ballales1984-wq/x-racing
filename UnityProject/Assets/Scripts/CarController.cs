@@ -226,7 +226,6 @@ namespace Project0.Unity
             currentIndex = 0;
             elapsedTime = 0f;
             currentSpeed = 0f;
-            currentSteer = 0f;
             currentHeading = transform.eulerAngles.y * Mathf.Deg2Rad;
         }
 
