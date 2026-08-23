@@ -29,10 +29,18 @@ namespace Project0.Unity.Setup
 
             if (meshRenderer.sharedMaterial == null)
             {
-                meshRenderer.sharedMaterial = new Material(Shader.Find("Standard"));
-                meshRenderer.sharedMaterial.SetFloat("_Glossiness", 0f);
+            meshRenderer.material = new Material(Shader.Find("Legacy Shaders/Diffuse"));
+            meshRenderer.material.color = new Color(0.25f, 0.25f, 0.25f);
+
+            var lightObj = GameObject.Find("Directional Light");
+            if (lightObj == null)
+            {
+                lightObj = new GameObject("Directional Light");
+                var light = lightObj.AddComponent<Light>();
+                light.type = LightType.Directional;
+                light.intensity = 1f;
+                lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
-            meshRenderer.sharedMaterial.color = new Color(0.25f, 0.25f, 0.25f);
 
             var trackMesh = BuildTrackMesh();
             meshFilter.mesh = trackMesh;
