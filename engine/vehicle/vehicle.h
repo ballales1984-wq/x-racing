@@ -70,6 +70,7 @@ struct VehicleState {
   double rear_slip_angle = 0.0;          // rear axle slip angle, rad
   double lateral_velocity = 0.0;         // m/s, velocity perpendicular to heading
   double speed = 0.0;                    // m/s, scalar speed
+  double aero_lift = 0.0;                // N, aerodynamic lift force
   double front_tire_temp = 300.0;        // K, front tire temperature
   double rear_tire_temp = 300.0;         // K, rear tire temperature
   double front_tire_wear = 1.0;          // [0,1], front tire wear (1=new)

@@ -23,4 +23,6 @@ endif()
 
 if(PROJECT0_BUILD_RENDERER)
   add_subdirectory(renderer)
+  add_executable(project0_app main.cpp)
+  target_link_libraries(project0_app PRIVATE project0_renderer)
 endif()
