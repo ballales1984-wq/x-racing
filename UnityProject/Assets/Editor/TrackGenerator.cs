@@ -30,8 +30,9 @@ namespace Project0.Unity.Setup
             if (meshRenderer.sharedMaterial == null)
             {
                 meshRenderer.sharedMaterial = new Material(Shader.Find("Standard"));
+                meshRenderer.sharedMaterial.SetFloat("_Glossiness", 0f);
             }
-            meshRenderer.sharedMaterial.color = new Color(0.3f, 0.3f, 0.3f);
+            meshRenderer.sharedMaterial.color = new Color(0.25f, 0.25f, 0.25f);
 
             var trackMesh = BuildTrackMesh();
             meshFilter.mesh = trackMesh;
@@ -75,12 +76,12 @@ namespace Project0.Unity.Setup
                 vertices.Add(v3);
 
                 triangles.Add(baseIndex);
-                triangles.Add(baseIndex + 1);
                 triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 1);
 
                 triangles.Add(baseIndex + 1);
-                triangles.Add(baseIndex + 3);
                 triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
 
                 uvs.Add(new Vector2(0f, i * segmentLength));
                 uvs.Add(new Vector2(1f, i * segmentLength));
