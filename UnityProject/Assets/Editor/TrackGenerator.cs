@@ -36,7 +36,7 @@ namespace Project0.Unity.Setup
                 }
                 if (shader == null)
                 {
-                    shader = Shader.defaultShader;
+                    shader = Shader.Find("Sprites/Default");
                 }
                 meshRenderer.sharedMaterial = new Material(shader);
             }
