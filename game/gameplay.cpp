@@ -144,6 +144,9 @@ void Gameplay::run() {
     std::cout << "Lap " << (i + 1) << ": " << state_.lap_times[i].lap_time
               << " s (" << (state_.lap_times[i].valid ? "valid" : "invalid") << ")\n";
   }
+
+  tel_.save_csv("D:/x-racing/data/telemetry/unity_state.csv");
+  std::cout << "Telemetry saved to D:/x-racing/data/telemetry/unity_state.csv\n";
 }
 
 }
