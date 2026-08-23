@@ -29,10 +29,14 @@ namespace Project0.Unity.Setup
 
             if (meshRenderer.sharedMaterial == null)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
                 if (shader == null)
                 {
                     shader = Shader.Find("Standard");
+                }
+                if (shader == null)
+                {
+                    shader = Shader.defaultShader;
                 }
                 meshRenderer.sharedMaterial = new Material(shader);
             }
