@@ -31,8 +31,9 @@ namespace Project0.Unity.Setup
                 camera.AddComponent<Camera>();
                 camera.tag = "MainCamera";
             }
-            camera.transform.position = new Vector3(-12f, 6f, -12f);
-            camera.transform.LookAt(car.transform.position + Vector3.up * 0.5f);
+            camera.transform.SetParent(car.transform, false);
+            camera.transform.localPosition = new Vector3(0f, 1.2f, 0.3f);
+            camera.transform.localRotation = Quaternion.identity;
 
             carController.followCamera = camera.GetComponent<Camera>();
 

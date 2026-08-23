@@ -23,6 +23,7 @@ namespace Project0.Unity
         public float cameraSmoothTime = 0.15f;
         public float cameraRotationSmoothTime = 0.1f;
         public Vector3 firstPersonOffset = new Vector3(0f, 1.2f, 0.3f);
+        public KeyCode toggleCameraKey = KeyCode.C;
 
         [Header("Direct Control Physics")]
         public float maxSpeed = 30f;
@@ -45,6 +46,12 @@ namespace Project0.Unity
 
         void Update()
         {
+            if (Input.GetKeyDown(toggleCameraKey))
+            {
+                firstPersonView = !firstPersonView;
+                UpdateCameraMode();
+            }
+
             if (useDirectControl)
             {
                 UpdateDirectControl();
@@ -55,6 +62,22 @@ namespace Project0.Unity
             }
 
             UpdateCamera();
+        }
+
+        void UpdateCameraMode()
+        {
+            if (followCamera == null) return;
+
+            if (firstPersonView)
+            {
+                followCamera.transform.SetParent(transform);
+                followCamera.transform.localPosition = firstPersonOffset;
+                followCamera.transform.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                followCamera.transform.SetParent(null);
+            }
         }
 
         void UpdateDirectControl()
@@ -161,27 +184,18 @@ namespace Project0.Unity
         {
             if (followCamera == null) return;
 
-            float heading = transform.eulerAngles.y * Mathf.Deg2Rad;
-            Vector3 targetPos;
-
             if (firstPersonView)
             {
-                Vector3 forward = new Vector3(Mathf.Sin(heading), 0f, Mathf.Cos(heading));
-                targetPos = transform.position + forward * firstPersonOffset.z + Vector3.up * firstPersonOffset.y;
-                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+                followCamera.transform.localPosition = firstPersonOffset;
+                followCamera.transform.localRotation = Quaternion.identity;
+                return;
+            }
 
-                float targetYaw = heading * Mathf.Rad2Deg;
-                float currentYaw = followCamera.transform.eulerAngles.y;
-                float smoothedYaw = Mathf.SmoothDampAngle(currentYaw, targetYaw, ref cameraRotationVelocity, cameraRotationSmoothTime);
-                followCamera.transform.eulerAngles = new Vector3(0f, smoothedYaw, 0f);
-            }
-            else
-            {
-                Vector3 behind = new Vector3(Mathf.Sin(heading + Mathf.PI), 0f, Mathf.Cos(heading + Mathf.PI));
-                targetPos = transform.position + behind * cameraFollowDistance + Vector3.up * cameraFollowHeight;
-                followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
-                followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
-            }
+            float heading = transform.eulerAngles.y * Mathf.Deg2Rad;
+            Vector3 behind = new Vector3(Mathf.Sin(heading + Mathf.PI), 0f, Mathf.Cos(heading + Mathf.PI));
+            Vector3 targetPos = transform.position + behind * cameraFollowDistance + Vector3.up * cameraFollowHeight;
+            followCamera.transform.position = Vector3.SmoothDamp(followCamera.transform.position, targetPos, ref cameraVelocity, cameraSmoothTime);
+            followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
         }
 
         void LoadTelemetry()
@@ -258,6 +272,7 @@ namespace Project0.Unity
             elapsedTime = 0f;
             currentSpeed = 0f;
             currentHeading = transform.eulerAngles.y * Mathf.Deg2Rad;
+            UpdateCameraMode();
         }
 
         public string GetStatus()
@@ -283,6 +298,11 @@ namespace Project0.Unity
             while (angle > Mathf.PI) angle -= 2f * Mathf.PI;
             while (angle < -Mathf.PI) angle += 2f * Mathf.PI;
             return angle;
+        }
+
+        private void Start()
+        {
+            UpdateCameraMode();
         }
     }
 
