@@ -14,7 +14,7 @@ namespace Project0.Unity
         public float speedScale = 1.0f;
         public bool loop = true;
         public bool useDirectControl = true;
-        public bool useSimPlugin = true;
+        public bool useSimPlugin = false;
 
         [Header("Follow Camera")]
         public Camera followCamera;
