@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.IO;
+using UnityEngine.InputSystem;
 
 namespace Project0.Unity
 {
@@ -23,7 +24,7 @@ namespace Project0.Unity
         public float cameraFollowHeight = 2f;
         public float cameraSmoothTime = 0.15f;
         public float cameraRotationSmoothTime = 0.1f;
-        public Vector3 firstPersonOffset = new Vector3(0f, 1.2f, 0.3f);
+        public Vector3 firstPersonOffset = new Vector3(0f, 0.9f, 0.3f);
         public KeyCode toggleCameraKey = KeyCode.C;
 
         [Header("Direct Control Physics")]
@@ -47,7 +48,7 @@ namespace Project0.Unity
 
         void Update()
         {
-            if (Input.GetKeyDown(toggleCameraKey))
+            if (Keyboard.current[Key.C].wasPressedThisFrame)
             {
                 firstPersonView = !firstPersonView;
                 UpdateCameraMode();
@@ -97,19 +98,19 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+            if (Keyboard.current[Key.W].isPressed || Keyboard.current[Key.UpArrow].isPressed)
             {
                 throttle = 1f;
             }
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+            if (Keyboard.current[Key.S].isPressed || Keyboard.current[Key.DownArrow].isPressed)
             {
                 brake = 1f;
             }
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            if (Keyboard.current[Key.A].isPressed || Keyboard.current[Key.LeftArrow].isPressed)
             {
                 steer = 1f;
             }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            if (Keyboard.current[Key.D].isPressed || Keyboard.current[Key.RightArrow].isPressed)
             {
                 steer = -1f;
             }
@@ -127,19 +128,19 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
+            if (Keyboard.current[Key.W].isPressed || Keyboard.current[Key.UpArrow].isPressed)
             {
                 throttle = 1f;
             }
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
+            if (Keyboard.current[Key.S].isPressed || Keyboard.current[Key.DownArrow].isPressed)
             {
                 brake = 1f;
             }
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
+            if (Keyboard.current[Key.A].isPressed || Keyboard.current[Key.LeftArrow].isPressed)
             {
                 steer = 1f;
             }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            if (Keyboard.current[Key.D].isPressed || Keyboard.current[Key.RightArrow].isPressed)
             {
                 steer = -1f;
             }
