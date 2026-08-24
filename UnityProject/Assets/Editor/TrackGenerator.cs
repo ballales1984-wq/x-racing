@@ -46,6 +46,9 @@ namespace Project0.Unity.Setup
             float mainStraightWidth = 16f;
             var points = GenerateTrackPoints(out var widths);
 
+            DestroyImmediate(GameObject.Find("TrackBorderLeft"));
+            DestroyImmediate(GameObject.Find("TrackBorderRight"));
+
             CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
 
             var lightObj = GameObject.Find("Directional Light");
