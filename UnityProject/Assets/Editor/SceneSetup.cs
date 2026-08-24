@@ -17,7 +17,7 @@ namespace Project0.Unity.Setup
             }
 
             car.transform.position = new Vector3(0f, 0.9f, 0f);
-            car.transform.localScale = new Vector3(1.8f, 1.2f, 4.5f);
+            car.transform.localScale = new Vector3(1.6f, 1.0f, 4.0f);
             car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
 
             var carController = car.GetComponent<CarController>();

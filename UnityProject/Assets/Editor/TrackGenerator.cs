@@ -42,7 +42,7 @@ namespace Project0.Unity.Setup
             }
             meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
 
-            float trackWidth = 12f;
+            float trackWidth = 14f;
             var points = GenerateTrackPoints();
 
             CreateTrackBorders(points, trackWidth);
