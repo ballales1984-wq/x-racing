@@ -42,10 +42,11 @@ namespace Project0.Unity.Setup
             }
             meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
 
-            float trackWidth = 14f;
-            var points = GenerateTrackPoints();
+            float normalWidth = 12f;
+            float mainStraightWidth = 16f;
+            var points = GenerateTrackPoints(out var widths);
 
-            CreateTrackBorders(points, trackWidth);
+            CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -57,7 +58,7 @@ namespace Project0.Unity.Setup
                 lightObj.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
 
-            var trackMesh = BuildTrackMesh(points, trackWidth);
+            var trackMesh = BuildTrackMesh(points, widths);
             meshFilter.mesh = trackMesh;
 
             var collider = trackObj.GetComponent<MeshCollider>();
@@ -80,40 +81,44 @@ namespace Project0.Unity.Setup
             return length;
         }
 
-        private static System.Collections.Generic.List<Vector3> GenerateTrackPoints()
+        private static System.Collections.Generic.List<Vector3> GenerateTrackPoints(out System.Collections.Generic.List<float> widths)
         {
             var points = new System.Collections.Generic.List<Vector3>();
-            float straightLength = 200f;
+            widths = new System.Collections.Generic.List<float>();
+            float straightLength = 765f;
             float curveRadius = 75f;
-            int segmentsPerStraight = 100;
-            int segmentsPerCurve = 50;
+            int segmentsPerStraight = 150;
+            int segmentsPerCurve = 75;
 
-            // Bottom straight: from (0, 0, 0) to (200, 0, 0)
+            // Main straight: from (0, 0, 0) to (765, 0, 0) - width 16m
             for (int i = 0; i <= segmentsPerStraight; i++)
             {
                 float t = (float)i / segmentsPerStraight;
                 points.Add(new Vector3(t * straightLength, 0f, 0f));
+                widths.Add(16f);
             }
 
-            // Right curve: semicircle from (200, 0, 0) to (200, 0, 150)
-            // Center: (200, 0, 75), radius 75
+            // Right curve: semicircle from (765, 0, 0) to (765, 0, 150) - width 12m
+            // Center: (765, 0, 75), radius 75
             for (int i = 1; i <= segmentsPerCurve; i++)
             {
                 float t = (float)i / segmentsPerCurve;
                 float angle = -Mathf.PI / 2 + t * Mathf.PI;
-                float x = 200f + curveRadius * Mathf.Cos(angle);
+                float x = 765f + curveRadius * Mathf.Cos(angle);
                 float z = 75f + curveRadius * Mathf.Sin(angle);
                 points.Add(new Vector3(x, 0f, z));
+                widths.Add(12f);
             }
 
-            // Top straight: from (200, 0, 150) to (0, 0, 150)
+            // Back straight: from (765, 0, 150) to (0, 0, 150) - width 12m
             for (int i = 1; i <= segmentsPerStraight; i++)
             {
                 float t = (float)i / segmentsPerStraight;
-                points.Add(new Vector3(200f - t * straightLength, 0f, 150f));
+                points.Add(new Vector3(765f - t * straightLength, 0f, 150f));
+                widths.Add(12f);
             }
 
-            // Left curve: semicircle from (0, 0, 150) to (0, 0, 0)
+            // Left curve: semicircle from (0, 0, 150) to (0, 0, 0) - width 12m
             // Center: (0, 0, 75), radius 75
             for (int i = 1; i <= segmentsPerCurve; i++)
             {
@@ -122,12 +127,13 @@ namespace Project0.Unity.Setup
                 float x = curveRadius * Mathf.Cos(angle);
                 float z = 75f + curveRadius * Mathf.Sin(angle);
                 points.Add(new Vector3(x, 0f, z));
+                widths.Add(12f);
             }
 
             return points;
         }
 
-        private static Mesh BuildTrackMesh(System.Collections.Generic.List<Vector3> points, float trackWidth)
+        private static Mesh BuildTrackMesh(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths)
         {
             var vertices = new System.Collections.Generic.List<Vector3>();
             var triangles = new System.Collections.Generic.List<int>();
@@ -141,11 +147,12 @@ namespace Project0.Unity.Setup
                 Vector3 p1 = points[i + 1];
                 Vector3 dir = (p1 - p0).normalized;
                 Vector3 right = new Vector3(-dir.z, 0f, dir.x);
+                float width = widths[i];
 
-                Vector3 v0 = p0 + right * trackWidth * 0.5f;
-                Vector3 v1 = p0 - right * trackWidth * 0.5f;
-                Vector3 v2 = p1 + right * trackWidth * 0.5f;
-                Vector3 v3 = p1 - right * trackWidth * 0.5f;
+                Vector3 v0 = p0 + right * width * 0.5f;
+                Vector3 v1 = p0 - right * width * 0.5f;
+                Vector3 v2 = p1 + right * width * 0.5f;
+                Vector3 v3 = p1 - right * width * 0.5f;
 
                 int baseIndex = vertices.Count;
                 vertices.Add(v0);
@@ -179,7 +186,7 @@ namespace Project0.Unity.Setup
             return mesh;
         }
 
-        private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, float trackWidth)
+        private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths, float normalWidth, float mainStraightWidth)
         {
             var borderMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
             if (borderMaterial.shader == null)
@@ -202,11 +209,14 @@ namespace Project0.Unity.Setup
                 Vector3 p1 = points[i + 1];
                 Vector3 dir = (p1 - p0).normalized;
                 Vector3 right = new Vector3(-dir.z, 0f, dir.x);
+                float width = widths[i];
 
-                Vector3 leftOuter = p0 + right * (trackWidth * 0.5f + borderWidth);
-                Vector3 leftInner = p0 + right * (trackWidth * 0.5f);
-                Vector3 rightOuter = p0 - right * (trackWidth * 0.5f + borderWidth);
-                Vector3 rightInner = p0 - right * (trackWidth * 0.5f);
+                float outerWidth = width * 0.5f + borderWidth;
+
+                Vector3 leftOuter = p0 + right * outerWidth;
+                Vector3 leftInner = p0 + right * width * 0.5f;
+                Vector3 rightOuter = p0 - right * outerWidth;
+                Vector3 rightInner = p0 - right * width * 0.5f;
 
                 int leftBase = leftVertices.Count;
                 leftVertices.Add(leftOuter);

@@ -21,10 +21,10 @@ Track::Track(const TrackParams& params) {
 //   - left-hand corner (75..100%)
 void Track::build_default_track() {
   points_.clear();
-  const double straightLength = 200.0;
+  const double straightLength = 765.0;
   const double curveRadius = 75.0;
-  const int segmentsPerStraight = 100;
-  const int segmentsPerCurve = 50;
+  const int segmentsPerStraight = 150;
+  const int segmentsPerCurve = 75;
 
   for (int i = 0; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
@@ -46,7 +46,7 @@ void Track::build_default_track() {
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
     double angle = -kHalfPi + t * kPi;
-    Vec2 pos(200.0 + curveRadius * std::cos(angle), 75.0 + curveRadius * std::sin(angle));
+    Vec2 pos(straightLength + curveRadius * std::cos(angle), curveRadius + curveRadius * std::sin(angle));
     Vec2 tangent(-std::sin(angle), std::cos(angle));
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
@@ -63,7 +63,7 @@ void Track::build_default_track() {
 
   for (int i = 1; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
-    Vec2 pos(200.0 - t * straightLength, 150.0);
+    Vec2 pos(straightLength - t * straightLength, 2.0 * curveRadius);
     Vec2 tangent(-1.0, 0.0);
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
@@ -81,7 +81,7 @@ void Track::build_default_track() {
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
     double angle = kHalfPi + t * kPi;
-    Vec2 pos(curveRadius * std::cos(angle), 75.0 + curveRadius * std::sin(angle));
+    Vec2 pos(curveRadius * std::cos(angle), curveRadius + curveRadius * std::sin(angle));
     Vec2 tangent(-std::sin(angle), std::cos(angle));
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
