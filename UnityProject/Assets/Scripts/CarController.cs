@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.IO;
-using UnityEngine.InputSystem;
 
 namespace Project0.Unity
 {
@@ -48,7 +47,7 @@ namespace Project0.Unity
 
         void Update()
         {
-            if (Keyboard.current[Key.C].wasPressedThisFrame)
+            if (Input.GetKeyDown(toggleCameraKey))
             {
                 firstPersonView = !firstPersonView;
                 UpdateCameraMode();
@@ -98,19 +97,19 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Keyboard.current[Key.W].isPressed || Keyboard.current[Key.UpArrow].isPressed)
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
             {
                 throttle = 1f;
             }
-            if (Keyboard.current[Key.S].isPressed || Keyboard.current[Key.DownArrow].isPressed)
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
             {
                 brake = 1f;
             }
-            if (Keyboard.current[Key.A].isPressed || Keyboard.current[Key.LeftArrow].isPressed)
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
             {
                 steer = 1f;
             }
-            if (Keyboard.current[Key.D].isPressed || Keyboard.current[Key.RightArrow].isPressed)
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
             {
                 steer = -1f;
             }
@@ -128,19 +127,19 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Keyboard.current[Key.W].isPressed || Keyboard.current[Key.UpArrow].isPressed)
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
             {
                 throttle = 1f;
             }
-            if (Keyboard.current[Key.S].isPressed || Keyboard.current[Key.DownArrow].isPressed)
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
             {
                 brake = 1f;
             }
-            if (Keyboard.current[Key.A].isPressed || Keyboard.current[Key.LeftArrow].isPressed)
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
             {
                 steer = 1f;
             }
-            if (Keyboard.current[Key.D].isPressed || Keyboard.current[Key.RightArrow].isPressed)
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
             {
                 steer = -1f;
             }
