@@ -9,6 +9,8 @@ static bool g_initialized = false;
 
 extern "C" {
 
+    // Initialize the simulation: build a default track and reset the car
+    // to the start line. Safe to call once; subsequent calls are ignored.
     __declspec(dllexport) int SimPlugin_Initialize() {
         if (g_initialized) return 0;
 
@@ -25,6 +27,8 @@ extern "C" {
         return 0;
     }
 
+    // Advance the simulation by one step using the provided driver controls.
+    // dt is currently unused; the simulation uses its own fixed timestep.
     __declspec(dllexport) void SimPlugin_Update(double dt, double throttle, double brake, double steer) {
         if (!g_initialized) return;
 
@@ -35,6 +39,7 @@ extern "C" {
         g_sim.step(input);
     }
 
+    // Copy the current vehicle state into the caller-provided struct.
     __declspec(dllexport) void SimPlugin_GetVehicleState(VehicleState* state) {
         if (!state || !g_initialized) return;
 

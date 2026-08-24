@@ -15,6 +15,9 @@ input::InputState Gameplay::poll_input() {
   return input_manager_->poll();
 }
 
+// Update lap counter and per-lap timing from the latest simulation result.
+// A lap is counted when the simulation lap index advances; the previous lap
+// is stored along with its validity (invalidated by an off-track warning).
 void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
   const double track_len = sim_.track().length();
 
@@ -38,6 +41,7 @@ void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
   last_lap_distance_ = result.state.distance_along_track;
 }
 
+// Render the current vehicle/driver state to the console as a formatted HUD.
 void Gameplay::render_console(const simulation::SimulationResult& result) {
   const auto& s = result.state;
   const double speed_kmh = s.speed * 3.6;
@@ -86,6 +90,8 @@ void Gameplay::render_console(const simulation::SimulationResult& result) {
   std::cout << "\nControls: WASD/Arrows = Drive | Shift = Upshift | Ctrl = Downshift | R = Reset | ESC = Quit\n";
 }
 
+// Main gameplay loop: poll input, step the simulation, update lap timing,
+// refresh the console HUD and record telemetry at a fixed 60 Hz cadence.
 void Gameplay::run() {
   state_.running = true;
   state_.current_lap = 0;

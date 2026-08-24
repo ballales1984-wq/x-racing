@@ -3,6 +3,8 @@
 
 namespace p0::input {
 
+// Poll the keyboard via GetAsyncKeyState and build a normalized InputState.
+// Supports both WASD and arrow keys; resets elapsed steering dead-zone noise.
 InputState WindowsInputManager::poll() {
   InputState input;
 
@@ -25,6 +27,7 @@ InputState WindowsInputManager::poll() {
   return input;
 }
 
+// Returns true if the given virtual key is currently held down.
 bool WindowsInputManager::is_key_down(int key_code) {
   return (GetAsyncKeyState(key_code) & 0x8000) != 0;
 }

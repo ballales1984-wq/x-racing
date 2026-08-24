@@ -26,6 +26,7 @@ void Track::build_default_track() {
   const int segmentsPerStraight = 150;
   const int segmentsPerCurve = 75;
 
+  // Segment 1: straight section along the +x axis (0% .. 25%).
   for (int i = 0; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
     Vec2 pos(t * straightLength, 0.0);
@@ -43,6 +44,7 @@ void Track::build_default_track() {
     points_.push_back(point);
   }
 
+  // Segment 2: right-hand (clockwise) corner (25% .. 50%).
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
     double angle = -kHalfPi + t * kPi;
@@ -61,6 +63,7 @@ void Track::build_default_track() {
     points_.push_back(point);
   }
 
+  // Segment 3: straight section heading back along -x (50% .. 75%).
   for (int i = 1; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
     Vec2 pos(straightLength - t * straightLength, 2.0 * curveRadius);
@@ -78,6 +81,7 @@ void Track::build_default_track() {
     points_.push_back(point);
   }
 
+  // Segment 4: left-hand (counter-clockwise) corner closing the loop (75% .. 100%).
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
     double angle = kHalfPi + t * kPi;

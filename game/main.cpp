@@ -6,6 +6,7 @@ int main() {
   std::cout << "Project 0 - Gameplay\n";
   std::cout << "Initializing simulation...\n";
 
+  // Create the default track, simulation and telemetry recorder.
   p0::track::Track track;
   p0::simulation::Simulation sim;
   p0::telemetry::Telemetry tel;

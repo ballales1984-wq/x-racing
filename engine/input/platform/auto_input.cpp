@@ -2,6 +2,9 @@
 
 namespace p0::input {
 
+// Scripted driver input used for recorded/replay drives.
+// Produces a fixed sequence: full throttle, right curve, left curve,
+// braking, then reset and repeat.
 InputState AutoInputManager::poll() {
   InputState input;
   const double t = elapsed_;

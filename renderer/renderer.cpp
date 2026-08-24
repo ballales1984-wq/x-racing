@@ -9,6 +9,7 @@ namespace p0::renderer {
 static const char* kWindowClass = "X-Racing";
 static const char* kWindowTitle = "X-Racing Simulator";
 
+// Window message handler: closes the application on window destroy or ESC.
 static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   switch (msg) {
     case WM_DESTROY:
@@ -80,6 +81,8 @@ void Renderer::run() {
   MSG msg = {};
   input::InputState input;
 
+  // Main render loop: pump window messages, step the simulation,
+  // record telemetry and repaint the back buffer.
   while (running_) {
     while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
       if (msg.message == WM_QUIT) running_ = false;
@@ -91,6 +94,7 @@ void Renderer::run() {
     const double dt = static_cast<double>(curr.QuadPart - prev.QuadPart) / freq.QuadPart;
     prev = curr;
 
+    // Ignore abnormally large frame deltas (e.g. after a stall) to keep the sim stable.
     if (dt > 0.0 && dt < 0.1) {
       handle_input(input);
       const auto result = sim_.step(input);
@@ -140,7 +144,9 @@ void Renderer::draw_track(HDC hdc) {
   DeleteObject(track_pen);
 }
 
+// Draw the car as a small rotated rectangle centered at its world position.
 void Renderer::draw_car(HDC hdc, const vehicle::VehicleState& state) {
+  // World-to-screen center (y is flipped so +y points up on screen).
   int cx = static_cast<int>(state.position.x() * config_.scale + config_.width / 2);
   int cy = static_cast<int>(-state.position.y() * config_.scale + config_.height / 2);
   double heading = state.heading;
@@ -171,6 +177,7 @@ void Renderer::draw_car(HDC hdc, const vehicle::VehicleState& state) {
   DeleteObject(car_brush);
 }
 
+// Draw the HUD: speed, RPM, gear, time and lap readouts.
 void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   SetBkMode(hdc, TRANSPARENT);
   SetTextColor(hdc, RGB(255, 255, 255));
@@ -194,6 +201,8 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   TextOutA(hdc, 10, 90, buf, (int)strlen(buf));
 }
 
+// Poll the keyboard and populate the per-frame input state.
+// W/S or Up/Down drive throttle/brake; A/D or Left/Right steer; arrows also shift.
 void Renderer::handle_input(input::InputState& input) {
   input.throttle = 0.0;
   input.brake = 0.0;

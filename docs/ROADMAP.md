@@ -1,14 +1,14 @@
-# X-Racing — Piano di Sviluppo
+# X-Racing — Development Plan
 
 > Motto: *simulate → measure → test → correct → document → repeat*
 >
-> Regola d'oro: **non passare alla fase successiva finché quella precedente non è abbastanza funzionante.**
+> Golden rule: **do not move to the next phase until the previous one is sufficiently working.**
 
 ---
 
-## Stato Attuale
+## Current Status
 
-| Componente | Stato |
+| Component | Status |
 |---|---|
 | Build system (CMake) | ✅ |
 | Math types + utilities | ✅ |
@@ -26,143 +26,143 @@
 
 ---
 
-## Fase 1 — Vertical Slice
+## Phase 1 — Vertical Slice
 
-Obiettivo: **Avvio → macchina sulla pista → guida → giro completo → arrivo.**
+Goal: **Startup → car on track → driving → full lap → finish.**
 
-Niente alberi, niente dettagli grafici, niente AI sofisticata.
+No trees, no graphical details, no sophisticated AI.
 
-### 1.1 Macchina
+### 1.1 Car
 
-- [ ] Acceleratore (torque curve → longitudinal force)
-- [ ] Freno (brake deceleration, balance)
-- [ ] Sterzo (bicycle model, Ackermann)
-- [ ] Retromarcia
-- [ ] Cambio / velocità (marcia → rapporto → RPM)
+- [ ] Accelerator (torque curve → longitudinal force)
+- [ ] Brake (brake deceleration, balance)
+- [ ] Steering (bicycle model, Ackermann)
+- [ ] Reverse gear
+- [ ] Gearbox / speed (gear → ratio → RPM)
 
-### 1.2 Fisica
+### 1.2 Physics
 
-- [ ] Aderenza (Pacejka lat/long)
-- [ ] Accelerazione (engine map, gear ratios)
-- [ ] Frenata (brake bias, lock-up)
-- [ ] Peso / massa
-- [ ] Sospensioni (4-corner loads, weight transfer)
-- [ ] Collisioni (track boundaries, barriers)
+- [ ] Grip (Pacejka lateral/longitudinal)
+- [ ] Acceleration (engine map, gear ratios)
+- [ ] Braking (brake bias, lock-up)
+- [ ] Weight / mass
+- [ ] Suspension (4-corner loads, weight transfer)
+- [ ] Collisions (track boundaries, barriers)
 
-### 1.3 Pista
+### 1.3 Track
 
-- [ ] Collider corretto (mesh-based o spline-based)
-- [ ] Linea di partenza / griglia
-- [ ] Checkpoint (trigger zones)
-- [ ] Rilevamento giro (lap detection)
-- [ ] Posizione macchina (respawn, reset)
+- [ ] Correct collider (mesh-based or spline-based)
+- [ ] Start line / grid
+- [ ] Checkpoints (trigger zones)
+- [ ] Lap detection
+- [ ] Car position (respawn, reset)
 
 ### 1.4 Camera
 
-- [ ] Camera inseguimento (chase cam)
-- [ ] Distanza configurable
-- [ ] Rotazione / look-ahead
+- [ ] Chase camera
+- [ ] Configurable distance
+- [ ] Rotation / look-ahead
 - [ ] Smoothing (lerp / spring)
 
-### 1.5 HUD minimo
+### 1.5 Minimal HUD
 
-- [ ] Velocità (km/h)
-- [ ] RPM (bar o numero)
-- [ ] Marcia corrente
-- [ ] Giro corrente / totale
-- [ ] Tempo giro / best lap
+- [ ] Speed (km/h)
+- [ ] RPM (bar or number)
+- [ ] Current gear
+- [ ] Current / total lap
+- [ ] Lap time / best lap
 
-**Criterio di completamento:** riesci a fare un giro completo di pista senza crash, con macchina guidabile e HUD leggibile.
-
----
-
-## Fase 2 — Sistema della Pista
-
-Obiettivo: **costruire un sistema che permetta di creare piste parametriche senza lavoro manuale.**
-
-- [ ] Spline pista (definizione percorso centrale)
-- [ ] Larghezza variabile (segment-by-segment)
-- [ ] Mesh asfalto (generata da spline + larghezza)
-- [ ] Cordoli (kerbs, elevation banking opzionale)
-- [ ] Guardrail (barriere perimetrali)
-- [ ] Runoff area (zona di errore)
-- [ ] Checkpoint system (trigger volumes sulla spline)
-- [ ] Track data export (JSON / binary per gameplay)
-
-**Criterio di completamento:** puoi definire una nuova pista modificando solo i parametri della spline e generi l'intera geometria automaticamente.
+**Completion criterion:** you can complete a full lap without crashing, with a drivable car and a readable HUD.
 
 ---
 
-## Fase 3 — Ambiente Procedurale
+## Phase 2 — Track System
 
-Obiettivo: **popolare la scena intorno alla pista in modo procedurale.**
+Goal: **build a system that lets you create parametric tracks without manual work.**
 
-- [ ] Bordo pista (edge detection, terrain following)
-- [ ] Zona generazione (bounding box attorno alla pista)
-- [ ] Alberi (Meshy assets, LOD, impostor)
-- [ ] Rocce
-- [ ] Erba (instancing, wind shader)
-- [ ] Cartelli (racing line markers, track signage)
-- [ ] Barriere / recinzioni
-- [ ] Cielo / atmosfera
+- [ ] Track spline (central path definition)
+- [ ] Variable width (segment-by-segment)
+- [ ] Asphalt mesh (generated from spline + width)
+- [ ] Kerbs (elevation/banking optional)
+- [ ] Guardrail (perimeter barriers)
+- [ ] Runoff area (error zone)
+- [ ] Checkpoint system (trigger volumes on the spline)
+- [ ] Track data export (JSON / binary for gameplay)
 
-**Criterio di completamento:** carichi una pista e l'ambiente si genera automaticamente, con varietà visiva sufficiente.
+**Completion criterion:** you can define a new track by changing only the spline parameters and generate the entire geometry automatically.
 
 ---
 
-## Fase 4 — Gara
+## Phase 3 — Procedural Environment
 
-Obiettivo: **trasformare la guida libera in una gara.**
+Goal: **populate the scene around the track procedurally.**
+
+- [ ] Track edge (edge detection, terrain following)
+- [ ] Generation zone (bounding box around the track)
+- [ ] Trees (Meshy assets, LOD, impostor)
+- [ ] Rocks
+- [ ] Grass (instancing, wind shader)
+- [ ] Signs (racing line markers, track signage)
+- [ ] Barriers / fences
+- [ ] Sky / atmosphere
+
+**Completion criterion:** you load a track and the environment generates automatically, with sufficient visual variety.
+
+---
+
+## Phase 4 — Race
+
+Goal: **turn free driving into a race.**
 
 - [ ] Countdown (3-2-1-GO)
-- [ ] Griglia di partenza (posizioni, spacing)
-- [ ] Race manager (stato: countdown → racing → finished)
-- [ ] Avversari AI basilari (waypoint following, fixed speed)
-- [ ] Classifiche (posizione, gap, best lap)
-- [ ] Sistema giri (lap counter, lap validation)
-- [ ] Penalità (cutting track, false start)
-- [ ] Bandiere (yellow, red, checkered)
-- [ ] Fine gara (results screen, restart)
+- [ ] Starting grid (positions, spacing)
+- [ ] Race manager (state: countdown → racing → finished)
+- [ ] Basic AI opponents (waypoint following, fixed speed)
+- [ ] Standings (position, gap, best lap)
+- [ ] Lap system (lap counter, lap validation)
+- [ ] Penalties (cutting track, false start)
+- [ ] Flags (yellow, red, checkered)
+- [ ] Race end (results screen, restart)
 
-**Criterio di completamento:** puoi correre una gara di N giri contro avversari con countdown, classifica e fine gara.
-
----
-
-## Fase 5 — AI Avanzata
-
-Obiettivo: **avversari che guidano in modo realistico e adattivo.**
-
-- [ ] Racing line (ottimizzazione della linea ideale per la pista)
-- [ ] AI driver (accelerazione, frenata, sterzo basati su racing line)
-- [ ] Sorpasso (decision making, gap analysis)
-- [ ] Difesa (posizione in curva)
-- [ ] Adattamento al traffico
-- [ ] Errori umani (piccole imperfezioni, varianza)
-- [ ] ML experiments (comportamento motore, sound, guida adattiva)
-
-**Criterio di completamento:** gli avversari sono competitivi, commettono errori realistici e offrono una sfida variabile per difficoltà.
+**Completion criterion:** you can run an N-lap race against opponents with countdown, standings, and race end.
 
 ---
 
-## Fase 6 — Presentazione
+## Phase 5 — Advanced AI
 
-Obiettivo: **grafica, audio, UI, ottimizzazione.**
+Goal: **opponents that drive realistically and adaptively.**
 
-- [ ] Asset Meshy (modelli 3D, texture PBR)
-- [ ] Alberi scansionati (photogrammetry)
-- [ ] Illuminazione (HDR, GI, time of day)
-- [ ] Materiali (asfalto, metallo, gomma)
-- [ ] Particelle (polvere, pioggia, scintille)
-- [ ] Effetti (motion blur, DOF, lens flare)
-- [ ] Sound engine (motore, scarico, ambiente)
-- [ ] UI (menu, HUD avanzato, mappa)
-- [ ] Ottimizzazione (LOD, instancing, draw calls)
+- [ ] Racing line (optimal line optimization for the track)
+- [ ] AI driver (acceleration, braking, steering based on the racing line)
+- [ ] Overtaking (decision making, gap analysis)
+- [ ] Defense (positioning in corners)
+- [ ] Traffic adaptation
+- [ ] Human errors (small imperfections, variance)
+- [ ] ML experiments (engine behavior, sound, adaptive driving)
 
-**Criterio di completamento:** il gioco è visivamente competitivo con titoli del genere.
+**Completion criterion:** opponents are competitive, make realistic mistakes, and offer variable difficulty.
 
 ---
 
-## Struttura Codice
+## Phase 6 — Presentation
+
+Goal: **graphics, audio, UI, optimization.**
+
+- [ ] Meshy assets (3D models, PBR textures)
+- [ ] Scanned trees (photogrammetry)
+- [ ] Lighting (HDR, GI, time of day)
+- [ ] Materials (asphalt, metal, rubber)
+- [ ] Particles (dust, rain, sparks)
+- [ ] Effects (motion blur, DOF, lens flare)
+- [ ] Sound engine (engine, exhaust, environment)
+- [ ] UI (menus, advanced HUD, map)
+- [ ] Optimization (LOD, instancing, draw calls)
+
+**Completion criterion:** the game is visually competitive with similar titles.
+
+---
+
+## Code Structure
 
 ```
 x-racing/
@@ -239,9 +239,9 @@ x-racing/
 
 ---
 
-## Priorità di Implementazione
+## Implementation Priority
 
-| Priorità | Componente | Dipendenze |
+| Priority | Component | Dependencies |
 |---|---|---|
 | P0 | Vehicle system | physics, input |
 | P0 | Track system | spline, mesh |
@@ -261,21 +261,21 @@ x-racing/
 
 ---
 
-## Workflow di Sviluppo
+## Development Workflow
 
-1. **Implementa** il componente minimo necessario
-2. **Testa** con unit test + gameplay manuale
-3. **Documenta** comportamento e limiti
-4. **Misura** (telemetry, performance)
-5. **Correggi** bug e edge cases
-6. **Solo allora** passa al prossimo componente
+1. **Implement** the minimum necessary component
+2. **Test** with unit tests + manual gameplay
+3. **Document** behavior and limits
+4. **Measure** (telemetry, performance)
+5. **Fix** bugs and edge cases
+6. **Only then** move to the next component
 
 ---
 
-## Note
+## Notes
 
-- Ogni fase produce un **build giocabile**
-- Il codice è separato in moduli indipendenti
-- Ogni modulo ha i suoi test
-- La telemetry è sempre abilitata per validazione
-- Il rendering è disaccoppiato dalla simulazione
+- Each phase produces a **playable build**
+- Code is separated into independent modules
+- Each module has its own tests
+- Telemetry is always enabled for validation
+- Rendering is decoupled from simulation

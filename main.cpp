@@ -6,17 +6,20 @@
 using namespace p0;
 
 int main() {
+  // Build the default track and the simulation bound to it.
   track::Track track;
   simulation::SimulationParams params;
   simulation::Simulation sim(params);
   sim.set_track(track);
 
+  // Place the car at the start line, stationary.
   vehicle::VehicleState initial;
   initial.position = track.get_start_position();
   initial.heading = track.get_start_heading();
   initial.speed = 0.0;
   sim.reset(initial);
 
+  // Run the real-time renderer (handles input, stepping and drawing).
   renderer::Renderer renderer(sim);
   renderer.run();
 
