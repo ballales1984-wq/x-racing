@@ -46,8 +46,14 @@ namespace Project0.Unity.Setup
             float mainStraightWidth = 16f;
             var points = GenerateTrackPoints(out var widths);
 
-            UnityEngine.Object.DestroyImmediate(GameObject.Find("TrackBorderLeft"));
-            UnityEngine.Object.DestroyImmediate(GameObject.Find("TrackBorderRight"));
+            var oldBorders = GameObject.FindObjectsOfType<GameObject>();
+            foreach (var border in oldBorders)
+            {
+                if (border.name.Contains("TrackBorder"))
+                {
+                    UnityEngine.Object.DestroyImmediate(border);
+                }
+            }
 
             CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
 
