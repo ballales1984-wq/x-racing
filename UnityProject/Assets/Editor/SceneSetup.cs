@@ -35,7 +35,7 @@ namespace Project0.Unity.Setup
             }
 
             camera.transform.SetParent(car.transform, false);
-            camera.transform.localPosition = new Vector3(0f, 1.0f, 0.2f);
+            camera.transform.localPosition = new Vector3(0f, 0.9f, 0.3f);
             camera.transform.localRotation = Quaternion.identity;
 
             carController.followCamera = camera.GetComponent<Camera>();
