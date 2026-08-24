@@ -40,7 +40,65 @@ namespace Project0.Unity.Setup
 
             carController.followCamera = camera.GetComponent<Camera>();
 
+            var hud = GameObject.Find("HUD");
+            if (hud == null)
+            {
+                hud = new GameObject("HUD");
+                var canvas = hud.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                hud.AddComponent<CanvasScaler>();
+                hud.AddComponent<GraphicRaycaster>();
+
+                var parentPanel = new GameObject("Panel");
+                parentPanel.transform.SetParent(hud.transform, false);
+                var panelRect = parentPanel.AddComponent<RectTransform>();
+                panelRect.anchorMin = new Vector2(0.05f, 0.05f);
+                panelRect.anchorMax = new Vector2(0.3f, 0.3f);
+                panelRect.offsetMin = Vector2.zero;
+                panelRect.offsetMax = Vector2.zero;
+
+                CreateHUDText("SpeedText", "0 km/h", parentPanel.transform, new Vector2(0, 30));
+                CreateHUDText("RPMText", "800 RPM", parentPanel.transform, new Vector2(0, 0));
+                CreateHUDText("GearText", "N", parentPanel.transform, new Vector2(0, -30));
+                CreateHUDText("LapTimeText", "00:00.00", parentPanel.transform, new Vector2(0, -60));
+                CreateHUDText("BestLapText", "Best: --:--", parentPanel.transform, new Vector2(0, -90));
+            }
+
+            var carHUD = hud.GetComponent<CarHUD>();
+            if (carHUD == null)
+            {
+                carHUD = hud.AddComponent<CarHUD>();
+            }
+            carHUD.carController = carController;
+
+            foreach (var text in hud.GetComponentsInChildren<Text>())
+            {
+                if (text.name == "SpeedText") carHUD.speedText = text;
+                else if (text.name == "RPMText") carHUD.rpmText = text;
+                else if (text.name == "GearText") carHUD.gearText = text;
+                else if (text.name == "LapTimeText") carHUD.lapTimeText = text;
+                else if (text.name == "BestLapText") carHUD.bestLapText = text;
+            }
+
             Debug.Log("Scene setup updated.");
+        }
+
+        private static void CreateHUDText(string name, string defaultText, Transform parent, Vector2 anchoredPosition)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            var text = go.AddComponent<Text>();
+            text.text = defaultText;
+            text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.fontSize = 24;
+            text.color = Color.white;
+            text.alignment = TextAnchor.MiddleLeft;
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0, 0);
+            rect.anchorMax = new Vector2(1, 1);
+            rect.offsetMin = new Vector2(anchoredPosition.x, anchoredPosition.y - 15);
+            rect.offsetMax = new Vector2(anchoredPosition.x + 200, anchoredPosition.y + 15);
+        }
         }
     }
 }
