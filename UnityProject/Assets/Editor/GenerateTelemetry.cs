@@ -38,7 +38,16 @@ namespace Project0.Unity.Setup
             };
 
             process.Start();
-            process.WaitForExit(30000);
+            bool exited = process.WaitForExit(30000);
+
+            if (!exited)
+            {
+                UnityEngine.Debug.LogWarning("auto_drive.exe did not finish within 30 seconds. Telemetry may be incomplete.");
+                process.Kill();
+                return;
+            }
+
+            UnityEngine.Debug.Log($"auto_drive.exe exited with code {process.ExitCode}");
 
             if (process.ExitCode == 0)
             {
