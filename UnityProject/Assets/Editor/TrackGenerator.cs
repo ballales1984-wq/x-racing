@@ -107,6 +107,7 @@ namespace Project0.Unity.Setup
             CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
             CreateGrassArea();
             CreateStartFinishLine();
+            CreateBoxLane(points, widths);
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -208,49 +209,127 @@ namespace Project0.Unity.Setup
              }
          }
 
-         private static void CreateStartFinishLine()
-         {
-             var sfObj = GameObject.Find("StartFinishLine");
-             if (sfObj == null)
-             {
-                 sfObj = new GameObject("StartFinishLine");
-             }
-             sfObj.transform.SetParent(GameObject.Find("Track")?.transform);
-             sfObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
-             sfObj.transform.localRotation = Quaternion.identity;
+private static void CreateStartFinishLine()
+        {
+            var sfObj = GameObject.Find("StartFinishLine");
+            if (sfObj == null)
+            {
+                sfObj = new GameObject("StartFinishLine");
+            }
+            sfObj.transform.SetParent(GameObject.Find("Track")?.transform);
+            sfObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+            sfObj.transform.localRotation = Quaternion.identity;
 
-             var mf = sfObj.GetComponent<MeshFilter>();
-             if (mf == null) mf = sfObj.AddComponent<MeshFilter>();
+            var mf = sfObj.GetComponent<MeshFilter>();
+            if (mf == null) mf = sfObj.AddComponent<MeshFilter>();
 
-             var mr = sfObj.GetComponent<MeshRenderer>();
-             if (mr == null) mr = sfObj.AddComponent<MeshRenderer>();
+            var mr = sfObj.GetComponent<MeshRenderer>();
+            if (mr == null) mr = sfObj.AddComponent<MeshRenderer>();
 
-             float lineLength = 16f;
-             float lineThickness = 0.2f;
-             var mesh = new Mesh();
-             var verts = new Vector3[]
-             {
-                 new Vector3(-lineLength * 0.5f, 0f, -lineThickness * 0.5f),
-                 new Vector3(-lineLength * 0.5f, 0f,  lineThickness * 0.5f),
-                 new Vector3( lineLength * 0.5f, 0f, -lineThickness * 0.5f),
-                 new Vector3( lineLength * 0.5f, 0f,  lineThickness * 0.5f),
-             };
-             var tris = new int[] { 0, 2, 1, 1, 2, 3 };
-             var uvs = new Vector2[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1) };
-             mesh.vertices = verts;
-             mesh.triangles = tris;
-             mesh.uv = uvs;
-             mesh.RecalculateNormals();
-             mesh.RecalculateBounds();
-             mf.mesh = mesh;
+            float lineLength = 16f;
+            float lineThickness = 0.2f;
+            var mesh = new Mesh();
+            var verts = new Vector3[]
+            {
+                new Vector3(-lineLength * 0.5f, 0f, -lineThickness * 0.5f),
+                new Vector3(-lineLength * 0.5f, 0f,  lineThickness * 0.5f),
+                new Vector3( lineLength * 0.5f, 0f, -lineThickness * 0.5f),
+                new Vector3( lineLength * 0.5f, 0f,  lineThickness * 0.5f),
+            };
+            var tris = new int[] { 0, 2, 1, 1, 2, 3 };
+            var uvs = new Vector2[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1) };
+            mesh.vertices = verts;
+            mesh.triangles = tris;
+            mesh.uv = uvs;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
 
-             var mat = CreateDefaultMaterial();
-             if (mat != null)
-             {
-                 mat.color = Color.yellow;
-                 mr.sharedMaterial = mat;
-             }
-         }
+            var mat = CreateDefaultMaterial();
+            if (mat != null)
+            {
+                mat.color = Color.yellow;
+                mr.sharedMaterial = mat;
+            }
+        }
+
+        private static void CreateBoxLane(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths)
+        {
+            // Remove existing box lane
+            var oldBox = GameObject.Find("BoxLane");
+            if (oldBox != null) UnityEngine.Object.DestroyImmediate(oldBox);
+
+            var boxObj = new GameObject("BoxLane");
+            boxObj.transform.SetParent(GameObject.Find("Track")?.transform);
+
+            var mf = boxObj.AddComponent<MeshFilter>();
+            var mr = boxObj.AddComponent<MeshRenderer>();
+
+            var vertices = new System.Collections.Generic.List<Vector3>();
+            var triangles = new System.Collections.Generic.List<int>();
+            var uvs = new System.Collections.Generic.List<Vector2>();
+
+            float boxLaneWidth = 3.5f;
+            float boxLaneOffset = 1.5f;
+            float segmentLength = 1f;
+
+            // Only create box lane on the first straight section (where width = 16f)
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                // Box lane only on main straight (width > 14f indicates main straight)
+                if (widths[i] < 14f) continue;
+
+                Vector3 p0 = points[i];
+                Vector3 p1 = points[i + 1];
+                Vector3 dir = (p1 - p0).normalized;
+                Vector3 right = new Vector3(-dir.z, 0f, dir.x);
+
+                float trackHalfWidth = widths[i] * 0.5f;
+                float boxInner = trackHalfWidth + boxLaneOffset;
+                float boxOuter = boxInner + boxLaneWidth;
+
+                Vector3 v0 = p0 + right * boxInner;
+                Vector3 v1 = p0 + right * boxOuter;
+                Vector3 v2 = p1 + right * boxInner;
+                Vector3 v3 = p1 + right * boxOuter;
+
+                int baseIndex = vertices.Count;
+                vertices.Add(v0);
+                vertices.Add(v1);
+                vertices.Add(v2);
+                vertices.Add(v3);
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 1);
+
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
+
+                uvs.Add(new Vector2(0f, i * segmentLength));
+                uvs.Add(new Vector2(1f, i * segmentLength));
+                uvs.Add(new Vector2(0f, (i + 1) * segmentLength));
+                uvs.Add(new Vector2(1f, (i + 1) * segmentLength));
+            }
+
+            var mesh = new Mesh
+            {
+                vertices = vertices.ToArray(),
+                triangles = triangles.ToArray(),
+                uv = uvs.ToArray()
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
+
+            var mat = CreateDefaultMaterial();
+            if (mat != null)
+            {
+                mat.color = new Color(0.3f, 0.3f, 0.4f);
+                mr.sharedMaterial = mat;
+            }
+        }
 
         private static float CalculateTrackLength(System.Collections.Generic.List<Vector3> points)
         {
