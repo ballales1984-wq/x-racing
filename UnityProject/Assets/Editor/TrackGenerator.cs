@@ -135,20 +135,29 @@ namespace Project0.Unity.Setup
         private static Material CreateDefaultMaterial()
         {
             Material mat = null;
-            
-            try
+
+            Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
+            if (urpShader != null)
             {
-                var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
-                if (defaultMat != null)
+                mat = new Material(urpShader);
+            }
+
+            if (mat == null)
+            {
+                try
                 {
-                    mat = new Material(defaultMat);
+                    var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
+                    if (defaultMat != null)
+                    {
+                        mat = new Material(defaultMat);
+                    }
+                }
+                catch (System.Exception)
+                {
+                    mat = null;
                 }
             }
-            catch (System.Exception)
-            {
-                mat = null;
-            }
-            
+
             if (mat == null)
             {
                 var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
@@ -161,20 +170,16 @@ namespace Project0.Unity.Setup
                     mat = new Material(rp.defaultMaterial);
                 }
             }
-            
+
             if (mat == null)
             {
-                Shader shader = Shader.Find("testshader");
-                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null) shader = Shader.Find("Standard");
-                if (shader == null) shader = Shader.Find("Sprites/Default");
-                if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
+                Shader shader = Shader.Find("Standard");
                 if (shader != null)
                 {
                     mat = new Material(shader);
                 }
             }
-            
+
             return mat;
         }
 
