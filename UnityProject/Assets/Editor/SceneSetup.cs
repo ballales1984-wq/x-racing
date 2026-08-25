@@ -87,6 +87,7 @@ namespace Project0.Unity.Setup
                 carHUD = hud.AddComponent<CarHUD>();
             }
             carHUD.carController = carController;
+            carController.carHUD = carHUD;
 
             foreach (var text in hud.GetComponentsInChildren<Text>())
             {

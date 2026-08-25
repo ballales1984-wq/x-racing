@@ -106,6 +106,7 @@ namespace Project0.Unity.Setup
 
             CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
             CreateGrassArea();
+            CreateStartFinishLine();
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -176,36 +177,80 @@ namespace Project0.Unity.Setup
             return mat;
         }
 
-        private static void CreateGrassArea()
-        {
-            var grassObj = new GameObject("Grass");
-            var meshFilter = grassObj.AddComponent<MeshFilter>();
-            var meshRenderer = grassObj.AddComponent<MeshRenderer>();
-            
-            var mesh = new Mesh();
-            var vertices = new Vector3[]
-            {
-                new Vector3(-1000, -0.1f, -1000),
-                new Vector3(1000, -0.1f, -1000),
-                new Vector3(-1000, -0.1f, 1000),
-                new Vector3(1000, -0.1f, 1000)
-            };
-            var triangles = new int[] { 0, 2, 1, 1, 2, 3 };
-            
-            mesh.vertices = vertices;
-            mesh.triangles = triangles;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            
-            meshFilter.mesh = mesh;
-            
-            var mat = CreateDefaultMaterial();
-            if (mat != null)
-            {
-                mat.color = new Color(0.2f, 0.6f, 0.2f);
-                meshRenderer.sharedMaterial = mat;
-            }
-        }
+         private static void CreateGrassArea()
+         {
+             var grassObj = new GameObject("Grass");
+             var meshFilter = grassObj.AddComponent<MeshFilter>();
+             var meshRenderer = grassObj.AddComponent<MeshRenderer>();
+             
+             var mesh = new Mesh();
+             var vertices = new Vector3[]
+             {
+                 new Vector3(-1000, -0.1f, -1000),
+                 new Vector3(1000, -0.1f, -1000),
+                 new Vector3(-1000, -0.1f, 1000),
+                 new Vector3(1000, -0.1f, 1000)
+             };
+             var triangles = new int[] { 0, 2, 1, 1, 2, 3 };
+             
+             mesh.vertices = vertices;
+             mesh.triangles = triangles;
+             mesh.RecalculateNormals();
+             mesh.RecalculateBounds();
+             
+             meshFilter.mesh = mesh;
+             
+             var mat = CreateDefaultMaterial();
+             if (mat != null)
+             {
+                 mat.color = new Color(0.2f, 0.6f, 0.2f);
+                 meshRenderer.sharedMaterial = mat;
+             }
+         }
+
+         private static void CreateStartFinishLine()
+         {
+             var sfObj = GameObject.Find("StartFinishLine");
+             if (sfObj == null)
+             {
+                 sfObj = new GameObject("StartFinishLine");
+             }
+             sfObj.transform.SetParent(GameObject.Find("Track")?.transform);
+             sfObj.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+             sfObj.transform.localRotation = Quaternion.identity;
+
+             var mf = sfObj.GetComponent<MeshFilter>();
+             if (mf == null) mf = sfObj.AddComponent<MeshFilter>();
+
+             var mr = sfObj.GetComponent<MeshRenderer>();
+             if (mr == null) mr = sfObj.AddComponent<MeshRenderer>();
+
+             float lineLength = 16f;
+             float lineThickness = 0.2f;
+             var mesh = new Mesh();
+             var verts = new Vector3[]
+             {
+                 new Vector3(-lineLength * 0.5f, 0f, -lineThickness * 0.5f),
+                 new Vector3(-lineLength * 0.5f, 0f,  lineThickness * 0.5f),
+                 new Vector3( lineLength * 0.5f, 0f, -lineThickness * 0.5f),
+                 new Vector3( lineLength * 0.5f, 0f,  lineThickness * 0.5f),
+             };
+             var tris = new int[] { 0, 2, 1, 1, 2, 3 };
+             var uvs = new Vector2[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1) };
+             mesh.vertices = verts;
+             mesh.triangles = tris;
+             mesh.uv = uvs;
+             mesh.RecalculateNormals();
+             mesh.RecalculateBounds();
+             mf.mesh = mesh;
+
+             var mat = CreateDefaultMaterial();
+             if (mat != null)
+             {
+                 mat.color = Color.yellow;
+                 mr.sharedMaterial = mat;
+             }
+         }
 
         private static float CalculateTrackLength(System.Collections.Generic.List<Vector3> points)
         {

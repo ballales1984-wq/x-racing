@@ -34,6 +34,12 @@ namespace Project0.Unity
         public float maxSteerAngle = 7f;
         public float naturalDeceleration = 5f;
 
+        [Header("Lap Timing")]
+        public CarHUD carHUD;
+        public Vector3 startLinePosition = Vector3.zero;
+        public float startLineThreshold = 8f;
+        private bool lapStarted = false;
+
         private TelemetryFrame[] frames;
         private int currentIndex = 0;
         private float elapsedTime = 0f;
@@ -67,6 +73,8 @@ namespace Project0.Unity
             }
 
             UpdateCamera();
+
+            CheckStartLineCrossing();
         }
 
         void UpdateCameraMode()
@@ -239,6 +247,31 @@ namespace Project0.Unity
             followCamera.transform.LookAt(transform.position + Vector3.up * 0.5f);
         }
 
+        void CheckStartLineCrossing()
+        {
+            if (carHUD == null) return;
+
+            Vector2 carPos2D = new Vector2(transform.position.x, transform.position.z);
+            Vector2 startLine2D = new Vector2(startLinePosition.x, startLinePosition.z);
+            float distFromStart = Vector2.Distance(carPos2D, startLine2D);
+
+            if (!lapStarted)
+            {
+                if (distFromStart > startLineThreshold)
+                {
+                    lapStarted = true;
+                }
+            }
+            else
+            {
+                if (distFromStart <= startLineThreshold)
+                {
+                    carHUD.StartLap();
+                    lapStarted = false;
+                }
+            }
+        }
+
         void LoadTelemetry()
         {
             if (!File.Exists(telemetryPath))
@@ -313,6 +346,7 @@ namespace Project0.Unity
             elapsedTime = 0f;
             currentSpeed = 0f;
             currentHeading = transform.eulerAngles.y * Mathf.Deg2Rad;
+            lapStarted = false;
 
             if (useSimPlugin)
             {
