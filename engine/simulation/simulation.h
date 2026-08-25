@@ -50,6 +50,7 @@ class Simulation {
   void update_tire_forces(double dt);              // Pacejka forces with dynamic Fz
   void update_braking();                  // brake deceleration
   void update_steering();                 // bicycle model slip angles + lateral forces
+  void update_centripetal_forces();       // centripetal/centrifugal forces on curves
   void integrate(double dt);              // velocity-space integration
   void apply_box_lane_speed_limit();      // enforce box lane speed limit
 

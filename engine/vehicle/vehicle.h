@@ -116,6 +116,9 @@ struct VehicleState {
   double box_lane_speed = 0.0;           // m/s, speed limit in box lane
   double weather_grip_factor = 1.0;       // [-], weather-based grip reduction
   double track_temp = 305.0;             // K, local track temperature
+  double centripetal_force = 0.0;        // N, toward center of curvature
+  double centrifugal_force = 0.0;        // N, outward inertial force
+  double lateral_g = 0.0;                // g, lateral acceleration / gravity
 };
 
 }

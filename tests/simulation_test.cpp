@@ -3,6 +3,7 @@
 #include "track/track.h"
 #include "simulation/simulation.h"
 #include "telemetry/telemetry.h"
+#include "physics/types.h"
 
 // Project 0 — unit tests
 // Tests verify the mathematical behavior of the simulation core.
@@ -428,6 +429,141 @@ TEST(Weather, TrackTemperatureChanges) {
   }
 
   EXPECT_GT(sim.state().track_temp, 300.0);
+}
+
+// M8: Centripetal force should be zero on a straight
+TEST(Centripetal, ZeroOnStraight) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+
+  for (int i = 0; i < 100; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_DOUBLE_EQ(sim.state().centripetal_force, 0.0);
+  EXPECT_DOUBLE_EQ(sim.state().centrifugal_force, 0.0);
+  EXPECT_DOUBLE_EQ(sim.state().lateral_g, 0.0);
+}
+
+// M8: Centripetal force should be non-zero on a curve
+TEST(Centripetal, NonZeroOnCurve) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  const double curve_distance = 800.0;
+  const auto& tp = track.at(curve_distance);
+
+  vehicle::VehicleState initial;
+  initial.position = tp.position;
+  initial.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+  initial.distance_along_track = curve_distance;
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  std::cout << "DEBUG NonZero: dist=" << sim.state().distance_along_track
+            << " speed=" << sim.state().speed
+            << " centripetal=" << sim.state().centripetal_force
+            << " lat_g=" << sim.state().lateral_g << "\n";
+
+  EXPECT_GT(sim.state().centripetal_force, 0.0);
+  EXPECT_GT(sim.state().lateral_g, 0.0);
+}
+
+// Debug: print curvature at a known curve distance
+TEST(Centripetal, DebugCurvature) {
+  track::Track track;
+  const double curve_distance = 800.0;
+  const auto& tp = track.at(curve_distance);
+  std::cout << "DEBUG: distance=" << curve_distance 
+            << " curvature=" << tp.curvature 
+            << " normal=(" << tp.normal.x() << ", " << tp.normal.y() << ")\n";
+  SUCCEED();
+}
+
+// M8: Lateral G should scale with the square of speed
+TEST(Centripetal, LateralGScalesWithSpeed) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  const double curve_distance = 800.0;
+  const auto& tp = track.at(curve_distance);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+
+  // Place car on curve at low speed
+  vehicle::VehicleState initial;
+  initial.position = tp.position;
+  initial.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+  initial.distance_along_track = curve_distance;
+  initial.speed = 20.0;
+  sim.reset(initial);
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+  const double low_speed_lateral_g = sim.state().lateral_g;
+
+  // Place car on curve at high speed
+  initial.speed = 80.0;
+  sim.reset(initial);
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+  const double high_speed_lateral_g = sim.state().lateral_g;
+
+  const double ratio = high_speed_lateral_g / (low_speed_lateral_g + 1e-9);
+  EXPECT_NEAR(ratio, 16.0, 4.0);
+}
+
+// M8: Centrifugal force should be the reaction (opposite sign to centripetal)
+TEST(Centripetal, CentrifugalIsReaction) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  const double curve_distance = 800.0;
+  const auto& tp = track.at(curve_distance);
+
+  vehicle::VehicleState initial;
+  initial.position = tp.position;
+  initial.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+  initial.distance_along_track = curve_distance;
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_DOUBLE_EQ(sim.state().centrifugal_force, -sim.state().centripetal_force);
 }
 
 // Box lane exists on the main straight

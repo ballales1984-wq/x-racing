@@ -19,7 +19,6 @@ void Simulation::set_track(const track::Track& track) {
 
 void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_ = initial_state;
-  state_.distance_along_track = 0.0;
   state_.lap = 0;
   state_.rpm = vehicle_params_.idle_rpm;
   state_.gear = 1;
@@ -40,6 +39,9 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.rear_slip_angle_relaxed = 0.0;
   state_.front_camber = 0.0;
   state_.rear_camber = 0.0;
+  state_.centripetal_force = 0.0;
+  state_.centrifugal_force = 0.0;
+  state_.lateral_g = 0.0;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -76,6 +78,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
     update_tire_forces(dt);
     update_braking();
     update_steering();
+    update_centripetal_forces();
     integrate(dt);
   }
 
@@ -539,6 +542,40 @@ void Simulation::update_steering() {
     state_.yaw_rate = 0.0;
     return;
   }
+}
+
+// Apply centripetal and centrifugal forces based on track curvature.
+// Centripetal force acts toward the center of curvature and is added to the
+// vehicle acceleration. Centrifugal force is the inertial reaction and is
+// recorded for telemetry / HUD purposes.
+void Simulation::update_centripetal_forces() {
+  const double speed = state_.speed;
+  if (speed < kEpsilon || !track_) {
+    state_.centripetal_force = 0.0;
+    state_.centrifugal_force = 0.0;
+    state_.lateral_g = 0.0;
+    return;
+  }
+
+  const auto& tp = track_->at(state_.distance_along_track);
+  const double kappa = tp.curvature;
+
+  if (std::abs(kappa) < kEpsilon) {
+    state_.centripetal_force = 0.0;
+    state_.centrifugal_force = 0.0;
+    state_.lateral_g = 0.0;
+    return;
+  }
+
+  const double m = vehicle_params_.mass;
+  const Vec2 normal = tp.normal;
+
+  const Vec2 f_c = physics::centripetal_force(m, speed, kappa, normal);
+  state_.centripetal_force = f_c.norm();
+  state_.centrifugal_force = -state_.centripetal_force;
+  state_.lateral_g = state_.centripetal_force / (m * kGravity);
+
+  state_.acceleration += f_c / m;
 }
 
 // Velocity-space integration using semi-implicit Euler.
