@@ -25,6 +25,7 @@ class Renderer {
 
  private:
   void draw_track(HDC hdc);
+  void draw_box_lane(HDC hdc);
   void draw_car(HDC hdc, const vehicle::VehicleState& state);
   void draw_hud(HDC hdc, const simulation::SimulationResult& result);
   void handle_input(input::InputState& input);

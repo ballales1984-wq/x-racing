@@ -109,6 +109,7 @@ void Renderer::run() {
                CreateSolidBrush(RGB(30, 30, 30)));
 
       draw_track(mem_dc);
+      draw_box_lane(mem_dc);
       draw_car(mem_dc, result.state);
       draw_hud(mem_dc, result);
 
@@ -142,6 +143,39 @@ void Renderer::draw_track(HDC hdc) {
 
   SelectObject(hdc, old_pen);
   DeleteObject(track_pen);
+}
+
+void Renderer::draw_box_lane(HDC hdc) {
+  const track::Track* track = &sim_.track();
+  const int step = 5;
+  const double length = track->length();
+
+  HPEN box_pen = CreatePen(PS_SOLID, 2, RGB(255, 80, 80));
+  HPEN old_pen = (HPEN)SelectObject(hdc, box_pen);
+
+  for (int i = 0; i + step < static_cast<int>(length); i += step) {
+    track::TrackPoint p0 = track->at(i);
+    track::TrackPoint p1 = track->at(i + step);
+
+    if (!p0.has_box_lane || !p1.has_box_lane) continue;
+
+    const double box_offset0 = -(p0.width / 2.0 + p0.box_lane_width / 2.0);
+    const double box_offset1 = -(p1.width / 2.0 + p1.box_lane_width / 2.0);
+
+    Vec2 pos0 = p0.position + p0.normal * box_offset0;
+    Vec2 pos1 = p1.position + p1.normal * box_offset1;
+
+    int x0 = static_cast<int>(pos0.x() * config_.scale + config_.width / 2);
+    int y0 = static_cast<int>(-pos0.y() * config_.scale + config_.height / 2);
+    int x1 = static_cast<int>(pos1.x() * config_.scale + config_.width / 2);
+    int y1 = static_cast<int>(-pos1.y() * config_.scale + config_.height / 2);
+
+    MoveToEx(hdc, x0, y0, nullptr);
+    LineTo(hdc, x1, y1);
+  }
+
+  SelectObject(hdc, old_pen);
+  DeleteObject(box_pen);
 }
 
 // Draw the car as a small rotated rectangle centered at its world position.
