@@ -134,53 +134,19 @@ namespace Project0.Unity.Setup
 
         private static Material CreateDefaultMaterial()
         {
-            Material mat = null;
-
             Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
             if (urpShader != null)
             {
-                mat = new Material(urpShader);
+                return new Material(urpShader);
             }
 
-            if (mat == null)
+            Shader stdShader = Shader.Find("Standard");
+            if (stdShader != null)
             {
-                try
-                {
-                    var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
-                    if (defaultMat != null)
-                    {
-                        mat = new Material(defaultMat);
-                    }
-                }
-                catch (System.Exception)
-                {
-                    mat = null;
-                }
+                return new Material(stdShader);
             }
 
-            if (mat == null)
-            {
-                var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-                if (rp == null)
-                {
-                    rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
-                }
-                if (rp != null && rp.defaultMaterial != null)
-                {
-                    mat = new Material(rp.defaultMaterial);
-                }
-            }
-
-            if (mat == null)
-            {
-                Shader shader = Shader.Find("Standard");
-                if (shader != null)
-                {
-                    mat = new Material(shader);
-                }
-            }
-
-            return mat;
+            return new Material(Shader.Find("Hidden/InternalErrorShader"));
         }
 
          private static void CreateGrassArea()
