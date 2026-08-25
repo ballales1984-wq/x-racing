@@ -170,18 +170,15 @@ void Simulation::update_engine_forces() {
   }
 }
 
-// Aerodynamic model with dynamic ride height, pitch and roll sensitivity.
+// Aerodynamic model with ground effect, wing contribution, and proper front/rear balance.
 //
 // Computes:
-//   Drag: D = 0.5 * rho * Cd * A * v^2
-//   Lift: L = 0.5 * rho * Cl * A * v^2
-//   Downforce: DF = 0.5 * rho * Cz * A * v^2 * ride_height_factor
+//   Drag: D = 0.5 * rho * Cd * A_drag * v^2 * (1 + wing_drag)
+//   Downforce: DF = 0.5 * rho * Cz * A_df * v^2 * ground_effect + wing_downforce
+//   Lift: simplified as residual body lift
 //
-// Downforce depends on:
-//   - ride height (lower = more downforce)
-//   - body pitch (affects front/rear balance)
-//   - body roll (affects total downforce)
-//   - wing angle (adjustable setup parameter)
+// Ground effect increases downforce at lower ride heights.
+// Wings add significant downforce and drag proportional to angle of attack.
 void Simulation::update_aerodynamics() {
   const double speed = state_.velocity.norm();
   if (speed < kEpsilon) {
@@ -196,16 +193,22 @@ void Simulation::update_aerodynamics() {
 
   const double base_drag = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.drag_coefficient;
   const double base_lift = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.lift_coefficient;
-  const double base_downforce = dynamic_pressure * vehicle_params_.frontal_area * vehicle_params_.downforce_coefficient;
+  const double base_downforce = dynamic_pressure * vehicle_params_.aero_downforce_area * vehicle_params_.downforce_coefficient;
 
-  const double ride_height_factor = 1.0 + vehicle_params_.ride_height_sensitivity * state_.body_pitch;
-  const double pitch_factor = 1.0 - vehicle_params_.pitch_sensitivity * std::abs(state_.body_pitch);
-  const double roll_factor = 1.0 - vehicle_params_.roll_sensitivity * std::abs(state_.body_roll);
+  const double ride_height_factor = 1.0 + vehicle_params_.ground_effect_factor / (vehicle_params_.ride_height + 0.05);
   const double wing_factor = 1.0 + std::sin(vehicle_params_.wing_angle);
 
-  const double drag = base_drag * (1.0 + vehicle_params_.wing_angle * 0.1);
-  const double lift = base_lift * ride_height_factor * roll_factor;
-  const double downforce = base_downforce * ride_height_factor * pitch_factor * roll_factor * wing_factor;
+  const double wing_drag = dynamic_pressure * (vehicle_params_.front_wing_area + vehicle_params_.rear_wing_area) * std::sin(vehicle_params_.wing_angle) * 0.5;
+  const double wing_downforce = dynamic_pressure * (vehicle_params_.front_wing_area + vehicle_params_.rear_wing_area) * std::sin(vehicle_params_.wing_angle);
+
+  const double drag = base_drag * wing_factor + wing_drag;
+  const double lift = base_lift * ride_height_factor;
+  const double downforce = base_downforce * ride_height_factor + wing_downforce;
+
+  const double total_aero_load = downforce - lift;
+  const double wing_balance = (vehicle_params_.front_wing_area + vehicle_params_.rear_wing_area) > kEpsilon
+    ? vehicle_params_.rear_wing_area / (vehicle_params_.front_wing_area + vehicle_params_.rear_wing_area)
+    : 0.5;
 
   const Vec2 drag_dir = -state_.velocity.normalized();
   const double drag_decel = drag / vehicle_params_.mass;
@@ -214,7 +217,7 @@ void Simulation::update_aerodynamics() {
   state_.aero_drag = drag;
   state_.aero_lift = lift;
   state_.aero_downforce = downforce;
-  state_.aero_front_balance = 0.5 - vehicle_params_.pitch_sensitivity * state_.body_pitch;
+  state_.aero_front_balance = 1.0 - wing_balance;
 }
 
 // Weather effects on vehicle and track.
@@ -339,8 +342,21 @@ void Simulation::update_suspension() {
   state_.rl_tire_load = std::max(rl_load, 0.0);
   state_.rr_tire_load = std::max(rr_load, 0.0);
 
-  state_.body_roll = a_lat * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
-  state_.body_pitch = -a_long * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
+  const double target_roll = a_lat * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
+  const double target_pitch = -a_long * h / (vehicle_params_.front_spring_rate + vehicle_params_.rear_spring_rate);
+
+  const double clamped_roll = std::clamp(target_roll, -vehicle_params_.max_body_roll, vehicle_params_.max_body_roll);
+  const double clamped_pitch = std::clamp(target_pitch, -vehicle_params_.max_body_pitch, vehicle_params_.max_body_pitch);
+
+  const double dt = params_.dt / params_.substeps;
+  const double k_roll = 1.0 - std::exp(-vehicle_params_.roll_damping * dt * 60.0);
+  const double k_pitch = 1.0 - std::exp(-vehicle_params_.pitch_damping * dt * 60.0);
+
+  state_.body_roll += (clamped_roll - state_.body_roll) * k_roll;
+  state_.body_pitch += (clamped_pitch - state_.body_pitch) * k_pitch;
+
+  state_.front_camber = vehicle_params_.camber_gain_per_roll * state_.body_roll;
+  state_.rear_camber = vehicle_params_.camber_gain_per_roll * state_.body_roll;
 }
 
 // Bicycle model tire forces with Pacejka lateral grip.
@@ -459,35 +475,31 @@ void Simulation::update_steering() {
   }
 }
 
-// Velocity-space integration.
-// The velocity vector is decomposed into longitudinal and lateral components.
-// Longitudinal component drives speed; lateral component drives slip dynamics.
-// This allows the bicycle model to produce realistic understeer/oversteer.
+// Velocity-space integration using semi-implicit Euler.
+// Heading is updated first, then velocities and position use the new orientation.
+// This removes artificial lateral damping and fixes coordinate drift.
 void Simulation::integrate(double dt) {
-  const double speed = state_.speed;
+  state_.heading += state_.yaw_rate * dt;
+  state_.heading = normalize_angle(state_.heading);
+
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
   const Vec2 right_dir(-forward_dir.y(), forward_dir.x());
 
   const double a_long = state_.acceleration.dot(forward_dir);
   const double a_lat = state_.acceleration.dot(right_dir);
 
-  double new_long_speed = speed + a_long * dt;
+  double new_long_speed = state_.speed + a_long * dt;
   new_long_speed = clamp(new_long_speed, 0.0, 150.0);
 
   double new_lat_speed = state_.lateral_velocity + a_lat * dt;
-  const double damping_coeff = vehicle_params_.front_damping / vehicle_params_.mass;
-  new_lat_speed -= damping_coeff * state_.lateral_velocity * dt;
   const double lat_speed_max = 30.0;
   new_lat_speed = clamp(new_lat_speed, -lat_speed_max, lat_speed_max);
 
-  state_.heading += state_.yaw_rate * dt;
-  state_.heading = normalize_angle(state_.heading);
-
-  const Vec2 new_forward_dir(std::cos(state_.heading), std::sin(state_.heading));
-  state_.velocity = new_forward_dir * new_long_speed + right_dir * new_lat_speed;
+  state_.velocity = forward_dir * new_long_speed + right_dir * new_lat_speed;
   state_.position += state_.velocity * dt;
   state_.speed = new_long_speed;
   state_.lateral_velocity = new_lat_speed;
+  state_.acceleration = Vec2::Zero();
 
   if (track_) {
     state_.distance_along_track += new_long_speed * dt;

@@ -31,11 +31,10 @@ struct VehicleParams {
   double frontal_area = 2.0;             // m^2, frontal cross-section
   double lift_coefficient = 0.1;         // aerodynamic lift coefficient Cl
   double downforce_coefficient = 0.5;    // aerodynamic downforce coefficient Cz
+  double aero_downforce_area = 2.0;      // m^2, effective downforce area
+  double ground_effect_factor = 0.05;    // ground effect coefficient
   double front_wing_area = 0.5;          // m^2, front wing area
   double rear_wing_area = 0.5;           // m^2, rear wing area
-  double ride_height_sensitivity = 2.0;  // downforce per meter of ride height
-  double pitch_sensitivity = 0.5;        // front/rear balance change per rad of pitch
-  double roll_sensitivity = 0.3;         // downforce change per rad of roll
   double wing_angle = 0.0;               // rad, wing angle of attack
   double rolling_resistance = 0.015;     // rolling resistance coefficient
   double max_brake_force = 18000.0;      // N, maximum braking force
