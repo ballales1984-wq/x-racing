@@ -47,7 +47,7 @@ class Simulation {
   void update_weather();                  // rain, wind, temperature effects
   void update_tire_temperature();         // tire thermal model + wear
   void update_suspension();               // spring-damper + weight transfer
-  void update_tire_forces();              // Pacejka forces with dynamic Fz
+  void update_tire_forces(double dt);              // Pacejka forces with dynamic Fz
   void update_braking();                  // brake deceleration
   void update_steering();                 // bicycle model slip angles + lateral forces
   void integrate(double dt);              // velocity-space integration

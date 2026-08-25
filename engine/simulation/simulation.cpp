@@ -1,5 +1,6 @@
 #include "simulation/simulation.h"
 #include "physics/types.h"
+#include "physics/tire_model.h"
 #include "weather/weather.h"
 #include <algorithm>
 #include <cmath>
@@ -35,6 +36,10 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.body_pitch = 0.0;
   state_.weather_grip_factor = 1.0;
   state_.track_temp = 305.0;
+  state_.front_slip_angle_relaxed = 0.0;
+  state_.rear_slip_angle_relaxed = 0.0;
+  state_.front_camber = 0.0;
+  state_.rear_camber = 0.0;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -49,6 +54,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
   const double dt = params_.dt / params_.substeps;
 
   for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
+    state_.acceleration = Vec2::Zero();
     state_.steer_angle = input.steering * vehicle_params_.max_steer_angle;
     state_.throttle = clamp(input.throttle, 0.0, 1.0);
     state_.brake = clamp(input.brake, 0.0, 1.0);
@@ -65,7 +71,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
     update_weather();
     update_tire_temperature();
     update_suspension();
-    update_tire_forces();
+    update_tire_forces(dt);
     update_braking();
     update_steering();
     integrate(dt);
@@ -86,19 +92,11 @@ SimulationResult Simulation::step(const input::InputState& input) {
   return result;
 }
 
-// Engine model: torque curve based on RPM, mapped to longitudinal force.
-// Includes auto-shift and soft RPM limiter.
+// Engine model with realistic torque curve, inertia, and drivetrain loss.
+// Includes auto-shift with hysteresis and engine braking.
 void Simulation::update_engine_forces() {
   const double speed = state_.velocity.norm();
-
-  if (speed < kEpsilon) {
-    state_.rpm = vehicle_params_.idle_rpm;
-    const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
-    const double torque = vehicle_params_.max_torque * state_.throttle * 0.8;
-    const double engine_force = torque / vehicle_params_.wheel_radius;
-    state_.acceleration = forward_dir * engine_force / vehicle_params_.mass;
-    return;
-  }
+  const double m = vehicle_params_.mass;
 
   auto compute_rpm = [&](int gear) {
     const double gear_ratio = vehicle_params_.gear_ratios[std::clamp(gear - 1, 0,
@@ -108,40 +106,68 @@ void Simulation::update_engine_forces() {
     return std::clamp(wheel_rpm * total_ratio, vehicle_params_.idle_rpm, vehicle_params_.max_rpm);
   };
 
-  state_.rpm = compute_rpm(state_.gear);
-
-  if (state_.rpm >= vehicle_params_.max_rpm * 0.92 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
-    state_.gear++;
-    state_.rpm = compute_rpm(state_.gear);
-  } else if (state_.rpm <= vehicle_params_.idle_rpm * 1.8 && state_.gear > 1) {
-    state_.gear--;
-    state_.rpm = compute_rpm(state_.gear);
+  if (speed < kEpsilon) {
+    state_.rpm = vehicle_params_.idle_rpm;
+    const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+    const double torque = vehicle_params_.max_torque * state_.throttle * 0.8;
+    const double engine_force = torque / vehicle_params_.wheel_radius;
+    state_.acceleration = forward_dir * engine_force / m;
+    return;
   }
 
-  double torque = 0.0;
   const double rpm_frac = (state_.rpm - vehicle_params_.idle_rpm) /
                           (vehicle_params_.max_rpm - vehicle_params_.idle_rpm);
+  const double clamped_frac = std::clamp(rpm_frac, 0.0, 1.0);
 
+  const double peak_torque_point = 0.55;
+  const double width = 0.25;
+  const double t = (clamped_frac - peak_torque_point) / width;
+  const double shape = std::exp(-0.5 * t * t);
+  const double power_band = 1.0 + 0.25 * std::max(0.0, (clamped_frac - 0.7) / 0.3);
+
+  double engine_torque = 0.0;
   if (state_.throttle > 0.0) {
-    const double curve_input = std::max(rpm_frac, 0.05);
-    torque = vehicle_params_.max_torque * state_.throttle * std::sin(curve_input * kHalfPi);
+    engine_torque = vehicle_params_.max_torque * state_.throttle * shape * power_band;
   }
 
   if (state_.rpm >= vehicle_params_.max_rpm) {
-    torque *= vehicle_params_.max_rpm / state_.rpm;
+    engine_torque *= vehicle_params_.max_rpm / state_.rpm;
   }
 
   if (state_.throttle <= 0.0) {
     const double engine_brake_torque = -0.04 * state_.rpm;
-    torque += engine_brake_torque;
+    engine_torque += engine_brake_torque;
   }
 
   const double gear_ratio = vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0,
     static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)];
   const double total_ratio = gear_ratio * vehicle_params_.final_drive;
-  double engine_force = (torque * total_ratio) / vehicle_params_.wheel_radius;
+  const double wheel_torque = engine_torque * total_ratio * (1.0 - vehicle_params_.drivetrain_loss);
+  const double engine_force = wheel_torque / vehicle_params_.wheel_radius;
+
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
-  state_.acceleration = forward_dir * engine_force / vehicle_params_.mass;
+  state_.acceleration = forward_dir * engine_force / m;
+
+  double target_rpm = compute_rpm(state_.gear);
+  const double max_rpm_accel = (vehicle_params_.max_torque / vehicle_params_.engine_inertia) *
+                                total_ratio * (params_.dt / params_.substeps) * 60.0 / (2.0 * kPi);
+  const double max_rpm_decel = max_rpm_accel;
+
+  if (target_rpm > state_.rpm) {
+    state_.rpm = std::min(state_.rpm + max_rpm_accel, target_rpm);
+  } else {
+    state_.rpm = std::max(state_.rpm - max_rpm_decel, target_rpm);
+  }
+
+  if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+    state_.gear++;
+    target_rpm = compute_rpm(state_.gear);
+    state_.rpm = std::max(state_.rpm - max_rpm_accel * 2.0, target_rpm);
+  } else if (state_.rpm <= vehicle_params_.idle_rpm * 1.6 && state_.gear > 1) {
+    state_.gear--;
+    target_rpm = compute_rpm(state_.gear);
+    state_.rpm = std::min(state_.rpm + max_rpm_accel * 2.0, target_rpm);
+  }
 }
 
 // Aerodynamic model with dynamic ride height, pitch and roll sensitivity.
@@ -318,8 +344,8 @@ void Simulation::update_suspension() {
 }
 
 // Bicycle model tire forces with Pacejka lateral grip.
-// Tire loads come from the suspension model (update_suspension).
-void Simulation::update_tire_forces() {
+// Includes relaxation length, camber effect, and load sensitivity.
+void Simulation::update_tire_forces(double dt) {
   const double speed = state_.speed;
   if (speed < kEpsilon) return;
 
@@ -334,12 +360,22 @@ void Simulation::update_tire_forces() {
   const double a_r = vehicle_params_.cg_to_rear;
   const double delta = state_.steer_angle;
 
-  double alpha_f = delta - std::atan2(v_y + a_f * omega, v_x);
-  double alpha_r = -std::atan2(v_y - a_r * omega, v_x);
+  const double alpha_f_raw = delta - std::atan2(v_y + a_f * omega, v_x);
+  const double alpha_r_raw = -std::atan2(v_y - a_r * omega, v_x);
 
-  state_.front_slip_angle = alpha_f;
-  state_.rear_slip_angle = alpha_r;
-  state_.slip_angle = (std::abs(alpha_f) + std::abs(alpha_r)) * 0.5;
+  state_.front_slip_angle = alpha_f_raw;
+  state_.rear_slip_angle = alpha_r_raw;
+  state_.slip_angle = (std::abs(alpha_f_raw) + std::abs(alpha_r_raw)) * 0.5;
+
+  state_.front_slip_angle_relaxed = physics::relax_slip_angle(
+    alpha_f_raw, state_.front_slip_angle_relaxed, v_x,
+    vehicle_params_.tire_relaxation_length, dt);
+  state_.rear_slip_angle_relaxed = physics::relax_slip_angle(
+    alpha_r_raw, state_.rear_slip_angle_relaxed, v_x,
+    vehicle_params_.tire_relaxation_length, dt);
+
+  const double alpha_f = state_.front_slip_angle_relaxed;
+  const double alpha_r = state_.rear_slip_angle_relaxed;
 
   const double m = vehicle_params_.mass;
   const double g = kGravity;
@@ -363,15 +399,25 @@ void Simulation::update_tire_forces() {
   double fz_front = state_.fl_tire_load + state_.fr_tire_load;
   double fz_rear = state_.rl_tire_load + state_.rr_tire_load;
 
-  const double f_yf_raw = mu_front * fz_front * friction_factor * banking_factor *
+  const double eff_fz_front = physics::effective_tire_load(
+    fz_front, vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load);
+  const double eff_fz_rear = physics::effective_tire_load(
+    fz_rear, vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load);
+
+  const double camber_f = physics::camber_lateral_force(
+    state_.front_camber, fz_front, vehicle_params_.tire_camber_gain);
+  const double camber_r = physics::camber_lateral_force(
+    state_.rear_camber, fz_rear, vehicle_params_.tire_camber_gain);
+
+  const double f_yf_raw = mu_front * eff_fz_front * friction_factor * banking_factor *
     physics::pacejka_tire_model(alpha_f, 1.0,
       vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
-      vehicle_params_.tire_pacejka_e);
+      vehicle_params_.tire_pacejka_e) + camber_f;
 
-  const double f_yr_raw = mu_rear * fz_rear * friction_factor * banking_factor *
+  const double f_yr_raw = mu_rear * eff_fz_rear * friction_factor * banking_factor *
     physics::pacejka_tire_model(alpha_r, 1.0,
       vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
-      vehicle_params_.tire_pacejka_e);
+      vehicle_params_.tire_pacejka_e) + camber_r;
 
   const double f_y_total = f_yf_raw + f_yr_raw;
   const double f_y_max = (mu_front + mu_rear) * 0.5 * m * g * banking_factor * friction_factor;
@@ -442,7 +488,6 @@ void Simulation::integrate(double dt) {
   state_.position += state_.velocity * dt;
   state_.speed = new_long_speed;
   state_.lateral_velocity = new_lat_speed;
-  state_.acceleration = Vec2::Zero();
 
   if (track_) {
     state_.distance_along_track += new_long_speed * dt;

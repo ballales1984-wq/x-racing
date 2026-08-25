@@ -16,7 +16,7 @@ void UCarMovementComponent::BeginPlay()
 
 void UCarMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-    Super::TickComponent(DeltaTime, TickType, ThisToggleComponentTickFunction);
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (GetOwner() == nullptr) return;
 

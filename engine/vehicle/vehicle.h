@@ -24,6 +24,8 @@ struct VehicleParams {
   double idle_rpm = 800.0;               // rpm
   double max_rpm = 7500.0;               // rpm
   double final_drive = 3.5;              // final drive ratio
+  double engine_inertia = 0.3;           // kg*m^2, engine rotational inertia
+  double drivetrain_loss = 0.15;         // fraction, drivetrain power loss
   std::vector<double> gear_ratios = {3.5, 2.3, 1.6, 1.2, 0.9, 0.7};
   double drag_coefficient = 0.35;        // aerodynamic drag coefficient Cd
   double frontal_area = 2.0;             // m^2, frontal cross-section
@@ -41,12 +43,21 @@ struct VehicleParams {
   double tire_pacejka_b = 10.0;          // Pacejka stiffness factor
   double tire_pacejka_c = 1.9;           // Pacejka shape factor
   double tire_pacejka_e = 0.97;          // Pacejka curvature factor
+  double tire_relaxation_length = 0.5;   // m, slip angle relaxation length
+  double tire_camber_gain = 1.2;         // camber gain coefficient
+  double tire_load_sensitivity = 0.08;   // load sensitivity factor
+  double tire_max_reference_load = 4000.0; // N, reference load for sensitivity
   double front_spring_rate = 30000.0;    // N/m, front suspension stiffness
   double rear_spring_rate = 30000.0;     // N/m, rear suspension stiffness
   double front_damping = 2500.0;         // Ns/m, front suspension damping
   double rear_damping = 2500.0;          // Ns/m, rear suspension damping
   double ride_height = 0.15;             // m, static ride height
   double anti_roll_bar_stiffness = 15000.0; // Nm/rad, anti-roll bar
+  double max_body_roll = 0.15;            // rad, max body roll angle
+  double max_body_pitch = 0.1;            // rad, max body pitch angle
+  double roll_damping = 0.8;              // damping factor for body roll
+  double pitch_damping = 0.8;             // damping factor for body pitch
+  double camber_gain_per_roll = -2.5;     // camber change per rad of roll (negative = negative camber)
   double ambient_temperature = 300.0;    // K, track/air temperature
   double tire_optimal_temp = 350.0;      // K, optimal operating temperature
   double tire_temp_curve_width = 20.0;   // K, width of the grip-vs-temp bell curve
@@ -79,6 +90,10 @@ struct VehicleState {
   double slip_angle = 0.0;               // lateral slip angle, rad
   double front_slip_angle = 0.0;         // front axle slip angle, rad
   double rear_slip_angle = 0.0;          // rear axle slip angle, rad
+  double front_slip_angle_relaxed = 0.0; // rad, filtered front slip angle
+  double rear_slip_angle_relaxed = 0.0;  // rad, filtered rear slip angle
+  double front_camber = 0.0;             // rad, front wheel camber angle
+  double rear_camber = 0.0;              // rad, rear wheel camber angle
   double lateral_velocity = 0.0;         // m/s, velocity perpendicular to heading
   double speed = 0.0;                    // m/s, scalar speed
   double aero_lift = 0.0;                // N, aerodynamic lift force

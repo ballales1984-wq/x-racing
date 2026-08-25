@@ -128,7 +128,7 @@ void Renderer::draw_track(HDC hdc) {
   HPEN track_pen = CreatePen(PS_SOLID, 3, RGB(100, 100, 100));
   HPEN old_pen = (HPEN)SelectObject(hdc, track_pen);
 
-  for (int i = 0; i < static_cast<int>(length); i += step) {
+  for (int i = 0; i + step < static_cast<int>(length); i += step) {
     track::TrackPoint p0 = track->at(i);
     track::TrackPoint p1 = track->at(i + step);
     int x0 = static_cast<int>(p0.position.x() * config_.scale + config_.width / 2);

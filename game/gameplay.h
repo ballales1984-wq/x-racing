@@ -53,6 +53,7 @@ class Gameplay {
   std::unique_ptr<input::InputManager> input_manager_;
   GameplayState state_;
   double last_lap_distance_ = 0.0;
+  double last_sim_time_ = 0.0;
 };
 
 }

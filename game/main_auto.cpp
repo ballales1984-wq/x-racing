@@ -24,7 +24,7 @@ int main() {
   tel.clear();
 
   p0::input::AutoInputManager auto_input;
-  p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::AutoInputManager>());
+  p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::AutoInputManager>(std::move(auto_input)));
   gameplay.run();
 
   const auto& final_state = sim.state();

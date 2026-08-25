@@ -20,6 +20,8 @@ input::InputState Gameplay::poll_input() {
 // is stored along with its validity (invalidated by an off-track warning).
 void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
   const double track_len = sim_.track().length();
+  const double dt = result.time - last_sim_time_;
+  last_sim_time_ = result.time;
 
   if (result.state.lap > state_.current_lap) {
     if (state_.current_lap > 0) {
@@ -37,7 +39,7 @@ void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
     state_.off_track_warning = false;
   }
 
-  state_.current_lap_time += result.time;
+  state_.current_lap_time += dt;
   last_lap_distance_ = result.state.distance_along_track;
 }
 
@@ -98,6 +100,7 @@ void Gameplay::run() {
   state_.best_lap_time = 0.0;
   state_.current_lap_time = 0.0;
   last_lap_distance_ = 0.0;
+  last_sim_time_ = 0.0;
 
   vehicle::VehicleState initial;
   initial.position = sim_.track().get_start_position();
