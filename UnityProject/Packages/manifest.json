@@ -12,6 +12,7 @@
     "com.unity.modules.vehicles": "1.0.0",
     "com.unity.modules.video": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
-    "com.unity.render-pipelines.universal": "14.0.10"
+    "com.unity.render-pipelines.universal": "14.0.10",
+    "com.unity.ugui": "2.0.0"
   }
 }
