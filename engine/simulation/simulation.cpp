@@ -59,12 +59,14 @@ SimulationResult Simulation::step(const input::InputState& input) {
     state_.throttle = clamp(input.throttle, 0.0, 1.0);
     state_.brake = clamp(input.brake, 0.0, 1.0);
 
-    if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
-      state_.gear++;
-    }
-    if (input.downshift && state_.gear > 1) {
-      state_.gear--;
-    }
+  if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+    state_.gear++;
+  }
+  if (input.downshift && state_.gear > 1) {
+    state_.gear--;
+  }
+
+  state_.box_lane_entry_requested = input.enter_exit_box;
 
     update_engine_forces();
     update_aerodynamics();
@@ -82,11 +84,36 @@ SimulationResult Simulation::step(const input::InputState& input) {
   const double lateral = to_car.dot(tp.normal);
   const double track_half = tp.width / 2.0;
 
+  state_.in_box_lane = false;
+  state_.box_lane_speed = 0.0;
+
+  if (tp.has_box_lane) {
+    const double box_lane_half = tp.box_lane_width / 2.0;
+    const double box_center = -track_half - box_lane_half;
+    const double dist_to_box = std::abs(lateral - box_center);
+    const bool inside_box = lateral < -track_half && lateral > -track_half - tp.box_lane_width;
+
+    if (inside_box || (state_.in_box_lane && dist_to_box < box_lane_half + 1.0)) {
+      state_.in_box_lane = true;
+      state_.box_lane_speed = 22.2; // 80 km/h speed limit in box lane
+    }
+
+    if (state_.box_lane_entry_requested && !state_.in_box_lane && dist_to_box < box_lane_half + 2.0) {
+      state_.in_box_lane = true;
+      state_.box_lane_speed = 22.2;
+    } else   if (state_.box_lane_entry_requested && state_.in_box_lane && lateral > -track_half + 1.0) {
+      state_.in_box_lane = false;
+      state_.box_lane_speed = 0.0;
+    }
+  }
+
+  apply_box_lane_speed_limit();
+
   total_time_ += params_.dt;
   SimulationResult result;
   result.state = state_;
   result.time = total_time_;
-  result.off_track = std::abs(lateral) > track_half;
+  result.off_track = std::abs(lateral) > track_half && !state_.in_box_lane;
   result.collision = false;
 
   return result;
@@ -359,8 +386,9 @@ void Simulation::update_suspension() {
   state_.rear_camber = vehicle_params_.camber_gain_per_roll * state_.body_roll;
 }
 
-// Bicycle model tire forces with Pacejka lateral grip.
-// Includes relaxation length, camber effect, and load sensitivity.
+// Combined slip tire model with friction ellipse.
+// Calculates longitudinal and lateral forces for each tire considering
+// combined slip conditions (acceleration/braking while cornering).
 void Simulation::update_tire_forces(double dt) {
   const double speed = state_.speed;
   if (speed < kEpsilon) return;
@@ -376,6 +404,7 @@ void Simulation::update_tire_forces(double dt) {
   const double a_r = vehicle_params_.cg_to_rear;
   const double delta = state_.steer_angle;
 
+  // Kinematic slip angles (bicycle model)
   const double alpha_f_raw = delta - std::atan2(v_y + a_f * omega, v_x);
   const double alpha_r_raw = -std::atan2(v_y - a_r * omega, v_x);
 
@@ -383,6 +412,7 @@ void Simulation::update_tire_forces(double dt) {
   state_.rear_slip_angle = alpha_r_raw;
   state_.slip_angle = (std::abs(alpha_f_raw) + std::abs(alpha_r_raw)) * 0.5;
 
+  // Relaxed slip angles (transient behavior)
   state_.front_slip_angle_relaxed = physics::relax_slip_angle(
     alpha_f_raw, state_.front_slip_angle_relaxed, v_x,
     vehicle_params_.tire_relaxation_length, dt);
@@ -393,9 +423,7 @@ void Simulation::update_tire_forces(double dt) {
   const double alpha_f = state_.front_slip_angle_relaxed;
   const double alpha_r = state_.rear_slip_angle_relaxed;
 
-  const double m = vehicle_params_.mass;
-  const double g = kGravity;
-
+  // Grip factors (temperature, wear)
   auto tire_grip_factor = [](double temp, double wear, const vehicle::VehicleParams& p) {
     double temp_diff = temp - p.tire_optimal_temp;
     double temp_factor = std::exp(-0.5 * std::pow(temp_diff / p.tire_temp_curve_width, 2));
@@ -408,51 +436,89 @@ void Simulation::update_tire_forces(double dt) {
   double mu_front = vehicle_params_.tire_mu * grip_front;
   double mu_rear = vehicle_params_.tire_mu * grip_rear;
 
+  // Track conditions
   const auto& tp = track_->at(state_.distance_along_track);
   const double banking_factor = std::cos(tp.banking);
   const double friction_factor = tp.friction * state_.weather_grip_factor;
 
+  // Tire loads
   double fz_front = state_.fl_tire_load + state_.fr_tire_load;
   double fz_rear = state_.rl_tire_load + state_.rr_tire_load;
 
-  const double eff_fz_front = physics::effective_tire_load(
-    fz_front, vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load);
-  const double eff_fz_rear = physics::effective_tire_load(
-    fz_rear, vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load);
+  // Calculate longitudinal slip from engine/braking forces
+  // Approximate: use total longitudinal acceleration to estimate slip
+  const double a_long = state_.acceleration.dot(forward_dir);
+  const double engine_force = vehicle_params_.max_torque *
+    vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0, static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)] *
+    vehicle_params_.final_drive * (1.0 - vehicle_params_.drivetrain_loss) / vehicle_params_.wheel_radius;
+  const double drive_force = engine_force * state_.throttle;
+  const double brake_decel = vehicle_params_.max_brake_force * state_.brake;
 
-  const double camber_f = physics::camber_lateral_force(
-    state_.front_camber, fz_front, vehicle_params_.tire_camber_gain);
-  const double camber_r = physics::camber_lateral_force(
-    state_.rear_camber, fz_rear, vehicle_params_.tire_camber_gain);
+  // Longitudinal slip ratio (simplified: proportional to net longitudinal force)
+  const double net_long_force = drive_force - brake_decel;
+  const double sigma_x_rear = clamp(net_long_force / (mu_rear * fz_rear + kEpsilon) * 0.1, -1.0, 1.0);
+  const double sigma_x_front = clamp(-brake_decel * 0.5 / (mu_front * fz_front + kEpsilon) * 0.1, -1.0, 1.0);
 
-  const double f_yf_raw = mu_front * eff_fz_front * friction_factor * banking_factor *
-    physics::pacejka_tire_model(alpha_f, 1.0,
-      vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
-      vehicle_params_.tire_pacejka_e) + camber_f;
+  state_.slip_ratio = (std::abs(sigma_x_front) + std::abs(sigma_x_rear)) * 0.5;
 
-  const double f_yr_raw = mu_rear * eff_fz_rear * friction_factor * banking_factor *
-    physics::pacejka_tire_model(alpha_r, 1.0,
-      vehicle_params_.tire_pacejka_b, vehicle_params_.tire_pacejka_c,
-      vehicle_params_.tire_pacejka_e) + camber_r;
+  // Pacejka parameters
+  const double b_long = vehicle_params_.tire_pacejka_b * 0.8;
+  const double b_lat = vehicle_params_.tire_pacejka_b;
+  const double c = vehicle_params_.tire_pacejka_c;
+  const double e = vehicle_params_.tire_pacejka_e;
 
-  const double f_y_total = f_yf_raw + f_yr_raw;
-  const double f_y_max = (mu_front + mu_rear) * 0.5 * m * g * banking_factor * friction_factor;
+  // Compute tire forces for each corner
+  double fl_fx, fl_fy, fr_fx, fr_fy, rl_fx, rl_fy, rr_fx, rr_fy;
 
-  double f_yf = f_yf_raw;
-  double f_yr = f_yr_raw;
+  // Front tires (steered, braking)
+  physics::compute_tire_forces(sigma_x_front, alpha_f, state_.fl_tire_load,
+    state_.front_camber, vehicle_params_.tire_camber_gain,
+    mu_front * friction_factor * banking_factor,
+    mu_front * friction_factor * banking_factor,
+    b_long, b_lat, c, e, fl_fx, fl_fy);
 
-  if (std::abs(f_y_total) > f_y_max && std::abs(f_y_total) > kEpsilon) {
-    const double scale = f_y_max / std::abs(f_y_total);
-    f_yf *= scale;
-    f_yr *= scale;
-  }
+  physics::compute_tire_forces(sigma_x_front, alpha_f, state_.fr_tire_load,
+    state_.front_camber, vehicle_params_.tire_camber_gain,
+    mu_front * friction_factor * banking_factor,
+    mu_front * friction_factor * banking_factor,
+    b_long, b_lat, c, e, fr_fx, fr_fy);
 
-  const double m_z = a_f * f_yf - a_r * f_yr;
+  // Rear tires (driven, braking)
+  physics::compute_tire_forces(sigma_x_rear, alpha_r, state_.rl_tire_load,
+    state_.rear_camber, vehicle_params_.tire_camber_gain,
+    mu_rear * friction_factor * banking_factor,
+    mu_rear * friction_factor * banking_factor,
+    b_long, b_lat, c, e, rl_fx, rl_fy);
 
-  const Vec2 lateral_force = right_dir * (f_yf + f_yr);
-  state_.acceleration += lateral_force / m;
+  physics::compute_tire_forces(sigma_x_rear, alpha_r, state_.rr_tire_load,
+    state_.rear_camber, vehicle_params_.tire_camber_gain,
+    mu_rear * friction_factor * banking_factor,
+    mu_rear * friction_factor * banking_factor,
+    b_long, b_lat, c, e, rr_fx, rr_fy);
 
-  state_.yaw_rate = m_z / (m * (a_f * a_f + a_r * a_r) * 0.5);
+  // Sum forces in vehicle frame
+  const double total_fx = fl_fx + fr_fx + rl_fx + rr_fx;
+  const double total_fy = fl_fy + fr_fy + rl_fy + rr_fy;
+
+  // Transform to world frame
+  const Vec2 longitudinal_force = forward_dir * total_fx;
+  const double lateral_force = total_fy;
+  state_.acceleration += longitudinal_force / vehicle_params_.mass;
+  state_.acceleration += right_dir * (lateral_force / vehicle_params_.mass);
+
+  // Yaw moment from lateral forces and longitudinal differences
+  const double front_lateral = fl_fy + fr_fy;
+  const double rear_lateral = rl_fy + rr_fy;
+  const double yaw_from_lateral = a_f * front_lateral - a_r * rear_lateral;
+
+  // Yaw moment from longitudinal differences (torque vectoring effect)
+  const double left_long = fl_fx + rl_fx;
+  const double right_long = fr_fx + rr_fx;
+  const double yaw_from_long = (right_long - left_long) * vehicle_params_.track_width * 0.5;
+
+  const double total_yaw_moment = yaw_from_lateral + yaw_from_long;
+  const double yaw_inertia = vehicle_params_.mass * (a_f * a_f + a_r * a_r) * 0.5;
+  state_.yaw_rate = total_yaw_moment / yaw_inertia;
 }
 
 // Simple braking model: constant deceleration proportional to brake pedal.
@@ -507,6 +573,14 @@ void Simulation::integrate(double dt) {
       state_.distance_along_track -= track_->length();
       state_.lap += 1;
     }
+  }
+}
+
+void Simulation::apply_box_lane_speed_limit() {
+  if (state_.in_box_lane && state_.speed > state_.box_lane_speed) {
+    state_.speed = state_.box_lane_speed;
+    const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+    state_.velocity = forward_dir * state_.speed;
   }
 }
 
