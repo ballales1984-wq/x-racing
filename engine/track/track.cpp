@@ -27,6 +27,7 @@ void Track::build_default_track() {
   const int segmentsPerCurve = 75;
 
   // Segment 1: straight section along the +x axis (0% .. 25%).
+  // Box lane runs parallel on the left side of the track.
   for (int i = 0; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
     Vec2 pos(t * straightLength, 0.0);
@@ -41,6 +42,8 @@ void Track::build_default_track() {
     point.friction = default_friction_;
     point.curvature = 0.0;
     point.banking = 0.0;
+    point.has_box_lane = true;
+    point.box_lane_width = 3.5;
     points_.push_back(point);
   }
 
@@ -146,6 +149,16 @@ TrackPoint Track::at(double distance) const {
   return interpolate(distance);
 }
 
+bool Track::has_box_lane_at(double distance) const {
+  const auto tp = at(distance);
+  return tp.has_box_lane;
+}
+
+double Track::box_lane_width_at(double distance) const {
+  const auto tp = at(distance);
+  return tp.box_lane_width;
+}
+
 // Linear interpolation between two adjacent track points
 TrackPoint Track::interpolate(double distance) const {
   const double step = total_length_ / (points_.size() - 1);
@@ -165,6 +178,8 @@ TrackPoint Track::interpolate(double distance) const {
   result.banking = lerp(points_[i0].banking, points_[i1].banking, frac);
   result.friction = lerp(points_[i0].friction, points_[i1].friction, frac);
   result.distance = distance;
+  result.has_box_lane = points_[i0].has_box_lane && points_[i1].has_box_lane;
+  result.box_lane_width = lerp(points_[i0].box_lane_width, points_[i1].box_lane_width, frac);
 
   return result;
 }

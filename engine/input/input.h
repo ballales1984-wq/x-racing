@@ -17,6 +17,7 @@ struct InputState {
   bool upshift = false;
   bool downshift = false;
   bool reset = false;
+  bool enter_exit_box = false;
 };
 
 }

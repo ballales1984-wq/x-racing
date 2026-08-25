@@ -111,6 +111,9 @@ struct VehicleState {
   double rr_tire_load = 0.0;             // N, rear-right tire normal force
   double body_roll = 0.0;                // rad, body roll angle
   double body_pitch = 0.0;               // rad, body pitch angle
+  bool in_box_lane = false;              // true if vehicle is currently in the box/pit lane
+  bool box_lane_entry_requested = false; // true if vehicle requested box lane entry
+  double box_lane_speed = 0.0;           // m/s, speed limit in box lane
   double weather_grip_factor = 1.0;       // [-], weather-based grip reduction
   double track_temp = 305.0;             // K, local track temperature
 };

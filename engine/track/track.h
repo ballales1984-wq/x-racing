@@ -16,6 +16,9 @@ struct TrackPoint {
   double banking = 0.0;                  // rad, banking angle
   double friction = 1.0;                 // [-], local friction modifier
   double distance = 0.0;                 // m, cumulative distance from start
+
+  bool has_box_lane = false;             // true if a box/pit lane exists here
+  double box_lane_width = 3.5;           // m, width of the box lane
 };
 
 // Parameters for track generation
@@ -39,6 +42,9 @@ class Track {
   Vec2 get_start_position() const;
   double get_start_heading() const;
   double length() const { return total_length_; }
+
+  bool has_box_lane_at(double distance) const;
+  double box_lane_width_at(double distance) const;
 
  private:
   void build_default_track();

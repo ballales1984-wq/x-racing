@@ -429,3 +429,80 @@ TEST(Weather, TrackTemperatureChanges) {
 
   EXPECT_GT(sim.state().track_temp, 300.0);
 }
+
+// Box lane exists on the main straight
+TEST(BoxLane, ExistsOnStraight) {
+  track::Track track;
+  EXPECT_TRUE(track.has_box_lane_at(0.0));
+  EXPECT_TRUE(track.has_box_lane_at(100.0));
+  EXPECT_TRUE(track.has_box_lane_at(380.0));
+}
+
+// Box lane does not exist on corners
+TEST(BoxLane, AbsentOnCorners) {
+  track::Track track;
+  const double straight_length = 765.0;
+  EXPECT_FALSE(track.has_box_lane_at(straight_length + 10.0));
+  EXPECT_FALSE(track.has_box_lane_at(track.length() * 0.75 + 10.0));
+}
+
+// Vehicle can enter box lane on straight
+TEST(BoxLane, VehicleEntersBoxLane) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 10.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+  input.enter_exit_box = true;
+
+  const auto& tp = track.at(0.0);
+  const double box_left = -tp.width / 2.0 - tp.box_lane_width;
+  const double box_right = -tp.width / 2.0;
+  initial.position = tp.position + tp.normal * ((box_left + box_right) / 2.0);
+  sim.reset(initial);
+
+  for (int i = 0; i < 60; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_TRUE(sim.state().in_box_lane);
+  EXPECT_DOUBLE_EQ(sim.state().box_lane_speed, 22.2);
+}
+
+// Speed is limited in box lane
+TEST(BoxLane, SpeedLimitedInBoxLane) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+  input.enter_exit_box = true;
+
+  const auto& tp = track.at(0.0);
+  const double box_left = -tp.width / 2.0 - tp.box_lane_width;
+  const double box_right = -tp.width / 2.0;
+  initial.position = tp.position + tp.normal * ((box_left + box_right) / 2.0);
+  sim.reset(initial);
+
+  for (int i = 0; i < 120; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_TRUE(sim.state().in_box_lane);
+  EXPECT_LE(sim.state().speed, 22.2);
+}

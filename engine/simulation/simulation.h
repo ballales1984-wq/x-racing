@@ -51,6 +51,7 @@ class Simulation {
   void update_braking();                  // brake deceleration
   void update_steering();                 // bicycle model slip angles + lateral forces
   void integrate(double dt);              // velocity-space integration
+  void apply_box_lane_speed_limit();      // enforce box lane speed limit
 
   SimulationParams params_;
   const track::Track* track_ = nullptr;
