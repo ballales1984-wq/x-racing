@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Project0.Unity
 {
@@ -26,10 +27,10 @@ namespace Project0.Unity
             Canvas canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvasObj.AddComponent<CanvasScaler>();
-            canvasObj.AddComponent<GraphicRaycaster();
+            canvasObj.AddComponent<GraphicRaycaster>();
 
             // Create event system if not present
-            if (FindObjectOfType<EventSystem>() == null)
+            if (FindFirstObjectByType<EventSystem>() == null)
             {
                 GameObject eventSystem = new GameObject("EventSystem");
                 eventSystem.AddComponent<EventSystem>();
