@@ -20,4 +20,7 @@ if(PROJECT0_BUILD_GAMEPLAY)
 
   add_executable(auto_drive main_auto.cpp gameplay.cpp)
   target_link_libraries(auto_drive PRIVATE project0_gameplay)
+
+  add_executable(gen_telemetry gen_telemetry.cpp gameplay.cpp)
+  target_link_libraries(gen_telemetry PRIVATE project0_gameplay)
 endif()
