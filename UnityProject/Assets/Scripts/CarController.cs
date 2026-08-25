@@ -51,12 +51,22 @@ namespace Project0.Unity
         private float currentHeading = 0f;
         private float cameraRotationVelocity;
 
+        // Sim Plugin state (accessible by HUD)
+        public float currentRpm = 0f;
+        public int currentGear = 1;
+        public float currentSteerAngle = 0f;
+
         void Update()
         {
             if (Input.GetKeyDown(toggleCameraKey))
             {
                 firstPersonView = !firstPersonView;
                 UpdateCameraMode();
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                ResetCarPosition();
             }
 
             if (useSimPlugin)
@@ -75,6 +85,16 @@ namespace Project0.Unity
             UpdateCamera();
 
             CheckStartLineCrossing();
+        }
+
+        void ResetCarPosition()
+        {
+            transform.position = startLinePosition;
+            transform.eulerAngles = Vector3.zero;
+            currentSpeed = 0f;
+            currentHeading = 0f;
+            currentRpm = 800f;
+            currentGear = 1;
         }
 
         void UpdateCameraMode()
@@ -127,6 +147,13 @@ namespace Project0.Unity
             transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
             float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 90f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
+
+            // Store state for HUD
+            currentSpeed = (float)state.speed;
+            currentRpm = (float)state.rpm;
+            currentGear = state.gear;
+            currentSteerAngle = (float)state.steer;
+            currentHeading = (float)state.heading;
         }
 
         void UpdateDirectControl()
@@ -190,6 +217,12 @@ namespace Project0.Unity
 
             transform.position += move;
             transform.eulerAngles = new Vector3(0f, currentHeading * Mathf.Rad2Deg, 0f);
+
+            // Simulate RPM and gear for HUD
+            float speedFrac = Mathf.Abs(currentSpeed) / maxSpeed;
+            currentRpm = 800f + speedFrac * 7000f;
+            currentGear = Mathf.Clamp(Mathf.FloorToInt(speedFrac * 6f) + 1, 1, 6);
+            currentSteerAngle = steer * maxSteerAngle * Mathf.Deg2Rad;
         }
 
         void UpdateTelemetryPlayback()
@@ -360,11 +393,11 @@ namespace Project0.Unity
         {
             if (useSimPlugin)
             {
-                return $"Sim Plugin | Speed={currentSpeed:F1} km/h";
+                return $"Sim Plugin | Speed={currentSpeed * 3.6f:F1} km/h | Gear={currentGear} | RPM={currentRpm:F0}";
             }
             if (useDirectControl)
             {
-                return $"Direct Control | Speed={currentSpeed:F1} km/h | Heading={currentHeading * Mathf.Rad2Deg:F1} deg";
+                return $"Direct Control | Speed={currentSpeed * 3.6f:F1} km/h | Gear={currentGear} | RPM={currentRpm:F0}";
             }
             if (!loaded) return $"Not loaded. {lastError}";
             return $"Frame {currentIndex}/{frames.Length} | t={elapsedTime:F2}s | Speed={(frames[currentIndex].speed * 3.6f):F1} km/h";

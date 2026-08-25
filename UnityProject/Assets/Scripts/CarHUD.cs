@@ -12,6 +12,8 @@ namespace Project0.Unity
         public Text gearText;
         public Text lapTimeText;
         public Text bestLapText;
+        public Text lapCountText;
+        public Text slipText;
 
         [Header("Settings")]
         public float updateInterval = 0.1f;
@@ -20,6 +22,7 @@ namespace Project0.Unity
         private float _currentLapTime;
         private float _bestLapTime = float.MaxValue;
         private bool _lapStarted = false;
+        private int _lapCount = 0;
 
         void Update()
         {
@@ -48,15 +51,13 @@ namespace Project0.Unity
 
             if (rpmText != null)
             {
-                float rpm = carController.currentSpeed > 0.1f ? 
-                    800f + (carController.currentSpeed / carController.maxSpeed) * 7000f : 
-                    800f;
-                rpmText.text = $"{(int)rpm} RPM";
+                rpmText.text = $"{(int)carController.currentRpm} RPM";
             }
 
             if (gearText != null)
             {
-                gearText.text = carController.currentSpeed > 0.1f ? "D" : "N";
+                int gear = carController.currentGear;
+                gearText.text = gear > 0 ? gear.ToString() : (carController.currentSpeed > 0.1f ? "R" : "N");
             }
 
             if (lapTimeText != null)
@@ -68,6 +69,16 @@ namespace Project0.Unity
             {
                 bestLapText.text = _bestLapTime < float.MaxValue ? FormatTime(_bestLapTime) : "--:--";
             }
+
+            if (lapCountText != null)
+            {
+                lapCountText.text = $"Lap {_lapCount}";
+            }
+
+            if (slipText != null)
+            {
+                slipText.text = $"Steer: {carController.currentSteerAngle * Mathf.Rad2Deg:F1}°";
+            }
         }
 
         public void StartLap()
@@ -78,6 +89,7 @@ namespace Project0.Unity
                 {
                     _bestLapTime = _currentLapTime;
                 }
+                _lapCount++;
             }
             _currentLapTime = 0f;
             _lapStarted = true;
