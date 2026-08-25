@@ -58,8 +58,8 @@ inline void combined_slip_force(double sigma_x, double alpha, double fz,
   const double fx_pure = mu_x * fz * pacejka_tire_model(sigma_x, 1.0, b_long, c, e);
   const double fy_pure = mu_y * fz * pacejka_tire_model(alpha, 1.0, b_lat, c, e);
 
-  // Friction ellipse combination
-  // (fx/fx_max)^2 + (fy/fy_max)^2 <= 1
+  // Friction ellipse combination with extended grip
+  // Using a weighted ellipse that allows more combined grip than pure circle
   const double fx_max = std::abs(mu_x * fz);
   const double fy_max = std::abs(mu_y * fz);
 
@@ -69,16 +69,18 @@ inline void combined_slip_force(double sigma_x, double alpha, double fz,
     return;
   }
 
-  // Normalized forces
+  // Normalized forces with weighting (longitudinal gets more priority)
   const double nx = fx_pure / fx_max;
   const double ny = fy_pure / fy_max;
 
-  // Check if combined slip exceeds friction ellipse
+  // Weighted friction ellipse: (nx)^2 + (ny)^2 <= grip_factor
+  // grip_factor > 1.0 allows more combined grip
+  const double grip_factor = 1.2;
   const double combined = std::sqrt(nx * nx + ny * ny);
 
-  if (combined > 1.0) {
+  if (combined > grip_factor) {
     // Scale down to friction ellipse boundary
-    const double scale = 1.0 / combined;
+    const double scale = grip_factor / combined;
     fx = fx_pure * scale;
     fy = fy_pure * scale;
   } else {

@@ -454,10 +454,10 @@ void Simulation::update_tire_forces(double dt) {
   const double drive_force = engine_force * state_.throttle;
   const double brake_decel = vehicle_params_.max_brake_force * state_.brake;
 
-  // Longitudinal slip ratio (simplified: proportional to net longitudinal force)
+  // Longitudinal slip ratio (scaled down for realistic behavior)
   const double net_long_force = drive_force - brake_decel;
-  const double sigma_x_rear = clamp(net_long_force / (mu_rear * fz_rear + kEpsilon) * 0.1, -1.0, 1.0);
-  const double sigma_x_front = clamp(-brake_decel * 0.5 / (mu_front * fz_front + kEpsilon) * 0.1, -1.0, 1.0);
+  const double sigma_x_rear = clamp(net_long_force / (mu_rear * fz_rear + kEpsilon) * 0.05, -0.3, 0.3);
+  const double sigma_x_front = clamp(-brake_decel * 0.3 / (mu_front * fz_front + kEpsilon) * 0.05, -0.3, 0.3);
 
   state_.slip_ratio = (std::abs(sigma_x_front) + std::abs(sigma_x_rear)) * 0.5;
 
