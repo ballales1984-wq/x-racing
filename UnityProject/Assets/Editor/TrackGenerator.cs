@@ -134,16 +134,10 @@ namespace Project0.Unity.Setup
 
         private static Material CreateDefaultMaterial()
         {
-            Shader urpShader = Shader.Find("Universal Render Pipeline/Lit");
-            if (urpShader != null)
+            Shader shader = Shader.Find("Standard");
+            if (shader != null)
             {
-                return new Material(urpShader);
-            }
-
-            Shader stdShader = Shader.Find("Standard");
-            if (stdShader != null)
-            {
-                return new Material(stdShader);
+                return new Material(shader);
             }
 
             return new Material(Shader.Find("Hidden/InternalErrorShader"));
