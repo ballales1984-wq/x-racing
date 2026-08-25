@@ -137,7 +137,7 @@ TEST(Grip, SteeringProducesSlipAngles) {
     sim.step(input);
   }
 
-  EXPECT_NEAR(sim.state().steer_angle, 0.5 * 35.0 * kDegToRad, 0.01);
+  EXPECT_NEAR(sim.state().steer_angle, 0.5 * vehicle::VehicleParams{}.max_steer_angle, 0.01);
   EXPECT_GT(std::abs(sim.state().front_slip_angle), 0.01);
 }
 
@@ -505,4 +505,78 @@ TEST(BoxLane, SpeedLimitedInBoxLane) {
 
   EXPECT_TRUE(sim.state().in_box_lane);
   EXPECT_LE(sim.state().speed, 22.2);
+}
+
+// M5: Surface friction coefficients are distinct per surface type
+TEST(TrackCoefficient, FrictionValuesAreDistinct) {
+  using namespace p0::track;
+  EXPECT_GT(friction_for_surface(SurfaceType::Asphalt), friction_for_surface(SurfaceType::OldAsphalt));
+  EXPECT_GT(friction_for_surface(SurfaceType::OldAsphalt), friction_for_surface(SurfaceType::Kerb));
+  EXPECT_GT(friction_for_surface(SurfaceType::Kerb), friction_for_surface(SurfaceType::Dirt));
+  EXPECT_GT(friction_for_surface(SurfaceType::Dirt), friction_for_surface(SurfaceType::Grass));
+  EXPECT_GT(friction_for_surface(SurfaceType::Gravel), friction_for_surface(SurfaceType::Grass));
+  EXPECT_GT(friction_for_surface(SurfaceType::Gravel), friction_for_surface(SurfaceType::Sand));
+  EXPECT_DOUBLE_EQ(friction_for_surface(SurfaceType::Asphalt), 1.0);
+  EXPECT_DOUBLE_EQ(friction_for_surface(SurfaceType::WetAsphalt), 0.7);
+  EXPECT_DOUBLE_EQ(friction_for_surface(SurfaceType::Sand), 0.25);
+}
+
+// M5: Default track has per-segment surface variation
+TEST(TrackCoefficient, DefaultTrackHasSurfaceVariation) {
+  track::Track track;
+  EXPECT_EQ(track.surface_type_at(100.0), track::SurfaceType::Asphalt);
+  EXPECT_EQ(track.surface_type_at(800.0), track::SurfaceType::Asphalt);
+  EXPECT_EQ(track.surface_type_at(1100.0), track::SurfaceType::OldAsphalt);
+  EXPECT_EQ(track.surface_type_at(1500.0), track::SurfaceType::OldAsphalt);
+  EXPECT_EQ(track.surface_type_at(1850.0), track::SurfaceType::Gravel);
+  EXPECT_EQ(track.surface_type_at(1950.0), track::SurfaceType::Gravel);
+}
+
+// M5: set_surface_at changes surface type and friction at a distance
+TEST(TrackCoefficient, SetSurfaceAtModifiesTrack) {
+  track::Track track;
+  const double len = track.length();
+  const double mid = len * 0.6;
+
+  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::OldAsphalt);
+  track.set_surface_at(mid, track::SurfaceType::WetAsphalt);
+  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::WetAsphalt);
+  EXPECT_NEAR(track.at(mid).friction, 0.7, 1e-9);
+}
+
+// M5: Higher track friction produces more acceleration on straight
+TEST(TrackCoefficient, HigherFrictionProducesMoreAcceleration) {
+  track::TrackParams params;
+  params.default_friction = 1.0;
+  track::Track track_high(params);
+
+  params.default_friction = 0.5;
+  track::Track track_low(params);
+
+  simulation::Simulation sim_high;
+  sim_high.set_track(track_high);
+
+  simulation::Simulation sim_low;
+  sim_low.set_track(track_low);
+
+  vehicle::VehicleState initial;
+  initial.position = track_high.get_start_position();
+  initial.heading = track_high.get_start_heading();
+  initial.speed = 10.0;
+
+  sim_high.reset(initial);
+  vehicle::VehicleState initial_low = initial;
+  initial_low.position = track_low.get_start_position();
+  initial_low.heading = track_low.get_start_heading();
+  sim_low.reset(initial_low);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  for (int i = 0; i < 300; ++i) {
+    sim_high.step(input);
+    sim_low.step(input);
+  }
+
+  EXPECT_GT(sim_high.state().speed, sim_low.state().speed);
 }

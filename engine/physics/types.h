@@ -29,4 +29,18 @@ inline double cross2(const Vec2& a, const Vec2& b) {
   return a.x() * b.y() - a.y() * b.x();
 }
 
+// Centripetal force directed toward the center of curvature.
+// For a path with signed curvature kappa and track normal n (pointing to the
+// right of travel), the force vector is: -m * v^2 * kappa * n
+inline Vec2 centripetal_force(double mass, double speed, double curvature, const Vec2& normal) {
+  if (speed < kEpsilon) return Vec2::Zero();
+  return -mass * speed * speed * curvature * normal;
+}
+
+// Centrifugal force (inertial reaction, opposite to centripetal).
+inline Vec2 centrifugal_force(double mass, double speed, double curvature, const Vec2& normal) {
+  if (speed < kEpsilon) return Vec2::Zero();
+  return mass * speed * speed * curvature * normal;
+}
+
 }

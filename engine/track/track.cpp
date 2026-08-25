@@ -11,6 +11,7 @@ Track::Track(const TrackParams& params) {
   total_length_ = params.total_length;
   default_width_ = params.default_width;
   default_friction_ = params.default_friction;
+  default_surface_ = params.default_surface;
   build_default_track();
 }
 
@@ -40,6 +41,7 @@ void Track::build_default_track() {
     point.normal = normal;
     point.width = default_width_;
     point.friction = default_friction_;
+    point.surface_type = SurfaceType::Asphalt;
     point.curvature = 0.0;
     point.banking = 0.0;
     point.has_box_lane = true;
@@ -61,6 +63,7 @@ void Track::build_default_track() {
     point.normal = normal;
     point.width = default_width_;
     point.friction = default_friction_;
+    point.surface_type = SurfaceType::Asphalt;
     point.curvature = 0.0;
     point.banking = 0.0;
     points_.push_back(point);
@@ -79,6 +82,7 @@ void Track::build_default_track() {
     point.normal = normal;
     point.width = default_width_;
     point.friction = default_friction_;
+    point.surface_type = SurfaceType::OldAsphalt;
     point.curvature = 0.0;
     point.banking = 0.0;
     points_.push_back(point);
@@ -98,6 +102,7 @@ void Track::build_default_track() {
     point.normal = normal;
     point.width = default_width_;
     point.friction = default_friction_;
+    point.surface_type = SurfaceType::Gravel;
     point.curvature = 0.0;
     point.banking = 0.0;
     points_.push_back(point);
@@ -159,6 +164,42 @@ double Track::box_lane_width_at(double distance) const {
   return tp.box_lane_width;
 }
 
+SurfaceType Track::surface_type_at(double distance) const {
+  if (points_.empty()) return default_surface_;
+
+  distance = std::fmod(distance, total_length_);
+  if (distance < 0.0) distance += total_length_;
+
+  const double step = total_length_ / (points_.size() - 1);
+  const double raw_index = distance / step;
+  const int index = static_cast<int>(std::floor(raw_index));
+
+  const int i0 = std::clamp(index, 0, static_cast<int>(points_.size()) - 1);
+  const int i1 = std::clamp(index + 1, 0, static_cast<int>(points_.size()) - 1);
+
+  const double frac = raw_index - index;
+  return (frac < 0.5) ? points_[i0].surface_type : points_[i1].surface_type;
+}
+
+void Track::set_surface_at(double distance, SurfaceType type) {
+  if (points_.empty()) return;
+
+  distance = std::fmod(distance, total_length_);
+  if (distance < 0.0) distance += total_length_;
+
+  const double step = total_length_ / (points_.size() - 1);
+  const double raw_index = distance / step;
+  const int index = static_cast<int>(std::floor(raw_index));
+
+  const int i0 = std::clamp(index, 0, static_cast<int>(points_.size()) - 1);
+  const int i1 = std::clamp(index + 1, 0, static_cast<int>(points_.size()) - 1);
+
+  const double frac = raw_index - index;
+  const int target = (frac < 0.5) ? i0 : i1;
+  points_[target].surface_type = type;
+  points_[target].friction = friction_for_surface(type);
+}
+
 // Linear interpolation between two adjacent track points
 TrackPoint Track::interpolate(double distance) const {
   const double step = total_length_ / (points_.size() - 1);
@@ -177,6 +218,7 @@ TrackPoint Track::interpolate(double distance) const {
   result.width = lerp(points_[i0].width, points_[i1].width, frac);
   result.banking = lerp(points_[i0].banking, points_[i1].banking, frac);
   result.friction = lerp(points_[i0].friction, points_[i1].friction, frac);
+  result.surface_type = (frac < 0.5) ? points_[i0].surface_type : points_[i1].surface_type;
   result.distance = distance;
   result.has_box_lane = points_[i0].has_box_lane && points_[i1].has_box_lane;
   result.box_lane_width = lerp(points_[i0].box_lane_width, points_[i1].box_lane_width, frac);
