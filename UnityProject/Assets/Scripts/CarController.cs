@@ -41,7 +41,7 @@ namespace Project0.Unity
         private string lastError = "";
         private Vector3 cameraVelocity;
 
-        private float currentSpeed = 0f;
+        public float currentSpeed = 0f;
         private float currentHeading = 0f;
         private float cameraRotationVelocity;
 

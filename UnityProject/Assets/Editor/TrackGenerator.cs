@@ -27,26 +27,66 @@ namespace Project0.Unity.Setup
                 meshRenderer = trackObj.AddComponent<MeshRenderer>();
             }
 
+            Material CreateDefaultMaterial()
+            {
+                Material mat = null;
+                
+                try
+                {
+                    var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
+                    if (defaultMat != null)
+                    {
+                        mat = new Material(defaultMat);
+                    }
+                }
+                catch (System.Exception)
+                {
+                    mat = null;
+                }
+                
+                if (mat == null)
+                {
+                    var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+                    if (rp == null)
+                    {
+                        rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+                    }
+                    if (rp != null && rp.defaultMaterial != null)
+                    {
+                        mat = new Material(rp.defaultMaterial);
+                    }
+                }
+                
+                if (mat == null)
+                {
+                    Shader shader = Shader.Find("testshader");
+                    if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (shader == null) shader = Shader.Find("Standard");
+                    if (shader == null) shader = Shader.Find("Sprites/Default");
+                    if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
+                    if (shader != null)
+                    {
+                        mat = new Material(shader);
+                    }
+                }
+                
+                return mat;
+            }
+
             if (meshRenderer.sharedMaterial == null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null)
-                {
-                    shader = Shader.Find("Standard");
-                }
-                if (shader == null)
-                {
-                    shader = Shader.Find("Sprites/Default");
-                }
-                meshRenderer.sharedMaterial = new Material(shader);
+                meshRenderer.sharedMaterial = CreateDefaultMaterial();
             }
-            meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
+            if (meshRenderer.sharedMaterial != null)
+            {
+                meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
+            }
 
             float normalWidth = 12f;
             float mainStraightWidth = 16f;
             var points = GenerateTrackPoints(out var widths);
 
-            var oldBorders = GameObject.FindObjectsOfType<GameObject>();
+            var oldBorders = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
             foreach (var border in oldBorders)
             {
                 if (border.name.Contains("TrackBorder"))
@@ -55,7 +95,17 @@ namespace Project0.Unity.Setup
                 }
             }
 
+            var oldGrass = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            foreach (var g in oldGrass)
+            {
+                if (g.name == "Grass")
+                {
+                    UnityEngine.Object.DestroyImmediate(g);
+                }
+            }
+
             CreateTrackBorders(points, widths, normalWidth, mainStraightWidth);
+            CreateGrassArea();
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -78,6 +128,83 @@ namespace Project0.Unity.Setup
             collider.sharedMesh = trackMesh;
 
             Debug.Log($"Track generated: {points.Count} points, length ~{CalculateTrackLength(points):F0}m");
+        }
+
+        private static Material CreateDefaultMaterial()
+        {
+            Material mat = null;
+            
+            try
+            {
+                var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
+                if (defaultMat != null)
+                {
+                    mat = new Material(defaultMat);
+                }
+            }
+            catch (System.Exception)
+            {
+                mat = null;
+            }
+            
+            if (mat == null)
+            {
+                var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+                if (rp == null)
+                {
+                    rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+                }
+                if (rp != null && rp.defaultMaterial != null)
+                {
+                    mat = new Material(rp.defaultMaterial);
+                }
+            }
+            
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("testshader");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Standard");
+                if (shader == null) shader = Shader.Find("Sprites/Default");
+                if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
+                if (shader != null)
+                {
+                    mat = new Material(shader);
+                }
+            }
+            
+            return mat;
+        }
+
+        private static void CreateGrassArea()
+        {
+            var grassObj = new GameObject("Grass");
+            var meshFilter = grassObj.AddComponent<MeshFilter>();
+            var meshRenderer = grassObj.AddComponent<MeshRenderer>();
+            
+            var mesh = new Mesh();
+            var vertices = new Vector3[]
+            {
+                new Vector3(-1000, -0.1f, -1000),
+                new Vector3(1000, -0.1f, -1000),
+                new Vector3(-1000, -0.1f, 1000),
+                new Vector3(1000, -0.1f, 1000)
+            };
+            var triangles = new int[] { 0, 2, 1, 1, 2, 3 };
+            
+            mesh.vertices = vertices;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            
+            meshFilter.mesh = mesh;
+            
+            var mat = CreateDefaultMaterial();
+            if (mat != null)
+            {
+                mat.color = new Color(0.2f, 0.6f, 0.2f);
+                meshRenderer.sharedMaterial = mat;
+            }
         }
 
         private static float CalculateTrackLength(System.Collections.Generic.List<Vector3> points)
@@ -197,12 +324,11 @@ namespace Project0.Unity.Setup
 
         private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths, float normalWidth, float mainStraightWidth)
         {
-            var borderMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            if (borderMaterial.shader == null)
+            Material borderMat = CreateDefaultMaterial();
+            if (borderMat != null)
             {
-                borderMaterial = new Material(Shader.Find("Standard"));
+                borderMat.color = new Color(0.8f, 0.2f, 0f);
             }
-            borderMaterial.color = new Color(0.8f, 0.2f, 0f);
 
             var leftVertices = new System.Collections.Generic.List<Vector3>();
             var rightVertices = new System.Collections.Generic.List<Vector3>();
@@ -256,8 +382,8 @@ namespace Project0.Unity.Setup
                 rightTriangles.Add(rightBase + 3);
             }
 
-            CreateBorderMesh("TrackBorderLeft", leftVertices, leftTriangles, borderMaterial);
-            CreateBorderMesh("TrackBorderRight", rightVertices, rightTriangles, borderMaterial);
+            CreateBorderMesh("TrackBorderLeft", leftVertices, leftTriangles, borderMat);
+            CreateBorderMesh("TrackBorderRight", rightVertices, rightTriangles, borderMat);
         }
 
         private static void CreateBorderMesh(string name, System.Collections.Generic.List<Vector3> vertices, System.Collections.Generic.List<int> triangles, Material material)

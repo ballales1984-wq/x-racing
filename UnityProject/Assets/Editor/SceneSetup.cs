@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEditor.SceneManagement;
+using UnityEngine.UI;
 
 namespace Project0.Unity.Setup
 {
@@ -19,6 +20,22 @@ namespace Project0.Unity.Setup
             car.transform.position = new Vector3(0f, 0.9f, 0f);
             car.transform.localScale = new Vector3(1.9f, 1.1f, 5.3f);
             car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
+
+            var carRenderer = car.GetComponent<Renderer>();
+            if (carRenderer != null)
+            {
+                try
+                {
+                    var carMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/CarMaterial.mat");
+                    if (carMat != null)
+                    {
+                        carRenderer.sharedMaterial = carMat;
+                    }
+                }
+                catch (System.Exception)
+                {
+                }
+            }
 
             var carController = car.GetComponent<CarController>();
             if (carController == null)
@@ -89,7 +106,7 @@ namespace Project0.Unity.Setup
             go.transform.SetParent(parent, false);
             var text = go.AddComponent<Text>();
             text.text = defaultText;
-            text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = 24;
             text.color = Color.white;
             text.alignment = TextAnchor.MiddleLeft;
@@ -98,7 +115,6 @@ namespace Project0.Unity.Setup
             rect.anchorMax = new Vector2(1, 1);
             rect.offsetMin = new Vector2(anchoredPosition.x, anchoredPosition.y - 15);
             rect.offsetMax = new Vector2(anchoredPosition.x + 200, anchoredPosition.y + 15);
-        }
         }
     }
 }

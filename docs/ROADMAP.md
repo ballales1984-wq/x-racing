@@ -22,6 +22,7 @@
 | Gameplay (input, lap timing) | ✅ |
 | Unit tests (18 GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ⏳ |
+| Unity editor integration | ⏳ |
 | AI (trajectory, opponents) | ⏳ |
 
 ---
@@ -209,6 +210,17 @@ x-racing/
 │   └── main.cpp              - Entry point
 ├── renderer/
 │   └── renderer.h/.cpp       - Unity / renderer integration
+├── UnityProject/
+│   ├── Assets/
+│   │   ├── Scripts/          - CarController, CarHUD, SimPlugin
+│   │   ├── Editor/           - TrackGenerator, SceneSetup
+│   │   ├── Scenes/           - MainScene.unity
+│   │   ├── Materials/        - CarMaterial, GroundMaterial
+│   │   ├── Plugins/x86_64/   - sim_plugin.dll
+│   │   └── Settings/         - URP asset, renderer data
+│   ├── Packages/
+│   │   └── manifest.json
+│   └── ProjectSettings/
 ├── tests/
 │   ├── simulation_test.cpp   - Physics tests
 │   ├── track_test.cpp        - Track tests

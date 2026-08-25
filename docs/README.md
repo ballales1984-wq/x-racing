@@ -15,7 +15,7 @@ Automotive simulation laboratory. Build, measure, test, correct, document, repea
 | M6 | Aerodynamics (downforce, pitch/roll) | ✅ |
 | M7 | Weather (rain, temp, grip) | ✅ |
 | M9 | Gameplay (input, lap timing) | ✅ |
-| M8 | Rendering (Unity) | ⏳ waiting Unity |
+| M8 | Rendering (Unity) | ✅ Unity 6000.0.82f1, project operational |
 | M10 | AI (trajectory, opponents) | ⏳ next |
 
 ## Architecture
@@ -100,6 +100,55 @@ cmake --build build --config Release
 | Ctrl | Downshift |
 | R | Reset |
 | ESC | Quit |
+
+## Unity Integration
+
+| Item | Value |
+|------|-------|
+| Editor | Unity 6000.0.82f1 |
+| Project | `D:\x-racing\UnityProject\` |
+| Render pipeline | Universal Render Pipeline |
+| Native plugin | `Assets/Plugins/x86_64/sim_plugin.dll` |
+
+### Project structure
+
+```
+UnityProject/
+├── Assets/
+│   ├── Scripts/
+│   │   ├── CarController.cs   - Vehicle controller + camera follow
+│   │   ├── CarHUD.cs          - Speed / RPM / gear / lap HUD
+│   │   └── SimPlugin.cs       - P/Invoke bridge to sim_plugin.dll
+│   ├── Editor/
+│   │   ├── SceneSetup.cs      - Project0 > Setup Scene menu
+│   │   ├── TrackGenerator.cs  - Project0 > Generate Track menu
+│   │   └── GenerateTelemetry.cs
+│   ├── Scenes/
+│   │   └── MainScene.unity    - Main gameplay scene
+│   ├── Materials/
+│   │   ├── CarMaterial.mat
+│   │   └── GroundMaterial.mat
+│   ├── Plugins/x86_64/
+│   │   └── sim_plugin.dll     - Native C++ simulation
+│   └── Settings/
+│       ├── UniversalRenderPipelineAsset.asset
+│       └── ForwardRendererData.asset
+├── Packages/
+│   └── manifest.json
+└── ProjectSettings/
+    └── ProjectVersion.txt
+```
+
+### Editor menus
+
+- **Project0 → Setup Scene** — creates HUD canvas and binds `CarController`
+- **Project0 → Generate Track** — generates parametric track mesh, borders and collider
+
+### Known issues
+
+- Unity 6000.5.9f1 was blocked by a WDAC policy on `Bee.DotNet.dll`; use **Unity 6000.0.82f1** instead
+- After first launch, if missing track/HUD objects, re-run the Project0 menus
+- `LegacyRuntime.ttf` is used for built-in HUD text in Unity 2022+
 
 ## Design Principles
 
