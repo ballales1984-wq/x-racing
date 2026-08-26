@@ -24,16 +24,34 @@ namespace Project0.Unity.Setup
             var carRenderer = car.GetComponent<Renderer>();
             if (carRenderer != null)
             {
+                Material carMat = null;
                 try
                 {
-                    var carMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/CarMaterial.mat");
-                    if (carMat != null)
-                    {
-                        carRenderer.sharedMaterial = carMat;
-                    }
+                    carMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/CarMaterial.mat");
                 }
                 catch (System.Exception)
                 {
+                    carMat = null;
+                }
+
+                if (carMat == null || carMat.shader == null || carMat.shader.name == "Hidden/InternalErrorShader")
+                {
+                    Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                    if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+                    if (shader == null) shader = Shader.Find("Standard");
+                    if (shader != null)
+                    {
+                        carMat = new Material(shader);
+                    }
+                }
+
+                if (carMat != null)
+                {
+                    Color redColor = new Color(0.9f, 0.1f, 0.1f);
+                    if (carMat.HasProperty("_BaseColor")) carMat.SetColor("_BaseColor", redColor);
+                    if (carMat.HasProperty("_Color")) carMat.SetColor("_Color", redColor);
+                    carMat.color = redColor;
+                    carRenderer.sharedMaterial = carMat;
                 }
             }
 

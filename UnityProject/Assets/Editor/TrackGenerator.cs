@@ -27,59 +27,9 @@ namespace Project0.Unity.Setup
                 meshRenderer = trackObj.AddComponent<MeshRenderer>();
             }
 
-            Material CreateDefaultMaterial()
-            {
-                Material mat = null;
-                
-                try
-                {
-                    var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
-                    if (defaultMat != null)
-                    {
-                        mat = new Material(defaultMat);
-                    }
-                }
-                catch (System.Exception)
-                {
-                    mat = null;
-                }
-                
-                if (mat == null)
-                {
-                    var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-                    if (rp == null)
-                    {
-                        rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
-                    }
-                    if (rp != null && rp.defaultMaterial != null)
-                    {
-                        mat = new Material(rp.defaultMaterial);
-                    }
-                }
-                
-                if (mat == null)
-                {
-                    Shader shader = Shader.Find("testshader");
-                    if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
-                    if (shader == null) shader = Shader.Find("Standard");
-                    if (shader == null) shader = Shader.Find("Sprites/Default");
-                    if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
-                    if (shader != null)
-                    {
-                        mat = new Material(shader);
-                    }
-                }
-                
-                return mat;
-            }
-
             if (meshRenderer.sharedMaterial == null)
             {
-                meshRenderer.sharedMaterial = CreateDefaultMaterial();
-            }
-            if (meshRenderer.sharedMaterial != null)
-            {
-                meshRenderer.sharedMaterial.color = new Color(0.35f, 0.35f, 0.35f);
+                meshRenderer.sharedMaterial = CreateDefaultMaterial(new Color(0.35f, 0.35f, 0.35f));
             }
 
             float normalWidth = 12f;
@@ -133,15 +83,57 @@ namespace Project0.Unity.Setup
             Debug.Log($"Track generated: {points.Count} points, length ~{CalculateTrackLength(points):F0}m");
         }
 
-        private static Material CreateDefaultMaterial()
+        private static Material CreateDefaultMaterial(Color color)
         {
-            Shader shader = Shader.Find("Standard");
-            if (shader != null)
+            Material mat = null;
+            
+            try
             {
-                return new Material(shader);
+                var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
+                if (defaultMat != null)
+                {
+                    mat = new Material(defaultMat);
+                }
+            }
+            catch (System.Exception)
+            {
+                mat = null;
             }
 
-            return new Material(Shader.Find("Hidden/InternalErrorShader"));
+            if (mat == null)
+            {
+                var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
+                if (rp == null)
+                {
+                    rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+                }
+                if (rp != null && rp.defaultMaterial != null)
+                {
+                    mat = new Material(rp.defaultMaterial);
+                }
+            }
+
+            if (mat == null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) shader = Shader.Find("Standard");
+                if (shader == null) shader = Shader.Find("Sprites/Default");
+                if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
+                if (shader != null)
+                {
+                    mat = new Material(shader);
+                }
+            }
+
+            if (mat != null)
+            {
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
+                mat.color = color;
+            }
+
+            return mat;
         }
 
          private static void CreateGrassArea()
@@ -167,10 +159,9 @@ namespace Project0.Unity.Setup
              
              meshFilter.mesh = mesh;
              
-             var mat = CreateDefaultMaterial();
+             var mat = CreateDefaultMaterial(new Color(0.2f, 0.6f, 0.2f));
              if (mat != null)
              {
-                 mat.color = new Color(0.2f, 0.6f, 0.2f);
                  meshRenderer.sharedMaterial = mat;
              }
          }
@@ -211,10 +202,9 @@ private static void CreateStartFinishLine()
             mesh.RecalculateBounds();
             mf.mesh = mesh;
 
-            var mat = CreateDefaultMaterial();
+            var mat = CreateDefaultMaterial(Color.yellow);
             if (mat != null)
             {
-                mat.color = Color.yellow;
                 mr.sharedMaterial = mat;
             }
         }
@@ -289,10 +279,9 @@ private static void CreateStartFinishLine()
             mesh.RecalculateBounds();
             mf.mesh = mesh;
 
-            var mat = CreateDefaultMaterial();
+            var mat = CreateDefaultMaterial(new Color(0.3f, 0.3f, 0.4f));
             if (mat != null)
             {
-                mat.color = new Color(0.3f, 0.3f, 0.4f);
                 mr.sharedMaterial = mat;
             }
         }
@@ -442,11 +431,7 @@ private static void CreateStartFinishLine()
 
         private static void CreateTrackBorders(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths, float normalWidth, float mainStraightWidth)
         {
-            Material borderMat = CreateDefaultMaterial();
-            if (borderMat != null)
-            {
-                borderMat.color = new Color(0.8f, 0.2f, 0f);
-            }
+            Material borderMat = CreateDefaultMaterial(new Color(0.8f, 0.2f, 0f));
 
             var leftVertices = new System.Collections.Generic.List<Vector3>();
             var rightVertices = new System.Collections.Generic.List<Vector3>();
