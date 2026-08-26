@@ -457,7 +457,18 @@ void Simulation::update_tire_forces(double dt) {
   // Track conditions
   const auto& tp = track_->at(state_.distance_along_track);
   const double banking_factor = std::cos(tp.banking);
-  const double friction_factor = tp.friction * state_.weather_grip_factor;
+
+  // Off-track grip reduction: if the car is outside track bounds and not in box lane,
+  // apply a grip penalty proportional to surface type (grass = 0.30 grip).
+  const Vec2 to_car_grip = state_.position - tp.position;
+  const double lateral_grip = to_car_grip.dot(tp.normal);
+  const double track_half_grip = tp.width / 2.0;
+  const bool off_track_grip = std::abs(lateral_grip) > track_half_grip && !state_.in_box_lane;
+  const double off_track_grip_factor = off_track_grip
+    ? (0.30 / std::max(tp.friction, 0.30))
+    : 1.0;
+
+  const double friction_factor = tp.friction * state_.weather_grip_factor * off_track_grip_factor;
 
   // Tire loads
   double fz_front = state_.fl_tire_load + state_.fr_tire_load;
@@ -656,11 +667,6 @@ void Simulation::apply_off_track_physics() {
 
   const bool off_track = std::abs(lateral) > track_half && !state_.in_box_lane;
   if (!off_track) return;
-
-  // --- Grip reduction ---
-  // Off-track surface: grass (0.30) or gravel (0.40). Use grass as default.
-  const double off_track_grip = 0.30;
-  const double grip_scale = off_track_grip / std::max(tp.friction, off_track_grip);
 
   // Dampen speed quickly (rough terrain rolling resistance)
   const double terrain_drag = 1.0 - 4.0 * (params_.dt / params_.substeps);

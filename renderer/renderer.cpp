@@ -76,6 +76,10 @@ void Renderer::run() {
 
   running_ = true;
   load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+  if (car_meshes_.empty()) {
+    load_car_mesh("D:/x-racing/assets/models/car.obj");
+  }
+  std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
   telemetry::Telemetry tel;
   LARGE_INTEGER freq, prev, curr;
   QueryPerformanceFrequency(&freq);
@@ -354,7 +358,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       Vec3 s1 = project(p1);
       Vec3 s2 = project(p2);
 
-      if (s0.z() < -1.0 && s1.z() < -1.0 && s2.z() < -1.0) {
+      if (s0.z() > -1.0 || s1.z() > -1.0 || s2.z() > -1.0) {
         MoveToEx(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()), nullptr);
         LineTo(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()));
         MoveToEx(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()), nullptr);

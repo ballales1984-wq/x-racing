@@ -58,13 +58,23 @@ struct TrackParams {
   SurfaceType default_surface = SurfaceType::Asphalt;
 };
 
+// Track layout variant.
+enum class TrackType : uint8_t {
+  Default = 0,    // original oval-ish circuit with box lane on first straight
+  PitCircuit      // road course with dedicated pit lane and pit boxes
+};
+
 // Parametric closed-loop track.
 // The track is built from a sequence of precomputed points.
 // Querying at any distance returns interpolated geometry.
 class Track {
  public:
   explicit Track(const TrackParams& params = {});
+  explicit Track(TrackType type, const TrackParams& params = {});
   ~Track() = default;
+
+  TrackType track_type() const { return type_; }
+  const std::vector<double>& pit_box_positions() const { return pit_box_positions_; }
 
   // Get interpolated track data at distance d (wraps around loop)
   TrackPoint at(double distance) const;
@@ -85,13 +95,16 @@ class Track {
 
  private:
   void build_default_track();
+  void build_pit_track();
   TrackPoint interpolate(double distance) const;
 
   std::vector<TrackPoint> points_;
+  std::vector<double> pit_box_positions_;
   double total_length_ = 0.0;
   double default_width_ = 12.0;
   double default_friction_ = 1.0;
   SurfaceType default_surface_ = SurfaceType::Asphalt;
+  TrackType type_ = TrackType::Default;
 };
 
 }

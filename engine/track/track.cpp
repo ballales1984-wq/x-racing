@@ -7,12 +7,145 @@
 // Project 0 — parametric track implementation
 namespace p0::track {
 
-Track::Track(const TrackParams& params) {
+Track::Track(const TrackParams& params)
+    : Track(TrackType::Default, params) {}
+
+Track::Track(TrackType type, const TrackParams& params) {
+  type_ = type;
   total_length_ = params.total_length;
   default_width_ = params.default_width;
   default_friction_ = params.default_friction;
   default_surface_ = params.default_surface;
-  build_default_track();
+  if (type == TrackType::PitCircuit) {
+    build_pit_track();
+  } else {
+    build_default_track();
+  }
+}
+
+// Build a pit-circuit track composed of:
+//   - main straight (0 .. 600 m)
+//   - right-hand corner (600 .. ~914 m)
+//   - pit-lane straight with pit boxes (~914 .. ~1514 m)
+//   - left-hand hairpin closing the loop (~1514 .. ~1828 m)
+void Track::build_pit_track() {
+  points_.clear();
+  pit_box_positions_.clear();
+  const double mainStraight = 600.0;
+  const double curveRadius = 100.0;
+  const double pitStraight = 600.0;
+  const int segmentsPerStraight = 120;
+  const int segmentsPerCurve = 60;
+
+  // Section 1: main straight heading east (0 .. 600 m).
+  for (int i = 0; i <= segmentsPerStraight; ++i) {
+    double t = static_cast<double>(i) / segmentsPerStraight;
+    Vec2 pos(t * mainStraight, 0.0);
+    Vec2 tangent(1.0, 0.0);
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_;
+    point.surface_type = SurfaceType::Asphalt;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Section 2: right-hand (clockwise) corner (~600 .. ~914 m).
+  for (int i = 1; i <= segmentsPerCurve; ++i) {
+    double t = static_cast<double>(i) / segmentsPerCurve;
+    double angle = kHalfPi - t * kPi;
+    Vec2 pos(mainStraight + curveRadius * std::cos(angle),
+             -curveRadius + curveRadius * std::sin(angle));
+    Vec2 tangent(-std::sin(angle), std::cos(angle));
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_;
+    point.surface_type = SurfaceType::OldAsphalt;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Section 3: pit-lane straight heading west (~914 .. ~1514 m).
+  for (int i = 1; i <= segmentsPerStraight; ++i) {
+    double t = static_cast<double>(i) / segmentsPerStraight;
+    Vec2 pos(mainStraight - t * pitStraight, -2.0 * curveRadius);
+    Vec2 tangent(-1.0, 0.0);
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_ * 0.95;
+    point.surface_type = SurfaceType::Asphalt;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = true;
+    point.box_lane_width = 4.0;
+    points_.push_back(point);
+  }
+
+  // Section 4: left-hand (counter-clockwise) hairpin closing the loop.
+  for (int i = 1; i <= segmentsPerCurve; ++i) {
+    double t = static_cast<double>(i) / segmentsPerCurve;
+    double angle = -kHalfPi + t * kPi;
+    Vec2 pos(curveRadius * std::cos(angle),
+             -curveRadius + curveRadius * std::sin(angle));
+    Vec2 tangent(-std::sin(angle), std::cos(angle));
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_;
+    point.surface_type = SurfaceType::Gravel;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  for (size_t i = 0; i < points_.size(); ++i) {
+    if (i == 0) {
+      points_[i].distance = 0.0;
+    } else {
+      double segmentLength = (points_[i].position - points_[i - 1].position).norm();
+      points_[i].distance = points_[i - 1].distance + segmentLength;
+    }
+  }
+  total_length_ = points_.back().distance;
+
+  for (size_t i = 0; i < points_.size(); ++i) {
+    const auto& prev = points_[(i > 0) ? i - 1 : points_.size() - 2];
+    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 1];
+    const Vec2 d1 = points_[i].position - prev.position;
+    const Vec2 d2 = next.position - points_[i].position;
+    const double cross = p0::physics::cross2(d1.normalized(), d2.normalized());
+    const double len1 = d1.norm();
+    const double len2 = d2.norm();
+    if (len1 > kEpsilon && len2 > kEpsilon) {
+      points_[i].curvature = cross / ((len1 + len2) * 0.5);
+    }
+  }
+
+  pit_box_positions_ = {1000.0, 1150.0, 1300.0, 1450.0};
 }
 
 // Build a default closed-loop track composed of:

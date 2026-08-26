@@ -160,3 +160,59 @@ TEST(TrackV2, InterpolationSmooth) {
   double dy = p2.position.y() - p1.position.y();
   EXPECT_GT(std::sqrt(dx*dx + dy*dy), 0.0);
 }
+
+// PitCircuit track type should be PitCircuit
+TEST(PitCircuitV2, TrackTypeIsPitCircuit) {
+  track::Track track(track::TrackType::PitCircuit);
+  EXPECT_EQ(track.track_type(), track::TrackType::PitCircuit);
+}
+
+// PitCircuit should have positive length and width
+TEST(PitCircuitV2, BasicProperties) {
+  track::Track track(track::TrackType::PitCircuit);
+  EXPECT_GT(track.length(), 0.0);
+  EXPECT_GT(track.at(0.0).width, 0.0);
+}
+
+// PitCircuit should have box lane on the pit straight
+TEST(PitCircuitV2, BoxLaneOnPitStraight) {
+  track::Track track(track::TrackType::PitCircuit);
+  EXPECT_TRUE(track.has_box_lane_at(1000.0));
+  EXPECT_TRUE(track.has_box_lane_at(1150.0));
+  EXPECT_TRUE(track.has_box_lane_at(1300.0));
+  EXPECT_TRUE(track.has_box_lane_at(1450.0));
+}
+
+// PitCircuit should not have box lane on main straight or corners
+TEST(PitCircuitV2, BoxLaneAbsentElsewhere) {
+  track::Track track(track::TrackType::PitCircuit);
+  EXPECT_FALSE(track.has_box_lane_at(100.0));
+  EXPECT_FALSE(track.has_box_lane_at(700.0));
+  EXPECT_FALSE(track.has_box_lane_at(1600.0));
+}
+
+// PitCircuit pit box positions should be reported
+TEST(PitCircuitV2, PitBoxPositionsReturned) {
+  track::Track track(track::TrackType::PitCircuit);
+  const auto& boxes = track.pit_box_positions();
+  EXPECT_EQ(boxes.size(), 4u);
+  EXPECT_NEAR(boxes[0], 1000.0, 1.0);
+  EXPECT_NEAR(boxes[1], 1150.0, 1.0);
+  EXPECT_NEAR(boxes[2], 1300.0, 1.0);
+  EXPECT_NEAR(boxes[3], 1450.0, 1.0);
+}
+
+// PitCircuit start position should be valid
+TEST(PitCircuitV2, StartPositionValid) {
+  track::Track track(track::TrackType::PitCircuit);
+  Vec2 start = track.get_start_position();
+  EXPECT_TRUE(std::isfinite(start.x()));
+  EXPECT_TRUE(std::isfinite(start.y()));
+}
+
+// PitCircuit start heading should be valid
+TEST(PitCircuitV2, StartHeadingValid) {
+  track::Track track(track::TrackType::PitCircuit);
+  double heading = track.get_start_heading();
+  EXPECT_TRUE(std::isfinite(heading));
+}
