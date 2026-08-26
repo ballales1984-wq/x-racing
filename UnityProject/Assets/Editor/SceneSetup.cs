@@ -24,9 +24,7 @@ namespace Project0.Unity.Setup
             var carRenderer = car.GetComponent<Renderer>();
             if (carRenderer != null)
             {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) shader = Shader.Find("Standard");
+                Shader shader = Shader.Find("Standard");
                 Material carMat = shader != null ? new Material(shader) : new Material(Shader.Find("Standard"));
 
                 if (carMat != null)
