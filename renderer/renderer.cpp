@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 namespace p0::renderer {
 
