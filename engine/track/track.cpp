@@ -24,20 +24,20 @@ Track::Track(TrackType type, const TrackParams& params) {
 }
 
 // Build a pit-circuit track composed of:
-//   - main straight (0 .. 600 m)
-//   - right-hand corner (600 .. ~914 m)
-//   - pit-lane straight with pit boxes (~914 .. ~1514 m)
-//   - left-hand hairpin closing the loop (~1514 .. ~1828 m)
+//   - main straight (0 .. 500 m)
+//   - right-hand corner (500 .. ~800 m)
+//   - pit-lane straight with pit boxes (~800 .. ~1300 m)
+//   - left-hand hairpin closing the loop (~1300 .. ~1600 m)
 void Track::build_pit_track() {
   points_.clear();
   pit_box_positions_.clear();
-  const double mainStraight = 600.0;
-  const double curveRadius = 100.0;
-  const double pitStraight = 600.0;
+  const double mainStraight = 500.0;
+  const double curveRadius = 90.0;
+  const double pitStraight = 500.0;
   const int segmentsPerStraight = 120;
-  const int segmentsPerCurve = 60;
+  const int segmentsPerCurve = 50;
 
-  // Section 1: main straight heading east (0 .. 600 m).
+  // Section 1: main straight heading east (0 .. 500 m).
   for (int i = 0; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
     Vec2 pos(t * mainStraight, 0.0);
@@ -57,7 +57,7 @@ void Track::build_pit_track() {
     points_.push_back(point);
   }
 
-  // Section 2: right-hand (clockwise) corner (~600 .. ~914 m).
+  // Section 2: right-hand (clockwise) corner (~500 .. ~800 m).
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
     double angle = kHalfPi - t * kPi;
@@ -71,15 +71,15 @@ void Track::build_pit_track() {
     point.tangent = tangent;
     point.normal = normal;
     point.width = default_width_;
-    point.friction = default_friction_;
+    point.friction = default_friction_ * 0.95;
     point.surface_type = SurfaceType::OldAsphalt;
     point.curvature = 0.0;
-    point.banking = 0.0;
+    point.banking = 0.02;
     point.has_box_lane = false;
     points_.push_back(point);
   }
 
-  // Section 3: pit-lane straight heading west (~914 .. ~1514 m).
+  // Section 3: pit-lane straight heading west (~800 .. ~1300 m).
   for (int i = 1; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
     Vec2 pos(mainStraight - t * pitStraight, -2.0 * curveRadius);
@@ -91,7 +91,7 @@ void Track::build_pit_track() {
     point.tangent = tangent;
     point.normal = normal;
     point.width = default_width_;
-    point.friction = default_friction_ * 0.95;
+    point.friction = default_friction_ * 0.9;
     point.surface_type = SurfaceType::Asphalt;
     point.curvature = 0.0;
     point.banking = 0.0;
@@ -117,7 +117,7 @@ void Track::build_pit_track() {
     point.friction = default_friction_;
     point.surface_type = SurfaceType::Gravel;
     point.curvature = 0.0;
-    point.banking = 0.0;
+    point.banking = -0.02;
     point.has_box_lane = false;
     points_.push_back(point);
   }
@@ -134,7 +134,7 @@ void Track::build_pit_track() {
 
   for (size_t i = 0; i < points_.size(); ++i) {
     const auto& prev = points_[(i > 0) ? i - 1 : points_.size() - 2];
-    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 1];
+    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 0];
     const Vec2 d1 = points_[i].position - prev.position;
     const Vec2 d2 = next.position - points_[i].position;
     const double cross = p0::physics::cross2(d1.normalized(), d2.normalized());
@@ -145,26 +145,30 @@ void Track::build_pit_track() {
     }
   }
 
-  pit_box_positions_ = {1000.0, 1150.0, 1300.0, 1450.0};
+  pit_box_positions_ = {850.0, 950.0, 1050.0, 1150.0};
 }
 
 // Build a default closed-loop track composed of:
-//   - straight section (0..25%)
-//   - right-hand corner (25..50%)
-//   - straight section (50..75%)
-//   - left-hand corner (75..100%)
+//   - main straight (0..30%)
+//   - heavy braking left-hander (30..42%)
+//   - back straight (42..58%)
+//   - right-right esses (58..72%)
+//   - final hairpin + pit entry (72..100%)
 void Track::build_default_track() {
   points_.clear();
-  const double straightLength = 765.0;
-  const double curveRadius = 75.0;
+  const double mainStraight = 650.0;
+  const double turn1Radius = 80.0;
+  const double backStraight = 500.0;
+  const double essRadius = 70.0;
+  const double hairpinRadius = 55.0;
   const int segmentsPerStraight = 150;
-  const int segmentsPerCurve = 75;
+  const int segmentsPerCurve = 50;
 
-  // Segment 1: straight section along the +x axis (0% .. 25%).
+  // Segment 1: main straight heading east (0..30%).
   // Box lane runs parallel on the left side of the track.
   for (int i = 0; i <= segmentsPerStraight; ++i) {
     double t = static_cast<double>(i) / segmentsPerStraight;
-    Vec2 pos(t * straightLength, 0.0);
+    Vec2 pos(t * mainStraight, 0.0);
     Vec2 tangent(1.0, 0.0);
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
@@ -182,12 +186,33 @@ void Track::build_default_track() {
     points_.push_back(point);
   }
 
-  // Segment 2: right-hand (clockwise) corner (25% .. 50%).
+  // Segment 2: left-hand heavy braking corner (30..42%).
   for (int i = 1; i <= segmentsPerCurve; ++i) {
     double t = static_cast<double>(i) / segmentsPerCurve;
-    double angle = -kHalfPi + t * kPi;
-    Vec2 pos(straightLength + curveRadius * std::cos(angle), curveRadius + curveRadius * std::sin(angle));
+    double angle = -kHalfPi + t * kHalfPi;
+    Vec2 pos(mainStraight + turn1Radius * std::cos(angle), turn1Radius + turn1Radius * std::sin(angle));
     Vec2 tangent(-std::sin(angle), std::cos(angle));
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_ * 0.98;
+    point.surface_type = SurfaceType::OldAsphalt;
+    point.curvature = 1.0 / turn1Radius;
+    point.banking = 0.02;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Segment 3: back straight heading west (42..58%).
+  for (int i = 1; i <= segmentsPerStraight; ++i) {
+    double t = static_cast<double>(i) / segmentsPerStraight;
+    double startX = mainStraight + 2.0 * turn1Radius;
+    Vec2 pos(startX - t * backStraight, 2.0 * turn1Radius);
+    Vec2 tangent(-1.0, 0.0);
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
     TrackPoint point;
@@ -199,33 +224,16 @@ void Track::build_default_track() {
     point.surface_type = SurfaceType::Asphalt;
     point.curvature = 0.0;
     point.banking = 0.0;
+    point.has_box_lane = false;
     points_.push_back(point);
   }
 
-  // Segment 3: straight section heading back along -x (50% .. 75%).
-  for (int i = 1; i <= segmentsPerStraight; ++i) {
-    double t = static_cast<double>(i) / segmentsPerStraight;
-    Vec2 pos(straightLength - t * straightLength, 2.0 * curveRadius);
-    Vec2 tangent(-1.0, 0.0);
-    tangent.normalize();
-    Vec2 normal(-tangent.y(), tangent.x());
-    TrackPoint point;
-    point.position = pos;
-    point.tangent = tangent;
-    point.normal = normal;
-    point.width = default_width_;
-    point.friction = default_friction_;
-    point.surface_type = SurfaceType::OldAsphalt;
-    point.curvature = 0.0;
-    point.banking = 0.0;
-    points_.push_back(point);
-  }
-
-  // Segment 4: left-hand (counter-clockwise) corner closing the loop (75% .. 100%).
-  for (int i = 1; i <= segmentsPerCurve; ++i) {
-    double t = static_cast<double>(i) / segmentsPerCurve;
-    double angle = kHalfPi + t * kPi;
-    Vec2 pos(curveRadius * std::cos(angle), curveRadius + curveRadius * std::sin(angle));
+  // Segment 4: right-right esses (58..72%).
+  for (int i = 1; i <= segmentsPerCurve * 2; ++i) {
+    double t = static_cast<double>(i) / (segmentsPerCurve * 2);
+    double angle = kHalfPi - t * kPi;
+    Vec2 pos(mainStraight - backStraight + 2.0 * essRadius + essRadius * std::cos(angle),
+             2.0 * turn1Radius + essRadius + essRadius * std::sin(angle));
     Vec2 tangent(-std::sin(angle), std::cos(angle));
     tangent.normalize();
     Vec2 normal(-tangent.y(), tangent.x());
@@ -233,11 +241,33 @@ void Track::build_default_track() {
     point.position = pos;
     point.tangent = tangent;
     point.normal = normal;
-    point.width = default_width_;
-    point.friction = default_friction_;
-    point.surface_type = SurfaceType::Gravel;
-    point.curvature = 0.0;
-    point.banking = 0.0;
+    point.width = default_width_ * 0.95;
+    point.friction = default_friction_ * 0.97;
+    point.surface_type = SurfaceType::Asphalt;
+    point.curvature = (i < segmentsPerCurve) ? (1.0 / essRadius) : -(1.0 / essRadius);
+    point.banking = 0.01;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Segment 5: final left hairpin closing the loop (72..100%).
+  for (int i = 1; i <= segmentsPerCurve; ++i) {
+    double t = static_cast<double>(i) / segmentsPerCurve;
+    double angle = -kHalfPi + t * kPi;
+    Vec2 pos(hairpinRadius * std::cos(angle), hairpinRadius + hairpinRadius * std::sin(angle));
+    Vec2 tangent(-std::sin(angle), std::cos(angle));
+    tangent.normalize();
+    Vec2 normal(-tangent.y(), tangent.x());
+    TrackPoint point;
+    point.position = pos;
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_ * 1.05;
+    point.friction = default_friction_ * 0.95;
+    point.surface_type = SurfaceType::Kerb;
+    point.curvature = -1.0 / hairpinRadius;
+    point.banking = -0.03;
+    point.has_box_lane = false;
     points_.push_back(point);
   }
 
@@ -253,7 +283,7 @@ void Track::build_default_track() {
 
   for (size_t i = 0; i < points_.size(); ++i) {
     const auto& prev = points_[(i > 0) ? i - 1 : points_.size() - 2];
-    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 1];
+    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 0];
     const Vec2 d1 = points_[i].position - prev.position;
     const Vec2 d2 = next.position - points_[i].position;
     const double cross = p0::physics::cross2(d1.normalized(), d2.normalized());

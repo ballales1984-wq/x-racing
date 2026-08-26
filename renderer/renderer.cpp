@@ -248,10 +248,18 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
 
   sprintf(buf, "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
   TextOutA(hdc, 10, 110, buf, (int)strlen(buf));
+
+  sprintf(buf, "Track: %s (1/2 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : "PitCircuit");
+  TextOutA(hdc, 10, 130, buf, (int)strlen(buf));
 }
 
 // Poll the keyboard and populate the per-frame input state.
 // W/S or Up/Down drive throttle/brake; A/D or Left/Right steer; arrows also shift.
+void Renderer::set_track_type(track::TrackType type) {
+  current_track_type_ = type;
+  sim_.set_track(track::Track(type));
+}
+
 void Renderer::handle_input(input::InputState& input) {
   input.throttle = 0.0;
   input.brake = 0.0;
@@ -266,6 +274,8 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState(VK_UP) & 0x8000) input.upshift = true;
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
   if (GetAsyncKeyState('M') & 0x8000) show_3d_car_ = !show_3d_car_;
+  if (GetAsyncKeyState('1') & 0x8000) set_track_type(track::TrackType::Default);
+  if (GetAsyncKeyState('2') & 0x8000) set_track_type(track::TrackType::PitCircuit);
 }
 
 void Renderer::load_car_mesh(const std::string& filename) {

@@ -25,6 +25,7 @@ class Renderer {
   void run();
 
   void load_car_mesh(const std::string& filename);
+  void set_track_type(track::TrackType type);
 
  private:
   void draw_track(HDC hdc);
@@ -46,6 +47,7 @@ class Renderer {
   double time_ = 0.0;
   std::vector<p0::assets::Mesh> car_meshes_;
   bool show_3d_car_ = false;
+  track::TrackType current_track_type_ = track::TrackType::Default;
 };
 
 }
