@@ -58,6 +58,7 @@ namespace Project0.Unity.Setup
             CreateGrassArea();
             CreateStartFinishLine();
             CreateBoxLane(points, widths);
+            CreatePitLane(points, widths);
             CreateCheckpoints(points, widths);
 
             var lightObj = GameObject.Find("Directional Light");
@@ -85,54 +86,14 @@ namespace Project0.Unity.Setup
 
         private static Material CreateDefaultMaterial(Color color)
         {
-            Material mat = null;
-            
-            try
+            Shader shader = Shader.Find("Standard");
+            if (shader == null)
             {
-                var defaultMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/DefaultURP.mat");
-                if (defaultMat != null)
-                {
-                    mat = new Material(defaultMat);
-                }
-            }
-            catch (System.Exception)
-            {
-                mat = null;
+                shader = Shader.Find("Hidden/InternalErrorShader");
             }
 
-            if (mat == null)
-            {
-                var rp = UnityEngine.Rendering.GraphicsSettings.defaultRenderPipeline;
-                if (rp == null)
-                {
-                    rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
-                }
-                if (rp != null && rp.defaultMaterial != null)
-                {
-                    mat = new Material(rp.defaultMaterial);
-                }
-            }
-
-            if (mat == null)
-            {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) shader = Shader.Find("Standard");
-                if (shader == null) shader = Shader.Find("Sprites/Default");
-                if (shader == null) shader = Shader.Find("Hidden/InternalErrorShader");
-                if (shader != null)
-                {
-                    mat = new Material(shader);
-                }
-            }
-
-            if (mat != null)
-            {
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-                if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
-                mat.color = color;
-            }
-
+            Material mat = new Material(shader);
+            mat.color = color;
             return mat;
         }
 
@@ -284,6 +245,223 @@ private static void CreateStartFinishLine()
             {
                 mr.sharedMaterial = mat;
             }
+        }
+
+        private static void CreatePitLane(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths)
+        {
+            var oldPitLane = GameObject.Find("PitLane");
+            if (oldPitLane != null) UnityEngine.Object.DestroyImmediate(oldPitLane);
+
+            var pitLaneObj = new GameObject("PitLane");
+            pitLaneObj.transform.SetParent(GameObject.Find("Track")?.transform);
+
+            var mf = pitLaneObj.AddComponent<MeshFilter>();
+            var mr = pitLaneObj.AddComponent<MeshRenderer>();
+
+            var vertices = new System.Collections.Generic.List<Vector3>();
+            var triangles = new System.Collections.Generic.List<int>();
+            var uvs = new System.Collections.Generic.List<Vector2>();
+
+            float pitLaneWidth = 4f;
+            float pitLaneOffset = 4f;
+            float pitLaneStart = 100f;
+            float pitLaneEnd = 600f;
+
+            // Find pit lane points on the main straight
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                if (widths[i] < 14f) continue;
+
+                float xPos = points[i].x;
+                if (xPos < pitLaneStart || xPos > pitLaneEnd) continue;
+
+                Vector3 p0 = points[i];
+                Vector3 p1 = points[i + 1];
+                Vector3 dir = (p1 - p0).normalized;
+                Vector3 right = new Vector3(-dir.z, 0f, dir.x);
+
+                float trackHalfWidth = widths[i] * 0.5f;
+                float pitInner = trackHalfWidth + pitLaneOffset;
+                float pitOuter = pitInner + pitLaneWidth;
+
+                Vector3 v0 = p0 + right * pitInner;
+                Vector3 v1 = p0 + right * pitOuter;
+                Vector3 v2 = p1 + right * pitInner;
+                Vector3 v3 = p1 + right * pitOuter;
+
+                int baseIndex = vertices.Count;
+                vertices.Add(v0);
+                vertices.Add(v1);
+                vertices.Add(v2);
+                vertices.Add(v3);
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
+
+                uvs.Add(new Vector2(0f, xPos));
+                uvs.Add(new Vector2(1f, xPos));
+                uvs.Add(new Vector2(0f, xPos + (p1 - p0).magnitude));
+                uvs.Add(new Vector2(1f, xPos + (p1 - p0).magnitude));
+            }
+
+            var mesh = new Mesh
+            {
+                vertices = vertices.ToArray(),
+                triangles = triangles.ToArray(),
+                uv = uvs.ToArray()
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
+
+            var mat = CreateDefaultMaterial(new Color(0.4f, 0.4f, 0.45f));
+            if (mat != null)
+            {
+                mr.sharedMaterial = mat;
+            }
+
+            // Create pit boxes
+            CreatePitBoxes(pitLaneStart, pitLaneEnd, pitLaneOffset, pitLaneWidth, widths);
+
+            // Create entry/exit lanes connecting pit to track
+            CreatePitEntryExit(pitLaneStart, pitLaneEnd, pitLaneOffset, pitLaneWidth, widths);
+        }
+
+        private static void CreatePitEntryExit(float startX, float endX, float offset, float laneWidth, System.Collections.Generic.List<float> widths)
+        {
+            var oldEntry = GameObject.Find("PitEntryExit");
+            if (oldEntry != null) UnityEngine.Object.DestroyImmediate(oldEntry);
+
+            var entryObj = new GameObject("PitEntryExit");
+            entryObj.transform.SetParent(GameObject.Find("Track")?.transform);
+
+            var mf = entryObj.AddComponent<MeshFilter>();
+            var mr = entryObj.AddComponent<MeshRenderer>();
+
+            var vertices = new System.Collections.Generic.List<Vector3>();
+            var triangles = new System.Collections.Generic.List<int>();
+
+            float trackHalfWidth = 8f; // Main straight half width
+            float pitInner = trackHalfWidth + offset;
+            float pitOuter = pitInner + laneWidth;
+
+            // Entry lane at start of pit
+            float entryStartX = startX - 20f;
+            float entryEndX = startX;
+            float zTrack = trackHalfWidth;
+            float zPit = pitInner;
+
+            // Create entry ramp
+            for (int i = 0; i < 4; i++)
+            {
+                float t = i / 4f;
+                float x = entryStartX + (entryEndX - entryStartX) * t;
+                float z = zTrack + (zPit - zTrack) * t;
+
+                Vector3 p0 = new Vector3(x, 0f, z);
+                Vector3 p1 = new Vector3(x + 5f, 0f, z + (zPit - zTrack) / 4f);
+
+                int baseIndex = vertices.Count;
+                vertices.Add(p0);
+                vertices.Add(new Vector3(p0.x, 0f, z + laneWidth));
+                vertices.Add(p1);
+                vertices.Add(new Vector3(p1.x, 0f, z + (zPit - zTrack) / 4f + laneWidth));
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
+            }
+
+            // Exit lane at end of pit
+            float exitStartX = endX;
+            float exitEndX = endX + 20f;
+            zTrack = trackHalfWidth;
+            zPit = pitInner;
+
+            for (int i = 0; i < 4; i++)
+            {
+                float t = i / 4f;
+                float x = exitStartX + (exitEndX - exitStartX) * t;
+                float z = zPit + (zTrack - zPit) * t;
+
+                Vector3 p0 = new Vector3(x, 0f, z);
+                Vector3 p1 = new Vector3(x + 5f, 0f, z + (zTrack - zPit) / 4f);
+
+                int baseIndex = vertices.Count;
+                vertices.Add(p0);
+                vertices.Add(new Vector3(p0.x, 0f, z + laneWidth));
+                vertices.Add(p1);
+                vertices.Add(new Vector3(p1.x, 0f, z + (zTrack - zPit) / 4f + laneWidth));
+
+                triangles.Add(baseIndex);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 1);
+                triangles.Add(baseIndex + 2);
+                triangles.Add(baseIndex + 3);
+            }
+
+            var mesh = new Mesh
+            {
+                vertices = vertices.ToArray(),
+                triangles = triangles.ToArray()
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            mf.mesh = mesh;
+
+            var mat = CreateDefaultMaterial(new Color(0.5f, 0.5f, 0.55f));
+            if (mat != null)
+            {
+                mr.sharedMaterial = mat;
+            }
+        }
+
+        private static void CreatePitBoxes(float startX, float endX, float offset, float laneWidth, System.Collections.Generic.List<float> widths)
+        {
+            var oldBoxes = GameObject.Find("PitBoxes");
+            if (oldBoxes != null) UnityEngine.Object.DestroyImmediate(oldBoxes);
+
+            var pitBoxesObj = new GameObject("PitBoxes");
+            pitBoxesObj.transform.SetParent(GameObject.Find("Track")?.transform);
+
+            float boxLength = 6f;
+            float boxWidth = 3f;
+            float boxHeight = 0.5f;
+            float boxSpacing = 10f;
+
+            int boxIndex = 0;
+            for (float x = startX + 10f; x < endX - 10f; x += boxSpacing)
+            {
+                var boxObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                boxObj.name = $"PitBox_{boxIndex}";
+                boxObj.transform.SetParent(pitBoxesObj.transform);
+
+                float zPos = 12f + offset + laneWidth * 0.5f;
+                boxObj.transform.position = new Vector3(x + boxLength * 0.5f, boxHeight * 0.5f, zPos);
+                boxObj.transform.localScale = new Vector3(boxLength, boxHeight, boxWidth);
+
+                var renderer = boxObj.GetComponent<Renderer>();
+                if (renderer != null)
+                {
+                    var mat = CreateDefaultMaterial(boxIndex % 2 == 0 ? new Color(0.9f, 0.9f, 0.9f) : new Color(0.2f, 0.2f, 0.2f));
+                    if (mat != null)
+                    {
+                        renderer.sharedMaterial = mat;
+                    }
+                }
+
+                boxIndex++;
+            }
+
+            Debug.Log($"Created {boxIndex} pit boxes");
         }
 
         private static void CreateCheckpoints(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths)
