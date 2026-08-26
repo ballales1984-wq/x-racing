@@ -19,7 +19,7 @@ namespace Project0.Unity.Setup
 
             car.transform.position = new Vector3(0f, 0.9f, 0f);
             car.transform.localScale = new Vector3(1.9f, 1.1f, 5.3f);
-            car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
+            car.transform.eulerAngles = new Vector3(0f, 270f, 0f);
 
             var carRenderer = car.GetComponent<Renderer>();
             if (carRenderer != null)
