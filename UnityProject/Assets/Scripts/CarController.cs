@@ -264,7 +264,8 @@ namespace Project0.Unity
 
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
-            transform.eulerAngles = new Vector3(0f, (float)(frame.heading * Mathf.Rad2Deg), 0f);
+            float unityHeading = (float)(-frame.heading * Mathf.Rad2Deg + 90f);
+            transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             CheckProximityCheckpoints();
         }
