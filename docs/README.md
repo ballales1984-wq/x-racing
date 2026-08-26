@@ -150,7 +150,9 @@ UnityProject/
 
 ### Known issues
 
-- Unity 6000.5.9f1 was blocked by a WDAC policy on `Bee.DotNet.dll`; use **Unity 6000.0.82f1** instead
+- Unity 6000.x `Bee.DotNet.dll` blocked by AppLocker/WDAC policy (`0x800711C7`):
+  - Run PowerShell: `Get-ChildItem -Recurse "D:\Unity\Editors\6000.0.82f1\Editor\Data\Tools" -File | Unblock-File`
+  - Add `D:\Unity` to Windows Defender Exclusion list if policy persists
 - After first launch, if missing track/HUD objects, re-run the Project0 menus
 - `LegacyRuntime.ttf` is used for built-in HUD text in Unity 2022+
 - Wind effect in `update_weather()` is a placeholder (`wind_speed = 0.0`); not yet implemented
