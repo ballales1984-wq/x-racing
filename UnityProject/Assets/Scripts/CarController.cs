@@ -265,6 +265,25 @@ namespace Project0.Unity
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
             transform.eulerAngles = new Vector3(0f, (float)(frame.heading * Mathf.Rad2Deg), 0f);
+
+            CheckProximityCheckpoints();
+        }
+
+        void CheckProximityCheckpoints()
+        {
+            var checkpoints = GameObject.Find("Checkpoints");
+            if (checkpoints == null) return;
+
+            int checkpointIndex = 0;
+            foreach (Transform cpTransform in checkpoints.transform)
+            {
+                float distance = Vector3.Distance(transform.position, cpTransform.position);
+                if (distance < 15f)
+                {
+                    OnCheckpointPassed(checkpointIndex, checkpoints.transform.childCount);
+                }
+                checkpointIndex++;
+            }
         }
 
         void UpdateCamera()
