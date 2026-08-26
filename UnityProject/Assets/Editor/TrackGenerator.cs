@@ -108,6 +108,7 @@ namespace Project0.Unity.Setup
             CreateGrassArea();
             CreateStartFinishLine();
             CreateBoxLane(points, widths);
+            CreateCheckpoints(points, widths);
 
             var lightObj = GameObject.Find("Directional Light");
             if (lightObj == null)
@@ -294,6 +295,34 @@ private static void CreateStartFinishLine()
                 mat.color = new Color(0.3f, 0.3f, 0.4f);
                 mr.sharedMaterial = mat;
             }
+        }
+
+        private static void CreateCheckpoints(System.Collections.Generic.List<Vector3> points, System.Collections.Generic.List<float> widths)
+        {
+            var oldCheckpoints = GameObject.Find("Checkpoints");
+            if (oldCheckpoints != null) UnityEngine.Object.DestroyImmediate(oldCheckpoints);
+
+            var checkpointsObj = new GameObject("Checkpoints");
+            checkpointsObj.transform.SetParent(GameObject.Find("Track")?.transform);
+
+            int numCheckpoints = 8;
+            float checkpointSpacing = (float)points.Count / numCheckpoints;
+
+            for (int i = 0; i < numCheckpoints; i++)
+            {
+                int index = (int)(i * checkpointSpacing);
+                if (index >= points.Count) index = points.Count - 1;
+
+                var cpObj = new GameObject($"Checkpoint_{i}");
+                cpObj.transform.SetParent(checkpointsObj.transform);
+                cpObj.transform.position = points[index];
+
+                var trigger = cpObj.AddComponent<CheckpointTrigger>();
+                trigger.checkpointIndex = i;
+                trigger.totalCheckpoints = numCheckpoints;
+            }
+
+            Debug.Log($"Created {numCheckpoints} checkpoints");
         }
 
         private static float CalculateTrackLength(System.Collections.Generic.List<Vector3> points)

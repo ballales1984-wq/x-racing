@@ -40,6 +40,10 @@ namespace Project0.Unity
         public float startLineThreshold = 8f;
         private bool lapStarted = false;
 
+        private int lastCheckpoint = -1;
+        private int checkpointsPassed = 0;
+        private bool allCheckpointsPassed = false;
+
         private TelemetryFrame[] frames;
         private int currentIndex = 0;
         private float elapsedTime = 0f;
@@ -95,6 +99,7 @@ namespace Project0.Unity
             currentHeading = 0f;
             currentRpm = 800f;
             currentGear = 1;
+            ResetCheckpoints();
         }
 
         void UpdateCameraMode()
@@ -297,12 +302,37 @@ namespace Project0.Unity
             }
             else
             {
-                if (distFromStart <= startLineThreshold)
+                if (distFromStart <= startLineThreshold && allCheckpointsPassed)
                 {
                     carHUD.StartLap();
                     lapStarted = false;
+                    allCheckpointsPassed = false;
+                    lastCheckpoint = -1;
+                    checkpointsPassed = 0;
                 }
             }
+        }
+
+        public void OnCheckpointPassed(int checkpointIndex, int totalCheckpoints)
+        {
+            if (checkpointIndex == lastCheckpoint + 1 || (lastCheckpoint == totalCheckpoints - 1 && checkpointIndex == 0))
+            {
+                lastCheckpoint = checkpointIndex;
+                checkpointsPassed++;
+
+                if (checkpointsPassed >= totalCheckpoints)
+                {
+                    allCheckpointsPassed = true;
+                }
+            }
+        }
+
+        public void ResetCheckpoints()
+        {
+            lastCheckpoint = -1;
+            checkpointsPassed = 0;
+            allCheckpointsPassed = false;
+            lapStarted = false;
         }
 
         void LoadTelemetry()
