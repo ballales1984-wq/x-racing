@@ -24,26 +24,10 @@ namespace Project0.Unity.Setup
             var carRenderer = car.GetComponent<Renderer>();
             if (carRenderer != null)
             {
-                Material carMat = null;
-                try
-                {
-                    carMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/Materials/CarMaterial.mat");
-                }
-                catch (System.Exception)
-                {
-                    carMat = null;
-                }
-
-                if (carMat == null || carMat.shader == null || carMat.shader.name == "Hidden/InternalErrorShader")
-                {
-                    Shader shader = Shader.Find("Universal Render Pipeline/Lit");
-                    if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-                    if (shader == null) shader = Shader.Find("Standard");
-                    if (shader != null)
-                    {
-                        carMat = new Material(shader);
-                    }
-                }
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) shader = Shader.Find("Standard");
+                Material carMat = shader != null ? new Material(shader) : new Material(Shader.Find("Standard"));
 
                 if (carMat != null)
                 {
