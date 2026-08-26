@@ -318,13 +318,14 @@ namespace Project0.Unity
                 if (distFromStart > startLineThreshold)
                 {
                     lapStarted = true;
+                    carHUD.BeginLap();
                 }
             }
             else
             {
                 if (distFromStart <= startLineThreshold && allCheckpointsPassed)
                 {
-                    carHUD.StartLap();
+                    carHUD.EndLap();
                     lapStarted = false;
                     allCheckpointsPassed = false;
                     lastCheckpoint = -1;

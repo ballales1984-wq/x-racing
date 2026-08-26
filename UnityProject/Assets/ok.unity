@@ -1181,7 +1181,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   carController: {fileID: 311180759}
-  carHUD: {fileID: 0}
+  carHUD: {fileID: 1385415895}
   autoCreateUI: 1
   hudFont: {fileID: 0}
 --- !u!1 &553158637

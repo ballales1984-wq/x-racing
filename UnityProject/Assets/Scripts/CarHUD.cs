@@ -81,9 +81,15 @@ namespace Project0.Unity
             }
         }
 
-        public void StartLap()
+        public void BeginLap()
         {
-            if (_lapStarted && _currentLapTime > 5f)
+            _currentLapTime = 0f;
+            _lapStarted = true;
+        }
+
+        public void EndLap()
+        {
+            if (_currentLapTime > 5f)
             {
                 if (_currentLapTime < _bestLapTime)
                 {
@@ -91,8 +97,7 @@ namespace Project0.Unity
                 }
                 _lapCount++;
             }
-            _currentLapTime = 0f;
-            _lapStarted = true;
+            _lapStarted = false;
         }
 
         string FormatTime(float time)
