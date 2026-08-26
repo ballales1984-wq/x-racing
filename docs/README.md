@@ -45,7 +45,7 @@ game/
   gameplay.h/.cpp     - Console gameplay loop
   main.cpp            - Gameplay entry point
 tests/
-  simulation_test.cpp - 31 GoogleTest cases
+  simulation_test.cpp - 33 GoogleTest cases
 experiments/
   track_analysis.cpp  - Track geometry analysis
   ai_experiments.cpp  - [planned] ML / AI experiments

@@ -83,10 +83,14 @@ void Gameplay::render_console(const simulation::SimulationResult& result) {
   std::cout << "Rear:       " << std::setw(6) << s.rear_slip_angle * kRadToDeg << " deg\n";
 
   if (result.off_track) {
-    std::cout << "\n*** OFF TRACK ***\n";
+    const double secs_off = state_.off_track_frames / 120.0;
+    std::cout << "\n*** OFF TRACK (" << std::fixed << std::setprecision(1) << secs_off << " s) ***\n";
+  }
+  if (result.collision) {
+    std::cout << "*** COLLISION — auto respawn... ***\n";
   }
   if (state_.off_track_warning) {
-    std::cout << "\n*** LAP INVALID ***\n";
+    std::cout << "*** LAP INVALID ***\n";
   }
 
   std::cout << "\nControls: WASD/Arrows = Drive | Shift = Upshift | Ctrl = Downshift | R = Reset | ESC = Quit\n";
@@ -120,8 +124,11 @@ void Gameplay::run() {
     input::InputState input = poll_input();
 
     if (input.reset) {
-      state_.running = false;
-      break;
+      // R key: respawn to last valid on-track position
+      sim_.respawn();
+      state_.off_track_warning = true;  // lap already invalidated
+      state_.off_track_frames = 0;
+      continue;
     }
 
     if (input_manager_->is_key_down(VK_ESCAPE)) {
@@ -133,6 +140,13 @@ void Gameplay::run() {
 
     if (result.off_track && !state_.off_track_warning) {
       state_.off_track_warning = true;
+    }
+    state_.off_track_frames = result.off_track ? state_.off_track_frames + 1 : 0;
+
+    // Auto-respawn when stuck against barrier
+    if (result.collision) {
+      sim_.respawn();
+      state_.off_track_frames = 0;
     }
 
     update_lap_timing(result);

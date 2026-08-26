@@ -20,7 +20,7 @@
 | Telemetry + CSV export | ✅ |
 | Weather (rain, temp, grip) | ✅ |
 | Gameplay (input, lap timing) | ✅ |
-| Unit tests (31 GoogleTest) | ✅ |
+| Unit tests (33 GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ⏳ |
 | Unity editor integration | ⏳ |
 | AI (trajectory, opponents) | ⏳ |
@@ -48,7 +48,7 @@ No trees, no graphical details, no sophisticated AI.
 - [ ] Braking (brake bias, lock-up)
 - [ ] Weight / mass
 - [ ] Suspension (4-corner loads, weight transfer)
-- [ ] Collisions (track boundaries, barriers)
+- [x] Collisions (track boundaries, barriers, off-track terrain drag)
 
 ### 1.3 Track
 
@@ -56,7 +56,7 @@ No trees, no graphical details, no sophisticated AI.
 - [ ] Start line / grid
 - [ ] Checkpoints (trigger zones)
 - [ ] Lap detection
-- [ ] Car position (respawn, reset)
+- [x] Car position (respawn, reset)
 
 ### 1.4 Camera
 

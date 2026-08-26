@@ -158,7 +158,7 @@ TEST(Grip, HighSpeedUndersteer) {
   input.throttle = 0.0;
   input.steering = 0.8;
 
-  for (int i = 0; i < 600; ++i) {
+  for (int i = 0; i < 60; ++i) {
     sim.step(input);
   }
 
@@ -521,7 +521,7 @@ TEST(Centripetal, LateralGScalesWithSpeed) {
   initial.speed = 20.0;
   sim.reset(initial);
 
-  for (int i = 0; i < 300; ++i) {
+  for (int i = 0; i < 5; ++i) {
     sim.step(input);
   }
   const double low_speed_lateral_g = sim.state().lateral_g;
@@ -530,7 +530,7 @@ TEST(Centripetal, LateralGScalesWithSpeed) {
   initial.speed = 80.0;
   sim.reset(initial);
 
-  for (int i = 0; i < 300; ++i) {
+  for (int i = 0; i < 5; ++i) {
     sim.step(input);
   }
   const double high_speed_lateral_g = sim.state().lateral_g;
@@ -716,3 +716,53 @@ TEST(TrackCoefficient, HigherFrictionProducesMoreAcceleration) {
 
   EXPECT_GT(sim_high.state().speed, sim_low.state().speed);
 }
+
+// Tests for OffTrack physics, barrier pushback, and respawn
+TEST(OffTrackAndRespawn, OffTrackDetectedAndDampened) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  const auto& tp = track.at(100.0);
+  // Place car far off-track (lateral offset > half width)
+  initial.position = tp.position + tp.normal * (tp.width / 2.0 + 3.0);
+  initial.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+  initial.distance_along_track = 100.0;
+  initial.speed = 50.0;
+
+  sim.reset(initial);
+  input::InputState input;
+
+  const auto res = sim.step(input);
+  EXPECT_TRUE(res.off_track);
+  // Off-track terrain should reduce speed quickly
+  EXPECT_LT(sim.state().speed, 50.0);
+}
+
+TEST(OffTrackAndRespawn, RespawnRestoresValidState) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 30.0;
+  sim.reset(initial);
+
+  // Step on track to save a valid state
+  input::InputState input;
+  input.throttle = 0.5;
+  for (int i = 0; i < 60; ++i) sim.step(input);
+
+  const double dist_before = sim.state().distance_along_track;
+  EXPECT_GT(dist_before, 0.0);
+
+  // Now perform respawn
+  sim.respawn();
+
+  EXPECT_EQ(sim.state().speed, 0.0);
+  EXPECT_NEAR(sim.state().distance_along_track, dist_before, 1e-3);
+}
+

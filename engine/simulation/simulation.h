@@ -35,6 +35,8 @@ class Simulation {
   void set_track(const track::Track& track);
   void reset(const vehicle::VehicleState& initial_state);
   SimulationResult step(const input::InputState& input);
+  // Reset the car to the last valid on-track position.
+  void respawn();
 
   const vehicle::VehicleState& state() const { return state_; }
   const track::Track& track() const { return *track_; }
@@ -47,18 +49,24 @@ class Simulation {
   void update_weather();                  // rain, wind, temperature effects
   void update_tire_temperature();         // tire thermal model + wear
   void update_suspension();               // spring-damper + weight transfer
-  void update_tire_forces(double dt);              // Pacejka forces with dynamic Fz
+  void update_tire_forces(double dt);     // Pacejka forces with dynamic Fz
   void update_braking();                  // brake deceleration
   void update_steering();                 // bicycle model slip angles + lateral forces
   void update_centripetal_forces();       // centripetal/centrifugal forces on curves
   void integrate(double dt);              // velocity-space integration
   void apply_box_lane_speed_limit();      // enforce box lane speed limit
+  void apply_off_track_physics();         // grip reduction + barrier push when off track
 
   SimulationParams params_;
   const track::Track* track_ = nullptr;
   vehicle::VehicleState state_;
   vehicle::VehicleParams vehicle_params_;
   double total_time_ = 0.0;
+
+  // Last state recorded while the car was on-track (used for respawn).
+  vehicle::VehicleState last_valid_state_;
+  bool has_valid_state_ = false;
+  double frames_off_track_ = 0;  // consecutive off-track frames
 };
 
 }

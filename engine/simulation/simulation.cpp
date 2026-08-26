@@ -110,14 +110,26 @@ SimulationResult Simulation::step(const input::InputState& input) {
     }
   }
 
+  apply_off_track_physics();
   apply_box_lane_speed_limit();
+
+  // Save last valid on-track state for respawn
+  const bool currently_off = std::abs(lateral) > track_half && !state_.in_box_lane;
+  if (!currently_off) {
+    last_valid_state_ = state_;
+    has_valid_state_ = true;
+    frames_off_track_ = 0;
+  } else {
+    frames_off_track_ += 1;
+  }
 
   total_time_ += params_.dt;
   SimulationResult result;
   result.state = state_;
   result.time = total_time_;
-  result.off_track = std::abs(lateral) > track_half && !state_.in_box_lane;
-  result.collision = false;
+  result.off_track = currently_off;
+  // Collision: car stuck against barrier for more than ~2 s (240 frames at 120 Hz)
+  result.collision = currently_off && frames_off_track_ > 240 && state_.speed < 2.0;
 
   return result;
 }
@@ -619,6 +631,104 @@ void Simulation::apply_box_lane_speed_limit() {
     const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
     state_.velocity = forward_dir * state_.speed;
   }
+}
+
+// Off-track physics: simulates driving on grass/gravel outside the tarmac.
+//
+// When the car is outside the track boundary:
+//   1. Grip is reduced proportionally to surface type (grass = 0.30).
+//   2. A lateral damping force slows the car down quickly.
+//   3. A barrier push-back force is applied when the car has penetrated the
+//      virtual guardrail (>1m past track edge), simulating a wall collision.
+//
+// This prevents the car from drifting infinitely and makes going off-track
+// feel like a real penalty without requiring full rigid-body collision.
+void Simulation::apply_off_track_physics() {
+  if (!track_) return;
+
+  const auto& tp = track_->at(state_.distance_along_track);
+  const Vec2 to_car = state_.position - tp.position;
+  const double lateral = to_car.dot(tp.normal);
+  const double track_half = tp.width / 2.0;
+
+  const bool off_track = std::abs(lateral) > track_half && !state_.in_box_lane;
+  if (!off_track) return;
+
+  // --- Grip reduction ---
+  // Off-track surface: grass (0.30) or gravel (0.40). Use grass as default.
+  const double off_track_grip = 0.30;
+  const double grip_scale = off_track_grip / std::max(tp.friction, off_track_grip);
+
+  // Dampen speed quickly (rough terrain rolling resistance)
+  const double terrain_drag = 1.0 - 4.0 * (params_.dt / params_.substeps);
+  state_.speed = std::max(0.0, state_.speed * terrain_drag);
+  const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+  state_.velocity = forward_dir * state_.speed;
+
+  // Dampen lateral velocity aggressively
+  state_.lateral_velocity *= (1.0 - 8.0 * (params_.dt / params_.substeps));
+
+  // --- Barrier push-back ---
+  // Guardrail is modelled at track_half + 1.0 m (runoff zone).
+  // Beyond that, apply a spring force proportional to penetration depth.
+  const double guardrail_offset = track_half + 1.0;
+  const double penetration = std::abs(lateral) - guardrail_offset;
+
+  if (penetration > 0.0) {
+    const double barrier_stiffness = 80000.0;  // N/m — stiff wall
+    const double barrier_damping  = 5000.0;   // Ns/m — energy absorption
+    const double barrier_force_mag = barrier_stiffness * penetration +
+                                     barrier_damping * state_.speed;
+
+    // Force direction: push car back toward track center
+    const Vec2 push_dir = (lateral > 0.0) ? -tp.normal : tp.normal;
+    const Vec2 barrier_force = push_dir * barrier_force_mag;
+
+    // Clamp speed and apply impulse
+    state_.velocity += barrier_force * (params_.dt / params_.substeps) / vehicle_params_.mass;
+    state_.speed = state_.velocity.norm();
+    // Hard cap: car cannot move through the barrier
+    if (state_.speed > 0.0) {
+      state_.velocity = state_.velocity.normalized() * std::min(state_.speed, 10.0);
+      state_.speed = state_.velocity.norm();
+    }
+  }
+}
+
+// Respawn: teleport the car back to the last recorded on-track state.
+// The car is placed at the last valid position, heading aligned to the track
+// tangent, with zero speed. This is the R-key / collision recovery action.
+void Simulation::respawn() {
+  if (!track_) return;
+
+  vehicle::VehicleState respawn_state;
+
+  if (has_valid_state_) {
+    // Restore last valid on-track position
+    respawn_state = last_valid_state_;
+  } else {
+    // Fall back to track start
+    respawn_state.position = track_->get_start_position();
+    respawn_state.heading  = track_->get_start_heading();
+    respawn_state.distance_along_track = 0.0;
+    respawn_state.lap = state_.lap;
+  }
+
+  // Zero out all motion
+  respawn_state.velocity         = Vec2::Zero();
+  respawn_state.acceleration     = Vec2::Zero();
+  respawn_state.speed            = 0.0;
+  respawn_state.lateral_velocity = 0.0;
+  respawn_state.yaw_rate         = 0.0;
+  respawn_state.rpm              = vehicle_params_.idle_rpm;
+  respawn_state.gear             = 1;
+
+  // Align heading to track tangent at the respawn point
+  const auto& tp = track_->at(respawn_state.distance_along_track);
+  respawn_state.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+
+  state_ = respawn_state;
+  frames_off_track_ = 0;
 }
 
 }

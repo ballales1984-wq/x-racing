@@ -28,6 +28,7 @@ struct GameplayState {
   double current_lap_time = 0.0;
   std::vector<LapTime> lap_times;
   bool off_track_warning = false;
+  int off_track_frames = 0;       // consecutive frames spent off-track
 };
 
 class Gameplay {
