@@ -3,6 +3,7 @@
 #include "vehicle/vehicle.h"
 #include "input/input.h"
 #include "telemetry/telemetry.h"
+#include "engine/common.h"
 #include <iostream>
 #include <cmath>
 
@@ -39,8 +40,8 @@ int main() {
         auto future_tp = track.at(lookahead_dist);
         double desired_heading = std::atan2(future_tp.tangent.y(), future_tp.tangent.x());
         double heading_error = desired_heading - sim.state().heading;
-        while (heading_error > 3.14159) heading_error -= 2.0 * 3.14159;
-        while (heading_error < -3.14159) heading_error += 2.0 * 3.14159;
+        while (heading_error > kPi) heading_error -= kTwoPi;
+        while (heading_error < -kPi) heading_error += kTwoPi;
         input.steering = std::max(-1.0, std::min(1.0, heading_error * 2.0));
 
         if (tp.curvature > 0.01) {

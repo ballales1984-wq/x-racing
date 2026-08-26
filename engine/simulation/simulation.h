@@ -11,7 +11,7 @@ namespace p0::simulation {
 
 // Simulation configuration
 struct SimulationParams {
-  double dt = 1.0 / 120.0;               // s, base timestep (120 Hz)
+  double dt = 1.0 / 60.0;                // s, base timestep (60 Hz)
   double substeps = 4.0;                 // number of physics sub-steps per frame
   bool use_abs = true;                   // enable ABS (placeholder)
   bool use_tcs = true;                   // enable TCS (placeholder)
@@ -44,7 +44,7 @@ class Simulation {
 
  private:
   // Physics update stages (called in order each sub-step)
-  void update_engine_forces();            // engine torque -> longitudinal force
+  void update_engine_forces(const input::InputState& input);
   void update_aerodynamics();             // drag and lift
   void update_weather();                  // rain, wind, temperature effects
   void update_tire_temperature();         // tire thermal model + wear

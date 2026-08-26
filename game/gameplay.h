@@ -40,15 +40,18 @@ class Gameplay {
   void stop() { state_.running = false; }
 
   const GameplayState& state() const { return state_; }
+  void set_off_track_warning(bool warning) { state_.off_track_warning = warning; }
+
+  // Test helpers
+  void update_lap_timing(const simulation::SimulationResult& result);
 
  private:
   // Poll the input manager for the latest driver input.
   input::InputState poll_input();
   // Render the current state to the console HUD.
   void render_console(const simulation::SimulationResult& result);
-  // Track lap changes and update timing/standings.
-  void update_lap_timing(const simulation::SimulationResult& result);
 
+ private:
   simulation::Simulation& sim_;
   telemetry::Telemetry& tel_;
   std::unique_ptr<input::InputManager> input_manager_;

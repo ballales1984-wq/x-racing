@@ -21,8 +21,7 @@ int main() {
   sim.reset(initial);
   tel.clear();
 
-  p0::input::WindowsInputManager windows_input;
-  p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::WindowsInputManager>(std::move(windows_input)));
+  p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::WindowsInputManager>());
   gameplay.run();
 
   std::cout << "Exiting.\n";

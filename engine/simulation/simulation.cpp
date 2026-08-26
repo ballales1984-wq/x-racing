@@ -55,12 +55,6 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
   const double dt = params_.dt / params_.substeps;
 
-  for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
-    state_.acceleration = Vec2::Zero();
-    state_.steer_angle = input.steering * vehicle_params_.max_steer_angle;
-    state_.throttle = clamp(input.throttle, 0.0, 1.0);
-    state_.brake = clamp(input.brake, 0.0, 1.0);
-
   if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
     state_.gear++;
   }
@@ -70,7 +64,13 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
   state_.box_lane_entry_requested = input.enter_exit_box;
 
-    update_engine_forces();
+  for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
+    state_.acceleration = Vec2::Zero();
+    state_.steer_angle = input.steering * vehicle_params_.max_steer_angle;
+    state_.throttle = clamp(input.throttle, 0.0, 1.0);
+    state_.brake = clamp(input.brake, 0.0, 1.0);
+
+    update_engine_forces(input);
     update_aerodynamics();
     update_weather();
     update_tire_temperature();
@@ -136,7 +136,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
 // Engine model with realistic torque curve, inertia, and drivetrain loss.
 // Includes auto-shift with hysteresis and engine braking.
-void Simulation::update_engine_forces() {
+void Simulation::update_engine_forces(const input::InputState& input) {
   const double speed = state_.velocity.norm();
   const double m = vehicle_params_.mass;
 
@@ -201,14 +201,17 @@ void Simulation::update_engine_forces() {
     state_.rpm = std::max(state_.rpm - max_rpm_decel, target_rpm);
   }
 
-  if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
-    state_.gear++;
-    target_rpm = compute_rpm(state_.gear);
-    state_.rpm = std::max(state_.rpm - max_rpm_accel * 2.0, target_rpm);
-  } else if (state_.rpm <= vehicle_params_.idle_rpm * 1.6 && state_.gear > 1) {
-    state_.gear--;
-    target_rpm = compute_rpm(state_.gear);
-    state_.rpm = std::min(state_.rpm + max_rpm_accel * 2.0, target_rpm);
+  const bool manual_shift = (input.upshift || input.downshift);
+  if (!manual_shift) {
+    if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+      state_.gear++;
+      target_rpm = compute_rpm(state_.gear);
+      state_.rpm = std::max(state_.rpm - max_rpm_accel * 2.0, target_rpm);
+    } else if (state_.rpm <= vehicle_params_.idle_rpm * 1.6 && state_.gear > 1) {
+      state_.gear--;
+      target_rpm = compute_rpm(state_.gear);
+      state_.rpm = std::min(state_.rpm + max_rpm_accel * 2.0, target_rpm);
+    }
   }
 }
 
@@ -692,6 +695,10 @@ void Simulation::apply_off_track_physics() {
       state_.velocity = state_.velocity.normalized() * std::min(state_.speed, 10.0);
       state_.speed = state_.velocity.norm();
     }
+
+    const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+    const Vec2 right_dir(-forward_dir.y(), forward_dir.x());
+    state_.lateral_velocity = right_dir.dot(state_.velocity);
   }
 }
 

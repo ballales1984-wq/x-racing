@@ -15,8 +15,10 @@ namespace p0 {
 // 2D/3D aliases for Eigen types used across the simulation
 using Vec2 = Eigen::Vector2d;
 using Vec3 = Eigen::Vector3d;
+using Vec4 = Eigen::Vector4d;
 using Mat2 = Eigen::Matrix2d;
 using Mat3 = Eigen::Matrix3d;
+using Mat4 = Eigen::Matrix4d;
 
 // Mathematical and physical constants
 constexpr double kPi = 3.14159265358979323846;

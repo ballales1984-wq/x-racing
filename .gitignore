@@ -2,6 +2,7 @@
 build/
 cmake-build-*/
 out/
+build2/
 
 # IDE
 .vscode/
@@ -56,7 +57,7 @@ UnityProject/Library/
 UnityProject/Temp/
 UnityProject/Logs/
 UnityProject/UserSettings/
-
+UnityProject/obj/
 
 # Unity generated folders
 UnityProject/Assets/Materials/

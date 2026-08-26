@@ -1,8 +1,10 @@
 #include "renderer/renderer.h"
 #include "telemetry/telemetry.h"
 #include "input/input.h"
+#include "../engine/assets/mesh.h"
 #include <windows.h>
 #include <cmath>
+#include <algorithm>
 
 namespace p0::renderer {
 
@@ -73,6 +75,7 @@ void Renderer::run() {
   if (!initialize()) return;
 
   running_ = true;
+  load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
   telemetry::Telemetry tel;
   LARGE_INTEGER freq, prev, curr;
   QueryPerformanceFrequency(&freq);
@@ -110,7 +113,11 @@ void Renderer::run() {
 
       draw_track(mem_dc);
       draw_box_lane(mem_dc);
-      draw_car(mem_dc, result.state);
+      if (show_3d_car_) {
+        draw_car_3d(mem_dc, result.state);
+      } else {
+        draw_car(mem_dc, result.state);
+      }
       draw_hud(mem_dc, result);
 
       BitBlt(hdc, 0, 0, config_.width, config_.height, mem_dc, 0, 0, SRCCOPY);
@@ -233,6 +240,9 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
 
   sprintf(buf, "Lap: %d", s.lap);
   TextOutA(hdc, 10, 90, buf, (int)strlen(buf));
+
+  sprintf(buf, "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
+  TextOutA(hdc, 10, 110, buf, (int)strlen(buf));
 }
 
 // Poll the keyboard and populate the per-frame input state.
@@ -250,6 +260,113 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState('D') & 0x8000) input.steering = 1.0;
   if (GetAsyncKeyState(VK_UP) & 0x8000) input.upshift = true;
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
+  if (GetAsyncKeyState('M') & 0x8000) show_3d_car_ = !show_3d_car_;
+}
+
+void Renderer::load_car_mesh(const std::string& filename) {
+  car_meshes_.clear();
+  p0::assets::Mesh mesh;
+  if (p0::assets::MeshLoader::LoadOBJ(filename, mesh)) {
+    car_meshes_.push_back(std::move(mesh));
+  }
+}
+
+Mat4 Renderer::view_matrix() const {
+  const auto& state = sim_.state();
+  Vec3 car_pos(state.position.x(), 0.0, state.position.y());
+
+  double heading = state.heading;
+  Vec3 eye = car_pos + Vec3(-std::sin(heading) * 8.0, 4.0, -std::cos(heading) * 8.0);
+  Vec3 target = car_pos + Vec3(std::sin(heading) * 2.0, 0.0, std::cos(heading) * 2.0);
+  Vec3 up(0.0, 1.0, 0.0);
+
+  Vec3 f = (target - eye).normalized();
+  Vec3 s = f.cross(up).normalized();
+  Vec3 u = s.cross(f);
+
+  Mat4 view = Mat4::Identity();
+  view(0, 0) = s.x(); view(0, 1) = s.y(); view(0, 2) = s.z(); view(0, 3) = -s.dot(eye);
+  view(1, 0) = u.x(); view(1, 1) = u.y(); view(1, 2) = u.z(); view(1, 3) = -u.dot(eye);
+  view(2, 0) = -f.x(); view(2, 1) = -f.y(); view(2, 2) = -f.z(); view(2, 3) = f.dot(eye);
+  return view;
+}
+
+Vec3 Renderer::project(const Vec3& world_pos) const {
+  Mat4 view = view_matrix();
+  Vec4 view_pos = view * Vec4(world_pos.x(), world_pos.y(), world_pos.z(), 1.0);
+
+  if (view_pos.z() >= -0.1) return Vec3(-9999.0, -9999.0, 0.0);
+
+  double fov = 60.0 * kDegToRad;
+  double aspect = static_cast<double>(config_.width) / static_cast<double>(config_.height);
+  double near_plane = 0.1;
+  double far_plane = 200.0;
+  double f = 1.0 / std::tan(fov / 2.0);
+
+  Mat4 proj = Mat4::Identity();
+  proj(0, 0) = f / aspect;
+  proj(1, 1) = f;
+  proj(2, 2) = (far_plane + near_plane) / (near_plane - far_plane);
+  proj(2, 3) = (2.0 * far_plane * near_plane) / (near_plane - far_plane);
+  proj(3, 2) = -1.0;
+  proj(3, 3) = 0.0;
+
+  Vec4 clip = proj * view_pos;
+  if (clip.w() <= 0.0) return Vec3(-9999.0, -9999.0, 0.0);
+
+  Vec3 ndc(clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w());
+
+  int sx = static_cast<int>((ndc.x() * 0.5 + 0.5) * config_.width);
+  int sy = static_cast<int>((1.0 - (ndc.y() * 0.5 + 0.5)) * config_.height);
+
+  return Vec3(static_cast<double>(sx), static_cast<double>(sy), ndc.z());
+}
+
+void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
+  if (car_meshes_.empty()) return;
+
+  Vec3 car_pos(state.position.x(), 0.5, state.position.y());
+  double heading = state.heading;
+
+  Mat4 model = Mat4::Identity();
+  model(0, 0) = std::cos(heading); model(0, 2) = std::sin(heading);
+  model(2, 0) = -std::sin(heading); model(2, 2) = std::cos(heading);
+
+  HPEN car_pen = CreatePen(PS_SOLID, 1, RGB(255, 150, 150));
+  HPEN old_pen = (HPEN)SelectObject(hdc, car_pen);
+
+  for (const auto& mesh : car_meshes_) {
+    size_t tri_count = mesh.indices.size() / 3;
+    for (size_t i = 0; i < tri_count; ++i) {
+      Vec3 v0 = mesh.vertices[mesh.indices[i * 3]];
+      Vec3 v1 = mesh.vertices[mesh.indices[i * 3 + 1]];
+      Vec3 v2 = mesh.vertices[mesh.indices[i * 3 + 2]];
+
+      Vec4 p0_4d = model * Vec4(v0.x(), v0.y(), v0.z(), 1.0);
+      Vec4 p1_4d = model * Vec4(v1.x(), v1.y(), v1.z(), 1.0);
+      Vec4 p2_4d = model * Vec4(v2.x(), v2.y(), v2.z(), 1.0);
+
+      Vec3 p0 = Vec3(p0_4d.x(), p0_4d.y(), p0_4d.z()) + car_pos;
+      Vec3 p1 = Vec3(p1_4d.x(), p1_4d.y(), p1_4d.z()) + car_pos;
+      Vec3 p2 = Vec3(p2_4d.x(), p2_4d.y(), p2_4d.z()) + car_pos;
+
+      Vec3 s0 = project(p0);
+      Vec3 s1 = project(p1);
+      Vec3 s2 = project(p2);
+
+      if (s0.z() < -1.0 && s1.z() < -1.0 && s2.z() < -1.0) {
+        MoveToEx(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()), nullptr);
+        LineTo(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()));
+        MoveToEx(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()), nullptr);
+        LineTo(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()));
+        MoveToEx(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()), nullptr);
+        LineTo(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()));
+      }
+    }
+  }
+
+  SelectObject(hdc, old_pen);
+  DeleteObject(car_pen);
 }
 
 }

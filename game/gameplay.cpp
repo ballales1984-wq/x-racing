@@ -8,6 +8,15 @@
 
 namespace p0::gameplay {
 
+static void enable_ansi_console() {
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  if (hOut == INVALID_HANDLE_VALUE) return;
+  DWORD dwMode = 0;
+  if (!GetConsoleMode(hOut, &dwMode)) return;
+  dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+  SetConsoleMode(hOut, dwMode);
+}
+
 Gameplay::Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel, std::unique_ptr<input::InputManager> input_manager)
     : sim_(sim), tel_(tel), input_manager_(std::move(input_manager)) {}
 
@@ -47,7 +56,8 @@ void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
 void Gameplay::render_console(const simulation::SimulationResult& result) {
   const auto& s = result.state;
   const double speed_kmh = s.speed * 3.6;
-  const double lateral_g = s.lateral_velocity * s.yaw_rate / kGravity;
+  const Vec2 lateral_axis(-std::sin(s.heading), std::cos(s.heading));
+  const double lateral_g = s.acceleration.dot(lateral_axis) / kGravity;
 
   std::cout << "\033[2J\033[H";
   std::cout << "=== PROJECT 0 - Gameplay ===\n\n";
@@ -83,7 +93,7 @@ void Gameplay::render_console(const simulation::SimulationResult& result) {
   std::cout << "Rear:       " << std::setw(6) << s.rear_slip_angle * kRadToDeg << " deg\n";
 
   if (result.off_track) {
-    const double secs_off = state_.off_track_frames / 120.0;
+    const double secs_off = state_.off_track_frames / 60.0;
     std::cout << "\n*** OFF TRACK (" << std::fixed << std::setprecision(1) << secs_off << " s) ***\n";
   }
   if (result.collision) {
@@ -99,6 +109,7 @@ void Gameplay::render_console(const simulation::SimulationResult& result) {
 // Main gameplay loop: poll input, step the simulation, update lap timing,
 // refresh the console HUD and record telemetry at a fixed 60 Hz cadence.
 void Gameplay::run() {
+  enable_ansi_console();
   state_.running = true;
   state_.current_lap = 0;
   state_.best_lap_time = 0.0;

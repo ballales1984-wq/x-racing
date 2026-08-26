@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 
 set(TEST_SOURCES
   simulation_test.cpp
+  physics_test.cpp
+  vehicle_test.cpp
+  track_test.cpp
+  telemetry_test.cpp
+  gameplay_test.cpp
+  ../game/gameplay.cpp
 )
 
 add_executable(project0_tests ${TEST_SOURCES})
