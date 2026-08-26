@@ -20,7 +20,7 @@
 | Telemetry + CSV export | ✅ |
 | Weather (rain, temp, grip) | ✅ |
 | Gameplay (input, lap timing) | ✅ |
-| Unit tests (18 GoogleTest) | ✅ |
+| Unit tests (31 GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ⏳ |
 | Unity editor integration | ⏳ |
 | AI (trajectory, opponents) | ⏳ |
@@ -228,8 +228,8 @@ x-racing/
 │   └── race_test.cpp         - Race system tests
 ├── experiments/
 │   ├── track_analysis.cpp    - Track geometry analysis
-│   ├── ai_experiments.cpp    - ML / AI experiments
-│   └── performance.cpp       - Profiling, benchmarks
+│   ├── ai_experiments.cpp    - [planned] ML / AI experiments
+│   └── performance.cpp       - [planned] Profiling, benchmarks
 ├── tools/
 │   ├── track_editor/         - Spline editor tool
 │   ├── telemetry_viewer/     - CSV visualization

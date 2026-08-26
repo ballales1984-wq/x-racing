@@ -45,9 +45,11 @@ game/
   gameplay.h/.cpp     - Console gameplay loop
   main.cpp            - Gameplay entry point
 tests/
-  simulation_test.cpp - 18 GoogleTest cases
+  simulation_test.cpp - 31 GoogleTest cases
 experiments/
   track_analysis.cpp  - Track geometry analysis
+  ai_experiments.cpp  - [planned] ML / AI experiments
+  performance.cpp     - [planned] Profiling, benchmarks
 renderer/
   renderer.h/.cpp     - Placeholder for Unity integration
 vendor/
@@ -118,13 +120,15 @@ UnityProject/
 │   ├── Scripts/
 │   │   ├── CarController.cs   - Vehicle controller + camera follow
 │   │   ├── CarHUD.cs          - Speed / RPM / gear / lap HUD
+│   │   ├── HUDSetup.cs        - Auto HUD setup utility
 │   │   └── SimPlugin.cs       - P/Invoke bridge to sim_plugin.dll
 │   ├── Editor/
 │   │   ├── SceneSetup.cs      - Project0 > Setup Scene menu
 │   │   ├── TrackGenerator.cs  - Project0 > Generate Track menu
 │   │   └── GenerateTelemetry.cs
 │   ├── Scenes/
-│   │   └── MainScene.unity    - Main gameplay scene
+│   │   ├── ok.unity           - Main gameplay scene
+│   │   └── impostazioni.unity - Settings / config scene
 │   ├── Materials/
 │   │   ├── CarMaterial.mat
 │   │   └── GroundMaterial.mat
@@ -149,6 +153,7 @@ UnityProject/
 - Unity 6000.5.9f1 was blocked by a WDAC policy on `Bee.DotNet.dll`; use **Unity 6000.0.82f1** instead
 - After first launch, if missing track/HUD objects, re-run the Project0 menus
 - `LegacyRuntime.ttf` is used for built-in HUD text in Unity 2022+
+- Wind effect in `update_weather()` is a placeholder (`wind_speed = 0.0`); not yet implemented
 
 ## Design Principles
 
