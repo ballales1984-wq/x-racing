@@ -2,6 +2,9 @@ add_library(project0_engine STATIC
   track/track.cpp
   simulation/simulation.cpp
   telemetry/telemetry.cpp
+  vehicle/vehicle_generator.cpp
+  vehicle/mesh_exporter.cpp
+  assets/mesh_loader.cpp
   input/platform/windows_input.cpp
   input/platform/auto_input.cpp
 )
@@ -35,3 +38,16 @@ set_target_properties(sim_plugin PROPERTIES
   PREFIX ""
   SUFFIX ".dll"
 )
+
+# Vehicle generator tool
+add_executable(generate_vehicle
+  tools/generate_vehicle.cpp
+)
+
+target_include_directories(generate_vehicle PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/..
+  ${CMAKE_CURRENT_SOURCE_DIR}/../vendor
+)
+
+target_link_libraries(generate_vehicle PRIVATE project0_engine)
