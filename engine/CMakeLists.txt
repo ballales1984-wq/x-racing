@@ -4,7 +4,7 @@ add_library(project0_engine STATIC
   telemetry/telemetry.cpp
   vehicle/vehicle_generator.cpp
   vehicle/mesh_exporter.cpp
-  assets/mesh_loader.cpp
+  vehicle/glb_exporter.cpp
   input/platform/windows_input.cpp
   input/platform/auto_input.cpp
 )

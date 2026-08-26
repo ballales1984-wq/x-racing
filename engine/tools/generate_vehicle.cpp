@@ -1,6 +1,7 @@
 #include "vehicle/vehicle.h"
 #include "vehicle/vehicle_generator.h"
 #include "vehicle/mesh_exporter.h"
+#include "vehicle/glb_exporter.h"
 #include <iostream>
 
 int main() {
@@ -34,8 +35,12 @@ int main() {
     std::cout << "  Triangles: " << car.indices.size() / 3 << std::endl;
 
     // Export to OBJ
-    std::string filename = "D:/x-racing/assets/models/vehicle.obj";
-    p0::vehicle::MeshExporter::ExportOBJ(car, filename);
+    std::string objFilename = "D:/x-racing/data/models/vehicle.obj";
+    p0::vehicle::MeshExporter::ExportOBJ(car, objFilename);
+
+    // Export to GLB
+    std::string glbFilename = "D:/x-racing/data/models/vehicle.glb";
+    p0::vehicle::GLBExporter::ExportGLB(car, glbFilename);
 
     std::cout << "\nDone!" << std::endl;
     return 0;
