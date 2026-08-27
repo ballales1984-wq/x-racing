@@ -19,8 +19,7 @@ namespace Project0.Unity.Setup
 
             string[] fbxPaths = new string[]
             {
-                "Assets/Hi3D_Untitled_allparts_20260826_190129.fbx",
-                "Assets/Hi3D_Untitled_allparts_20260826_184047.fbx"
+                "Assets/Models/car.fbx"
             };
 
             GameObject carModel = null;

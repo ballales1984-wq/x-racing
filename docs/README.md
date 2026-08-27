@@ -112,6 +112,7 @@ x-racing/
 │   └── performance.cpp       # [pianificato] Profiling, benchmark
 ├── UnityProject/              # Progetto Unity 2022.3.x
 │   ├── Assets/
+│   │   ├── Models/            # Modelli 3D veicolo (FBX)
 │   │   ├── Scripts/
 │   │   │   ├── CarController.cs   # Controller veicolo + camera follow
 │   │   │   ├── CarHUD.cs          # HUD velocità/RPM/ marcia/giro
@@ -144,6 +145,7 @@ x-racing/
 │   ├── telemetry/            # Output telemetria CSV
 │   └── models/               # Modelli 3D
 ├── assets/                    # Asset 3D, texture, audio
+│   └── models/               # Modelli 3D (OBJ, FBX)
 ├── vendor/                    # Dipendenze terze parti
 │   ├── Eigen/                # Algebra lineare
 │   └── googletest/           # Framework unit testing

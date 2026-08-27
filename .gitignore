@@ -76,6 +76,7 @@ CMakeUserPresets.json
 
 # Large binary assets (keep source FBX only)
 assets/models/*.obj
+UnityProject/Assets/Models/
 UnityProject/Assets/*.fbx
 UnityProject/Assets/*.fbx.meta
 

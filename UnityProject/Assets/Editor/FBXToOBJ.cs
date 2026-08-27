@@ -8,11 +8,11 @@ public class FBXToOBJ : EditorWindow
     [MenuItem("Tools/FBX to OBJ")]
     public static void Convert()
     {
-        string fbxPath = @"D:\x-racing\assets\models\car.fbx";
+        string fbxPath = @"D:\x-racing\UnityProject\Assets\Models\car.fbx";
         string objPath = @"D:\x-racing\assets\models\car.obj";
         
-        // Load FBX from Assets folder
-        string assetPath = "Assets/Hi3D_Untitled_allparts_20260826_184047.fbx";
+        // Load FBX from Assets/Models folder
+        string assetPath = "Assets/Models/car.fbx";
         GameObject obj = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
         
         if (obj == null)
