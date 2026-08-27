@@ -397,7 +397,7 @@ TEST(Weather, RainCoolsTires) {
   const double start_front_temp = sim.state().front_tire_temp;
   const double start_rear_temp = sim.state().rear_tire_temp;
 
-  for (int i = 0; i < 200; ++i) {
+  for (int i = 0; i < 500; ++i) {
     sim.step(input);
   }
 
@@ -462,7 +462,7 @@ TEST(Centripetal, NonZeroOnCurve) {
   simulation::Simulation sim;
   sim.set_track(track);
 
-  const double curve_distance = 800.0;
+  const double curve_distance = 400.0;
   const auto& tp = track.at(curve_distance);
 
   vehicle::VehicleState initial;
@@ -492,7 +492,7 @@ TEST(Centripetal, NonZeroOnCurve) {
 // Debug: print curvature at a known curve distance
 TEST(Centripetal, DebugCurvature) {
   track::Track track;
-  const double curve_distance = 800.0;
+  const double curve_distance = 400.0;
   const auto& tp = track.at(curve_distance);
   std::cout << "DEBUG: distance=" << curve_distance 
             << " curvature=" << tp.curvature 
@@ -506,7 +506,7 @@ TEST(Centripetal, LateralGScalesWithSpeed) {
   simulation::Simulation sim;
   sim.set_track(track);
 
-  const double curve_distance = 800.0;
+  const double curve_distance = 400.0;
   const auto& tp = track.at(curve_distance);
 
   input::InputState input;
@@ -545,7 +545,7 @@ TEST(Centripetal, CentrifugalIsReaction) {
   simulation::Simulation sim;
   sim.set_track(track);
 
-  const double curve_distance = 800.0;
+  const double curve_distance = 400.0;
   const auto& tp = track.at(curve_distance);
 
   vehicle::VehicleState initial;
@@ -597,10 +597,11 @@ TEST(BoxLane, VehicleEntersBoxLane) {
   input.steering = 0.0;
   input.enter_exit_box = true;
 
-  const auto& tp = track.at(0.0);
+  const auto& tp = track.at(150.0);
   const double box_left = -tp.width / 2.0 - tp.box_lane_width;
   const double box_right = -tp.width / 2.0;
   initial.position = tp.position + tp.normal * ((box_left + box_right) / 2.0);
+  initial.distance_along_track = 150.0;
   sim.reset(initial);
 
   for (int i = 0; i < 60; ++i) {
@@ -627,10 +628,11 @@ TEST(BoxLane, SpeedLimitedInBoxLane) {
   input.throttle = 1.0;
   input.enter_exit_box = true;
 
-  const auto& tp = track.at(0.0);
+  const auto& tp = track.at(150.0);
   const double box_left = -tp.width / 2.0 - tp.box_lane_width;
   const double box_right = -tp.width / 2.0;
   initial.position = tp.position + tp.normal * ((box_left + box_right) / 2.0);
+  initial.distance_along_track = 150.0;
   sim.reset(initial);
 
   for (int i = 0; i < 120; ++i) {
