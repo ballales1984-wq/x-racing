@@ -56,6 +56,8 @@ struct VehicleParams {
   double max_body_pitch = 0.06;          // rad
   double roll_damping = 0.85;            // damping
   double pitch_damping = 0.85;           // damping
+  double yaw_damping = 2500.0;           // Nm*s/rad, yaw rate damping
+  double yaw_inertia = 2800.0;           // kg*m^2, yaw moment of inertia
   double camber_gain_per_roll = -3.0;    // good camber compensation
   double ambient_temperature = 295.0;    // K, 22°C
   double tire_optimal_temp = 340.0;      // K, 67°C

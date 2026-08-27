@@ -7,7 +7,7 @@
 
 // Project 0 — simulation loop implementation
 // The simulation runs at 120 Hz with 4 sub-steps per frame.
-// Each sub-step applies: engine -> aero -> tires -> brakes -> steering -> integrate.
+// Each sub-step applies: engine -> aero -> tires -> integrate.
 // M3 introduces lateral tire forces via the bicycle model with Pacejka grip.
 namespace p0::simulation {
 
@@ -72,8 +72,6 @@ SimulationResult Simulation::step(const input::InputState& input) {
     update_tire_temperature();
     update_suspension();
     update_tire_forces(dt);
-    update_braking();
-    update_steering();
     update_centripetal_forces();
     integrate(dt);
   }
@@ -151,7 +149,13 @@ void Simulation::update_engine_forces(const input::InputState& input) {
     state_.rpm = vehicle_params_.idle_rpm;
     const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
     const double torque = vehicle_params_.max_torque * state_.throttle * 0.8;
-    const double engine_force = torque / vehicle_params_.wheel_radius;
+    double engine_force = torque / vehicle_params_.wheel_radius;
+
+    const double static_front = m * kGravity * (vehicle_params_.cg_to_rear / vehicle_params_.wheelbase);
+    const double static_rear = m * kGravity * (vehicle_params_.cg_to_front / vehicle_params_.wheelbase);
+    const double available_tire_grip = vehicle_params_.tire_mu * (static_front + static_rear);
+    engine_force = std::clamp(engine_force, -available_tire_grip, available_tire_grip);
+
     state_.acceleration = forward_dir * engine_force / m;
     return;
   }
@@ -184,10 +188,12 @@ void Simulation::update_engine_forces(const input::InputState& input) {
     static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)];
   const double total_ratio = gear_ratio * vehicle_params_.final_drive;
   const double wheel_torque = engine_torque * total_ratio * (1.0 - vehicle_params_.drivetrain_loss);
-  const double engine_force = wheel_torque / vehicle_params_.wheel_radius;
+  double engine_force = wheel_torque / vehicle_params_.wheel_radius;
   state_.engine_torque = engine_torque;
 
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+  double available_tire_grip = vehicle_params_.tire_mu * (state_.fl_tire_load + state_.fr_tire_load + state_.rl_tire_load + state_.rr_tire_load);
+  engine_force = std::clamp(engine_force, -available_tire_grip, available_tire_grip);
   state_.acceleration = forward_dir * engine_force / m;
 
   double target_rpm = compute_rpm(state_.gear);
@@ -324,6 +330,12 @@ void Simulation::update_tire_temperature() {
   state_.rear_tire_temp += (heat_rear - cool_rear) * (params_.dt / params_.substeps);
 
   double wear_rate = vehicle_params_.tire_wear_per_slip * (abs_front_slip + abs_rear_slip) * 0.5;
+  if (track_) {
+    const double track_len = track_->length();
+    if (track_len > kEpsilon) {
+      wear_rate += vehicle_params_.tire_wear_per_lap / track_len * speed;
+    }
+  }
   state_.front_tire_wear -= wear_rate * (params_.dt / params_.substeps);
   state_.rear_tire_wear -= wear_rate * (params_.dt / params_.substeps);
 
@@ -504,26 +516,34 @@ void Simulation::update_tire_forces(double dt) {
     state_.front_camber, vehicle_params_.tire_camber_gain,
     mu_front * friction_factor * banking_factor,
     mu_front * friction_factor * banking_factor,
-    b_long, b_lat, c, e, fl_fx, fl_fy);
+    b_long, b_lat, c, e,
+    vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load,
+    fl_fx, fl_fy);
 
   physics::compute_tire_forces(sigma_x_front, alpha_f, state_.fr_tire_load,
     state_.front_camber, vehicle_params_.tire_camber_gain,
     mu_front * friction_factor * banking_factor,
     mu_front * friction_factor * banking_factor,
-    b_long, b_lat, c, e, fr_fx, fr_fy);
+    b_long, b_lat, c, e,
+    vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load,
+    fr_fx, fr_fy);
 
   // Rear tires (driven, braking)
   physics::compute_tire_forces(sigma_x_rear, alpha_r, state_.rl_tire_load,
     state_.rear_camber, vehicle_params_.tire_camber_gain,
     mu_rear * friction_factor * banking_factor,
     mu_rear * friction_factor * banking_factor,
-    b_long, b_lat, c, e, rl_fx, rl_fy);
+    b_long, b_lat, c, e,
+    vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load,
+    rl_fx, rl_fy);
 
   physics::compute_tire_forces(sigma_x_rear, alpha_r, state_.rr_tire_load,
     state_.rear_camber, vehicle_params_.tire_camber_gain,
     mu_rear * friction_factor * banking_factor,
     mu_rear * friction_factor * banking_factor,
-    b_long, b_lat, c, e, rr_fx, rr_fy);
+    b_long, b_lat, c, e,
+    vehicle_params_.tire_load_sensitivity, vehicle_params_.tire_max_reference_load,
+    rr_fx, rr_fy);
 
   // Sum forces in vehicle frame
   const double total_fx = fl_fx + fr_fx + rl_fx + rr_fx;
@@ -539,36 +559,17 @@ void Simulation::update_tire_forces(double dt) {
   const double front_lateral = fl_fy + fr_fy;
   const double rear_lateral = rl_fy + rr_fy;
   const double yaw_from_lateral = a_f * front_lateral - a_r * rear_lateral;
-
-  // Yaw moment from longitudinal differences (torque vectoring effect)
   const double left_long = fl_fx + rl_fx;
   const double right_long = fr_fx + rr_fx;
   const double yaw_from_long = (right_long - left_long) * vehicle_params_.track_width * 0.5;
 
-  const double total_yaw_moment = yaw_from_lateral + yaw_from_long;
-  const double yaw_inertia = vehicle_params_.mass * (a_f * a_f + a_r * a_r) * 0.5;
+  const double yaw_damping_moment = -vehicle_params_.yaw_damping * state_.yaw_rate;
+  const double total_yaw_moment = yaw_from_lateral + yaw_from_long + yaw_damping_moment;
+  const double yaw_inertia = vehicle_params_.yaw_inertia;
   state_.yaw_rate = total_yaw_moment / yaw_inertia;
 }
 
 // Simple braking model: constant deceleration proportional to brake pedal.
-void Simulation::update_braking() {
-  const double speed = state_.velocity.norm();
-  if (speed < kEpsilon) return;
-
-  const double brake_decel = (vehicle_params_.max_brake_force * state_.brake) / vehicle_params_.mass;
-  const Vec2 brake_dir = -state_.velocity.normalized();
-  state_.acceleration += brake_dir * brake_decel;
-}
-
-// Steering input maps to front wheel angle.
-// The actual turning behavior emerges from the bicycle model in update_tire_forces().
-void Simulation::update_steering() {
-  const double speed = state_.speed;
-  if (speed < kEpsilon) {
-    state_.yaw_rate = 0.0;
-    return;
-  }
-}
 
 // Apply centripetal and centrifugal forces based on track curvature.
 // Centripetal force acts toward the center of curvature and is added to the
@@ -593,6 +594,11 @@ void Simulation::update_centripetal_forces() {
     return;
   }
 
+  const Vec2 to_car = state_.position - tp.position;
+  const double lateral = to_car.dot(tp.normal);
+  const double track_half = tp.width / 2.0;
+  const bool on_track = std::abs(lateral) <= track_half || state_.in_box_lane;
+
   const double m = vehicle_params_.mass;
   const Vec2 normal = tp.normal;
 
@@ -601,7 +607,9 @@ void Simulation::update_centripetal_forces() {
   state_.centrifugal_force = -state_.centripetal_force;
   state_.lateral_g = state_.centripetal_force / (m * kGravity);
 
-  state_.acceleration += f_c / m;
+  if (on_track) {
+    state_.acceleration += f_c / m;
+  }
 }
 
 // Velocity-space integration using semi-implicit Euler.
@@ -671,11 +679,13 @@ void Simulation::apply_off_track_physics() {
   // Dampen speed quickly (rough terrain rolling resistance)
   const double terrain_drag = 1.0 - 4.0 * (params_.dt / params_.substeps);
   state_.speed = std::max(0.0, state_.speed * terrain_drag);
-  const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
-  state_.velocity = forward_dir * state_.speed;
 
   // Dampen lateral velocity aggressively
   state_.lateral_velocity *= (1.0 - 8.0 * (params_.dt / params_.substeps));
+
+  const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
+  const Vec2 right_dir(-forward_dir.y(), forward_dir.x());
+  state_.velocity = forward_dir * state_.speed + right_dir * state_.lateral_velocity;
 
   // --- Barrier push-back ---
   // Guardrail is modelled at track_half + 1.0 m (runoff zone).
@@ -702,8 +712,6 @@ void Simulation::apply_off_track_physics() {
       state_.speed = state_.velocity.norm();
     }
 
-    const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
-    const Vec2 right_dir(-forward_dir.y(), forward_dir.x());
     state_.lateral_velocity = right_dir.dot(state_.velocity);
   }
 }

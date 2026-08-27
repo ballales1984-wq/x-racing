@@ -101,13 +101,15 @@ TEST(TrackDiagram, PitBoxesRenderedForPitCircuit) {
     EXPECT_NE(svg.find("Box 3"), std::string::npos);
 }
 
-TEST(TrackDiagram, NoPitBoxesForDefaultTrack) {
+TEST(TrackDiagram, DefaultTrackHasPitBoxes) {
     track::Track track(track::TrackType::Default);
     track_diagram::TrackSvgExporter exporter(track);
     exporter.set_output_path("");
     ASSERT_TRUE(exporter.export_svg());
     const std::string& svg = exporter.svg_content();
-    EXPECT_EQ(svg.find("id=\"pit-boxes\""), std::string::npos);
+    EXPECT_NE(svg.find("id=\"pit-boxes\""), std::string::npos);
+    EXPECT_NE(svg.find("Box 0"), std::string::npos);
+    EXPECT_NE(svg.find("Box 1"), std::string::npos);
 }
 
 TEST(TrackDiagram, BoxLaneRendered) {

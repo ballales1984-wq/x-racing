@@ -161,6 +161,16 @@ TEST(TrackV2, InterpolationSmooth) {
   EXPECT_GT(std::sqrt(dx*dx + dy*dy), 0.0);
 }
 
+// Default track should have pit box positions on the box lane straight
+TEST(TrackV2, DefaultTrackHasPitBoxes) {
+  track::Track track;
+  const auto& boxes = track.pit_box_positions();
+  EXPECT_GT(boxes.size(), 0u);
+  for (double pos : boxes) {
+    EXPECT_TRUE(track.has_box_lane_at(pos));
+  }
+}
+
 // PitCircuit track type should be PitCircuit
 TEST(PitCircuitV2, TrackTypeIsPitCircuit) {
   track::Track track(track::TrackType::PitCircuit);

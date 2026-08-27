@@ -16,7 +16,9 @@ inline double pacejka_tire_model(double sigma, double mu, double b, double c, do
 
 // Project vector v onto onto (parallel component)
 inline Vec2 project_onto_vector(const Vec2& v, const Vec2& onto) {
-  return onto * (v.dot(onto) / onto.squaredNorm());
+  const double denom = onto.squaredNorm();
+  if (denom < kEpsilon) return Vec2::Zero();
+  return onto * (v.dot(onto) / denom);
 }
 
 // Reject vector v from onto (perpendicular component)

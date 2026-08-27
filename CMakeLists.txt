@@ -9,12 +9,14 @@ option(PROJECT0_BUILD_TESTS "Build tests" ON)
 option(PROJECT0_BUILD_RENDERER "Build renderer" OFF)
 option(PROJECT0_BUILD_EXPERIMENTS "Build experiments" ON)
 option(PROJECT0_BUILD_GAMEPLAY "Build gameplay" ON)
+option(PROJECT0_BUILD_ASSIMP "Build with Assimp importer" ON)
 
 add_subdirectory(engine)
 
 if(PROJECT0_BUILD_TESTS)
   enable_testing()
-  add_subdirectory(vendor/googletest)
+  set(GOOGLETEST_VERSION 1.16.0)
+  add_subdirectory(vendor/googletest/googletest)
   add_subdirectory(tests)
 endif()
 

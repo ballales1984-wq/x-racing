@@ -131,6 +131,8 @@ void Track::build_default_track() {
   }
   total_length_ = points_.back().distance;
 
+  pit_box_positions_ = {50.0, 100.0, 150.0, 200.0, 250.0};
+
   // Compute local curvature at each point from the turning angle between
   // adjacent segments (finite-difference approximation).
   for (size_t i = 0; i < points_.size(); ++i) {

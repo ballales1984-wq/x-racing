@@ -31,7 +31,7 @@ input::InputState Gameplay::poll_input() {
 // is stored along with its validity (invalidated by an off-track warning).
 void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
   const double track_len = sim_.track().length();
-  const double dt = result.time - last_sim_time_;
+  const double dt = (std::max)(0.0, result.time - last_sim_time_);
   last_sim_time_ = result.time;
 
   if (result.state.lap > state_.current_lap) {

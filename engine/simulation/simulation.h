@@ -39,7 +39,10 @@ class Simulation {
   void respawn();
 
   const vehicle::VehicleState& state() const { return state_; }
-  const track::Track& track() const { return *track_; }
+  const track::Track& track() const {
+    assert(track_ && "Simulation::track() called before set_track()");
+    return *track_;
+  }
   vehicle::VehicleParams& mutable_params() { return vehicle_params_; }
 
  private:
@@ -50,8 +53,6 @@ class Simulation {
   void update_tire_temperature();         // tire thermal model + wear
   void update_suspension();               // spring-damper + weight transfer
   void update_tire_forces(double dt);     // Pacejka forces with dynamic Fz
-  void update_braking();                  // brake deceleration
-  void update_steering();                 // bicycle model slip angles + lateral forces
   void update_centripetal_forces();       // centripetal/centrifugal forces on curves
   void integrate(double dt);              // velocity-space integration
   void apply_box_lane_speed_limit();      // enforce box lane speed limit

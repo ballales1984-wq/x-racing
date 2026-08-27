@@ -107,9 +107,10 @@ inline void compute_tire_forces(double sigma_x, double alpha, double fz,
                                  double mu_x, double mu_y,
                                  double b_long, double b_lat,
                                  double c, double e,
+                                 double load_sensitivity, double max_ref_load,
                                  double& fx, double& fy) {
   // Apply load sensitivity
-  const double eff_fz = effective_tire_load(fz, 0.08, 4000.0);
+  const double eff_fz = effective_tire_load(fz, load_sensitivity, max_ref_load);
 
   // Combined slip with friction ellipse
   combined_slip_force(sigma_x, alpha, eff_fz, mu_x, mu_y,

@@ -38,6 +38,7 @@ inline double clamp(double value, double min_val, double max_val) {
 
 // Wrap angle to [-pi, +pi]
 inline double normalize_angle(double angle) {
+  if (!std::isfinite(angle)) return 0.0;
   while (angle > kPi) angle -= kTwoPi;
   while (angle < -kPi) angle += kTwoPi;
   return angle;

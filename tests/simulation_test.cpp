@@ -480,24 +480,8 @@ TEST(Centripetal, NonZeroOnCurve) {
     sim.step(input);
   }
 
-  std::cout << "DEBUG NonZero: dist=" << sim.state().distance_along_track
-            << " speed=" << sim.state().speed
-            << " centripetal=" << sim.state().centripetal_force
-            << " lat_g=" << sim.state().lateral_g << "\n";
-
   EXPECT_GT(sim.state().centripetal_force, 0.0);
   EXPECT_GT(sim.state().lateral_g, 0.0);
-}
-
-// Debug: print curvature at a known curve distance
-TEST(Centripetal, DebugCurvature) {
-  track::Track track;
-  const double curve_distance = 400.0;
-  const auto& tp = track.at(curve_distance);
-  std::cout << "DEBUG: distance=" << curve_distance 
-            << " curvature=" << tp.curvature 
-            << " normal=(" << tp.normal.x() << ", " << tp.normal.y() << ")\n";
-  SUCCEED();
 }
 
 // M8: Lateral G should scale with the square of speed
