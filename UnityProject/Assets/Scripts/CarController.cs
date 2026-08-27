@@ -150,7 +150,7 @@ namespace Project0.Unity
             var state = SimPlugin.Update(Time.deltaTime, throttle, brake, steer);
 
             transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
-            float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 270f);
+            float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 90f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             // Store state for HUD
