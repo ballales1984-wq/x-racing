@@ -3,8 +3,13 @@
 namespace p0::input {
 
 // Scripted driver input used for recorded/replay drives.
-// Produces a fixed sequence: full throttle, right curve, left curve,
-// braking, then reset and repeat.
+// Produces a fixed time-based sequence:
+//   0-3s:   full throttle (straight line acceleration)
+//   3-8s:   full throttle + right steering (right-hand curve)
+//   8-13s:  full throttle + left steering (left-hand curve)
+//   13-16s: braking (deceleration zone)
+//   >16s:   reset and restart the sequence
+// This loop repeats indefinitely, providing deterministic input for testing.
 InputState AutoInputManager::poll() {
   InputState input;
   const double t = elapsed_;

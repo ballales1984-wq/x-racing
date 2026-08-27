@@ -1,3 +1,6 @@
+// Project 0 — SVG track export experiment
+// Command-line tool to generate an SVG diagram of the default or pit circuit track.
+// Usage: track_svg [-t default|pit] [-o output.svg] [--no-chart] [--no-legend]
 #include "track/track.h"
 #include "track_diagram.h"
 #include <iostream>
@@ -11,6 +14,7 @@ int main(int argc, char* argv[]) {
     bool show_chart = true;
     bool show_legend = true;
 
+    // Parse command-line arguments.
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-t" && i + 1 < argc) {
@@ -26,6 +30,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Build the track and export it as SVG.
     track::Track track(type, params);
 
     track_diagram::TrackSvgExporter exporter(track, params);

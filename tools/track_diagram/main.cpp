@@ -1,9 +1,13 @@
+// Project 0 — SVG track diagram CLI tool
+// Generates scalable vector graphics depicting the race track layout.
+// Supports both Default (oval) and PitCircuit (road course) track types.
 #include "track_diagram.h"
 #include <iostream>
 #include <string>
 
 using namespace p0;
 
+// Print command-line usage information.
 static void print_usage(const char* prog) {
     std::cout << "Usage: " << prog << " [options]\n"
               << "Options:\n"
@@ -24,6 +28,7 @@ int main(int argc, char* argv[]) {
     bool show_chart = true;
     bool show_legend = true;
 
+    // Parse command-line arguments.
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-?" || arg == "--help") {
@@ -48,11 +53,13 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Validate track type.
     if (track_type != "default" && track_type != "pit") {
         std::cerr << "Error: track type must be 'default' or 'pit'\n";
         return 1;
     }
 
+    // Build the track and export it as SVG.
     track::TrackParams params;
     track::TrackType type = (track_type == "pit") ? track::TrackType::PitCircuit : track::TrackType::Default;
     track::Track track(type, params);

@@ -137,8 +137,11 @@ std::vector<uint8_t> GLBExporter::CreateBinaryBuffer(const MeshData& mesh) {
 }
 
 // Build a minimal glTF 2.0 JSON describing the mesh and buffer views.
+// The JSON references four buffer views (positions, normals, indices, UVs)
+// and four accessors describing their layout. A single PBR material with
+// red base color is defined for the car body.
 std::string GLBExporter::CreateGLTFJson(const MeshData& mesh, size_t bufferOffset, size_t bufferSize) {
-    // Calculate bounds
+    // Calculate bounds for position accessor min/max.
     double minX = 1e10, minY = 1e10, minZ = 1e10;
     double maxX = -1e10, maxY = -1e10, maxZ = -1e10;
     for (const auto& v : mesh.vertices) {
@@ -150,12 +153,13 @@ std::string GLBExporter::CreateGLTFJson(const MeshData& mesh, size_t bufferOffse
         maxZ = std::max(maxZ, v[2]);
     }
 
-    // Calculate byte offsets for each buffer view
+    // Calculate byte offsets for each buffer view within the binary chunk.
     size_t positionByteOffset = 0;
     size_t normalByteOffset = mesh.vertices.size() * 12; // 3 floats * 4 bytes
     size_t indexByteOffset = normalByteOffset + mesh.normals.size() * 12;
     size_t uvByteOffset = indexByteOffset + mesh.indices.size() * 4;
 
+    // Build the JSON string with embedded numeric values.
     std::string json = R"({
   "asset": {
     "version": "2.0",

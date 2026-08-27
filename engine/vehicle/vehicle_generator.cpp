@@ -105,29 +105,33 @@ MeshData VehicleGenerator::GenerateCar(const VehicleGeometry& geo) {
     return car;
 }
 
-// Build the main body: lower section, hood and rear engine cover.
+// Build the main body from stacked box primitives:
+//  - lower section (chassis level)
+//  - hood (sloped via front overhang parameter)
+//  - rear section (engine cover)
+//  - side skirts (left and right, thin boxes at body edge)
 MeshData VehicleGenerator::GenerateBody(const VehicleGeometry& geo) {
     MeshData body;
 
-    // Main body - lower section
+    // Main body - lower section: sits above wheels at ride height + wheel radius.
     Vec3 lowerCenter(0, geo.ride_height + geo.wheel_radius + geo.body_height * 0.25, 0);
     Vec3 lowerSize(geo.body_length, geo.body_height * 0.5, geo.body_width);
     AddBox(body, lowerCenter, lowerSize);
 
-    // Hood (sloped)
+    // Hood (sloped): positioned at front, height varies with hood_slope parameter.
     double hoodZ = geo.body_width * 0.45;
     double hoodHeight = geo.body_height * 0.5 + geo.hood_slope * geo.front_overhang;
     Vec3 hoodCenter(geo.wheelbase * 0.3, geo.ride_height + geo.wheel_radius + hoodHeight * 0.5, 0);
     Vec3 hoodSize(geo.front_overhang + geo.wheelbase * 0.4, hoodHeight, hoodZ * 2);
     AddBox(body, hoodCenter, hoodSize);
 
-    // Rear section (engine cover)
+    // Rear section (engine cover): taller box behind the cabin.
     double rearHeight = geo.body_height * 0.55;
     Vec3 rearCenter(-geo.wheelbase * 0.35, geo.ride_height + geo.wheel_radius + rearHeight * 0.5, 0);
     Vec3 rearSize(geo.rear_overhang + geo.wheelbase * 0.3, rearHeight, geo.body_width * 0.9);
     AddBox(body, rearCenter, rearSize);
 
-    // Side skirts
+    // Side skirts: thin boxes running along each side of the body.
     double skirtHeight = geo.body_height * 0.2;
     double skirtY = geo.ride_height + geo.wheel_radius + skirtHeight * 0.5;
     Vec3 skirtSize(geo.body_length * 0.7, skirtHeight, 0.1);
@@ -141,23 +145,24 @@ MeshData VehicleGenerator::GenerateBody(const VehicleGeometry& geo) {
     return body;
 }
 
-// Build the passenger cabin with roof and A/C pillars.
+// Build the passenger cabin: a box for the glass area, a thin roof slab,
+// and four pillars (A-pillars at front, C-pillars at rear) framing the windows.
 MeshData VehicleGenerator::GenerateCabin(const VehicleGeometry& geo) {
     MeshData cabin;
 
-    // Cabin base
+    // Cabin base: sits on top of the body lower section.
     double cabinY = geo.ride_height + geo.wheel_radius + geo.body_height * 0.5 + geo.cabin_height * 0.5;
     Vec3 cabinCenter(0, cabinY, 0);
     Vec3 cabinSize(geo.cabin_length, geo.cabin_height, geo.cabin_width);
     AddBox(cabin, cabinCenter, cabinSize);
 
-    // Roof
+    // Roof: thin slab on top of the cabin.
     double roofY = geo.ride_height + geo.wheel_radius + geo.body_height * 0.5 + geo.cabin_height;
     Vec3 roofCenter(0, roofY, 0);
     Vec3 roofSize(geo.cabin_length * 0.85, 0.05, geo.cabin_width * 0.95);
     AddBox(cabin, roofCenter, roofSize);
 
-    // A-pillars (windshield frame)
+    // A-pillars (windshield frame): angled pillars at the front of the cabin.
     double pillarHeight = geo.cabin_height * 0.8;
     double pillarWidth = 0.08;
     Vec3 pillarSize(pillarWidth, pillarHeight, pillarWidth);
@@ -171,7 +176,7 @@ MeshData VehicleGenerator::GenerateCabin(const VehicleGeometry& geo) {
     AddBox(cabin, flPillar, pillarSize);
     AddBox(cabin, frPillar, pillarSize);
 
-    // C-pillars (rear window frame)
+    // C-pillars (rear window frame): same dimensions, at the back of the cabin.
     double cPillarX = -geo.cabin_length * 0.35;
     Vec3 rlPillar(cPillarX, aPillarY, aPillarZ);
     Vec3 rrPillar(cPillarX, aPillarY, -aPillarZ);
@@ -196,11 +201,12 @@ MeshData VehicleGenerator::GenerateWheel(const VehicleGeometry& geo) {
     return wheel;
 }
 
-// Build the rear spoiler blade and support struts.
+// Build the rear spoiler: a horizontal blade mounted above the rear body
+// on two vertical support struts.
 MeshData VehicleGenerator::GenerateSpoiler(const VehicleGeometry& geo) {
     MeshData spoiler;
 
-    // Spoiler blade
+    // Spoiler blade: positioned at the rear, elevated by spoiler_height.
     double spoilerY = geo.ride_height + geo.wheel_radius + geo.body_height + geo.spoiler_height;
     double spoilerX = -geo.body_length * 0.45;
 
@@ -208,7 +214,7 @@ MeshData VehicleGenerator::GenerateSpoiler(const VehicleGeometry& geo) {
     Vec3 bladeSize(geo.spoiler_thickness, 0.15, geo.spoiler_width);
     AddBox(spoiler, bladeCenter, bladeSize);
 
-    // Spoiler supports
+    // Spoiler supports: two vertical struts connecting blade to body.
     Vec3 supportSize(0.08, geo.spoiler_height, 0.08);
     double supportZ = geo.spoiler_width * 0.4;
 
@@ -220,10 +226,12 @@ MeshData VehicleGenerator::GenerateSpoiler(const VehicleGeometry& geo) {
     return spoiler;
 }
 
-// Build the front splitter/diffuser lip.
+// Build the front splitter/diffuser lip: a thin horizontal blade at the
+// front bottom of the body to generate front downforce.
 MeshData VehicleGenerator::GenerateSplitter(const VehicleGeometry& geo) {
     MeshData splitter;
 
+    // Splitter sits just below the front body edge.
     double splitterY = geo.ride_height + geo.wheel_radius - geo.splitter_height;
     double splitterX = geo.body_length * 0.5;
 
@@ -234,7 +242,7 @@ MeshData VehicleGenerator::GenerateSplitter(const VehicleGeometry& geo) {
     return splitter;
 }
 
-// Build side mirrors with stalks.
+// Build side mirrors: small boxes mounted on thin stalks at the front of the cabin.
 MeshData VehicleGenerator::GenerateSideMirrors(const VehicleGeometry& geo) {
     MeshData mirrors;
 
@@ -249,7 +257,7 @@ MeshData VehicleGenerator::GenerateSideMirrors(const VehicleGeometry& geo) {
     AddBox(mirrors, leftMirror, mirrorSize);
     AddBox(mirrors, rightMirror, mirrorSize);
 
-    // Mirror stalks
+    // Mirror stalks: thin connectors between mirror and body.
     Vec3 stalkSize(0.04, 0.04, 0.1);
     Vec3 leftStalk(mirrorX, mirrorY, mirrorZ - 0.15);
     Vec3 rightStalk(mirrorX, mirrorY, -mirrorZ + 0.15);
@@ -259,7 +267,7 @@ MeshData VehicleGenerator::GenerateSideMirrors(const VehicleGeometry& geo) {
     return mirrors;
 }
 
-// Build front headlight blocks.
+// Build front headlight blocks: small emissive-looking boxes at the front of the body.
 MeshData VehicleGenerator::GenerateHeadlights(const VehicleGeometry& geo) {
     MeshData lights;
 
@@ -277,7 +285,7 @@ MeshData VehicleGenerator::GenerateHeadlights(const VehicleGeometry& geo) {
     return lights;
 }
 
-// Build rear taillight blocks.
+// Build rear taillight blocks: tall narrow boxes at the rear of the body.
 MeshData VehicleGenerator::GenerateTaillights(const VehicleGeometry& geo) {
     MeshData lights;
 
@@ -296,11 +304,15 @@ MeshData VehicleGenerator::GenerateTaillights(const VehicleGeometry& geo) {
 }
 
 // Append an axis-aligned box primitive to the mesh.
+// Generates 8 vertices (corners), 1 UV set, 1 color set, and 12 indices
+// forming 6 faces (2 triangles each). Normals are all set to (0,1,0) as
+// a placeholder; the mesh generator does not compute smooth normals.
 void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& size) {
     double hx = size[0] * 0.5;
     double hy = size[1] * 0.5;
     double hz = size[2] * 0.5;
 
+    // 8 corners of the box (binary pattern: xyz).
     Vec3 v000(center[0] - hx, center[1] - hy, center[2] - hz);
     Vec3 v100(center[0] + hx, center[1] - hy, center[2] - hz);
     Vec3 v110(center[0] + hx, center[1] + hy, center[2] - hz);
@@ -321,6 +333,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.vertices.push_back(v111);
     mesh.vertices.push_back(v011);
 
+    // Per-vertex attributes: uniform normal and white color.
     for (int i = 0; i < 8; ++i) {
         mesh.normals.push_back(Vec3(0, 1, 0));
         mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
@@ -330,7 +343,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
         mesh.uvs.push_back(Vec2(0, 0));
     }
 
-    // Front face
+    // Front face (z-)
     mesh.indices.push_back(baseIndex + 0);
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 2);
@@ -338,7 +351,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 2);
     mesh.indices.push_back(baseIndex + 3);
 
-    // Back face
+    // Back face (z+)
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 7);
@@ -346,7 +359,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 7);
     mesh.indices.push_back(baseIndex + 6);
 
-    // Top face
+    // Top face (y+)
     mesh.indices.push_back(baseIndex + 3);
     mesh.indices.push_back(baseIndex + 2);
     mesh.indices.push_back(baseIndex + 6);
@@ -354,7 +367,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 6);
     mesh.indices.push_back(baseIndex + 7);
 
-    // Bottom face
+    // Bottom face (y-)
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 1);
@@ -362,7 +375,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 0);
 
-    // Right face
+    // Right face (x+)
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 6);
@@ -370,7 +383,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 6);
     mesh.indices.push_back(baseIndex + 2);
 
-    // Left face
+    // Left face (x-)
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 0);
     mesh.indices.push_back(baseIndex + 3);
@@ -380,11 +393,14 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
 }
 
 // Append a cylinder primitive (approximated by segments) to the mesh.
+// The cylinder axis is along Y. Generates a side wall (quad strip between
+// top and bottom rings) plus two caps (triangle fans centered on each end).
+// Normals point radially outward for the side and axially for the caps.
 void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double radius, double height, int segments) {
     int baseIndex = mesh.vertices.size();
     double halfHeight = height * 0.5;
 
-    // Create vertices for top and bottom circles
+    // Create vertices for top and bottom circles (paired: bottom, top).
     for (int i = 0; i < segments; i++) {
         double angle = 2.0 * kPi * i / segments;
         double x = radius * cos(angle);
@@ -401,13 +417,13 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
         mesh.uvs.push_back(Vec2((double)i / segments, 1));
     }
 
-    // Bottom center
+    // Bottom center vertex (for the cap fan).
     mesh.vertices.push_back(Vec3(center[0], center[1] - halfHeight, center[2]));
     mesh.normals.push_back(Vec3(0, -1, 0));
     mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
     mesh.uvs.push_back(Vec2(0.5, 0.5));
 
-    // Top center
+    // Top center vertex (for the cap fan).
     mesh.vertices.push_back(Vec3(center[0], center[1] + halfHeight, center[2]));
     mesh.normals.push_back(Vec3(0, 1, 0));
     mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
@@ -415,7 +431,7 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
 
     int capBaseIndex = mesh.vertices.size() - 2;
 
-    // Create side faces
+    // Create side faces (quad strip between adjacent ring vertices).
     for (int i = 0; i < segments; i++) {
         int next = (i + 1) % segments;
         int bl = baseIndex + i * 2;      // bottom left
@@ -432,6 +448,7 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
         mesh.indices.push_back(tr);
     }
 
+    // Create cap fans (triangle fans from center to ring edges).
     for (int i = 0; i < segments; i++) {
         int next = (i + 1) % segments;
 
@@ -448,6 +465,8 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
 }
 
 // Merge source mesh vertices/indices into target mesh, reindexing indices.
+// All vertex attributes (positions, normals, UVs, colors) are concatenated,
+// and source indices are offset by the target's current vertex count.
 void VehicleGenerator::MergeMesh(MeshData& target, const MeshData& source) {
     int baseIndex = target.vertices.size();
 

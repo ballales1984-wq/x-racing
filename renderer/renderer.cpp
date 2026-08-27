@@ -14,6 +14,8 @@ static Renderer* g_renderer = nullptr;
 static const char* kWindowClass = "X-Racing";
 static const char* kWindowTitle = "X-Racing Simulator";
 
+// Win32 window procedure for the renderer window.
+// Handles WM_DESTROY (quit), WM_KEYDOWN (ESC to quit, M to toggle 3D, 1/2 to switch track).
 static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   switch (msg) {
     case WM_DESTROY:
@@ -52,6 +54,9 @@ Renderer::~Renderer() {
   if (window_) DestroyWindow(window_);
 }
 
+// Initialize the Win32 window and create the back-buffer rendering surface.
+// Registers the window class, creates the overlapped window, and sets up
+// a memory DC with a compatible bitmap for double-buffered drawing.
 bool Renderer::initialize() {
   WNDCLASSEX wc = {};
   wc.cbSize = sizeof(WNDCLASSEX);
@@ -64,6 +69,7 @@ bool Renderer::initialize() {
 
   if (!RegisterClassEx(&wc)) return false;
 
+  // Adjust window rect to account for menu/border so client area matches config size.
   RECT rect = {0, 0, config_.width, config_.height};
   AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
 
@@ -79,6 +85,7 @@ bool Renderer::initialize() {
 
   g_renderer = this;
 
+  // Create back-buffer: memory DC + compatible bitmap for double-buffered rendering.
   HDC hdc = GetDC(window_);
   mem_dc_ = CreateCompatibleDC(hdc);
   mem_bitmap_ = CreateCompatibleBitmap(hdc, config_.width, config_.height);
@@ -95,12 +102,12 @@ void Renderer::run() {
   if (!initialize()) return;
 
   running_ = true;
-  load_car_mesh("D:/x-racing/assets/models/car_mesh.obj");
+  load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
   if (car_meshes_.empty()) {
-    load_car_mesh("D:/x-racing/assets/models/car.obj");
+    load_car_mesh("D:/x-racing/assets/models/car_mesh.obj");
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+    load_car_mesh("D:/x-racing/assets/models/car.obj");
   }
   std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
   telemetry::Telemetry tel;
@@ -163,9 +170,9 @@ void Renderer::draw_track(HDC hdc) {
   HPEN track_pen = CreatePen(PS_SOLID, 3, RGB(100, 100, 100));
   HPEN old_pen = (HPEN)SelectObject(hdc, track_pen);
 
-  for (int i = 0; i + step < static_cast<int>(length); i += step) {
+  for (int i = 0; i < static_cast<int>(length); i += step) {
     track::TrackPoint p0 = track->at(i);
-    track::TrackPoint p1 = track->at(i + step);
+    track::TrackPoint p1 = track->at((std::min)(i + step, static_cast<int>(length) - 1));
     int x0 = static_cast<int>(p0.position.x() * config_.scale + config_.width / 2);
     int y0 = static_cast<int>(-p0.position.y() * config_.scale + config_.height / 2);
     int x1 = static_cast<int>(p1.position.x() * config_.scale + config_.width / 2);
@@ -187,9 +194,9 @@ void Renderer::draw_box_lane(HDC hdc) {
   HPEN box_pen = CreatePen(PS_SOLID, 2, RGB(255, 80, 80));
   HPEN old_pen = (HPEN)SelectObject(hdc, box_pen);
 
-  for (int i = 0; i + step < static_cast<int>(length); i += step) {
+  for (int i = 0; i < static_cast<int>(length); i += step) {
     track::TrackPoint p0 = track->at(i);
-    track::TrackPoint p1 = track->at(i + step);
+    track::TrackPoint p1 = track->at((std::min)(i + step, static_cast<int>(length) - 1));
 
     if (!p0.has_box_lane || !p1.has_box_lane) continue;
 
@@ -284,13 +291,15 @@ void Renderer::toggle_3d_mode() {
   }
 }
 
-// Poll the keyboard and populate the per-frame input state.
-// W/S or Up/Down drive throttle/brake; A/D or Left/Right steer; arrows also shift.
+// Switch the active track type at runtime.
+// Rebuilds the track object and updates the simulation reference.
 void Renderer::set_track_type(track::TrackType type) {
   current_track_type_ = type;
   sim_.set_track(track::Track(type));
 }
 
+// Poll the keyboard and populate the per-frame input state.
+// W/S or Up/Down drive throttle/brake; A/D or Left/Right steer; arrows also shift.
 void Renderer::handle_input(input::InputState& input) {
   input.throttle = 0.0;
   input.brake = 0.0;
@@ -306,12 +315,16 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
 }
 
+// Load a car mesh from an OBJ file for 3D rendering.
+// Computes a uniform scale factor so the mesh fits within ~5 world units.
 void Renderer::load_car_mesh(const std::string& filename) {
   car_meshes_.clear();
   car_mesh_scale_ = 1.0f;
   p0::assets::Mesh mesh;
-  if (p0::assets::MeshLoader::LoadOBJ(filename, mesh)) {
+  std::vector<p0::assets::Material> materials;
+  if (p0::assets::MeshLoader::LoadOBJ(filename, mesh, materials)) {
     if (!mesh.vertices.empty()) {
+      // Compute bounding box to derive a uniform scale factor.
       Vec3 min_v = mesh.vertices[0];
       Vec3 max_v = mesh.vertices[0];
       for (const auto& v : mesh.vertices) {
@@ -330,6 +343,9 @@ void Renderer::load_car_mesh(const std::string& filename) {
   }
 }
 
+// Build the chase-camera view matrix.
+// Eye position is behind and above the car; target is ahead of the car.
+// Constructs an orthonormal basis (side, up, forward) from the look-at direction.
 Mat4 Renderer::view_matrix() const {
   const auto& state = sim_.state();
   Vec3 car_pos(state.position.x(), 0.0, state.position.y());
@@ -340,6 +356,7 @@ Mat4 Renderer::view_matrix() const {
   Vec3 target = car_pos + Vec3(std::cos(heading) * 2.0, 0.0, std::sin(heading) * 2.0);
   Vec3 up(0.0, 1.0, 0.0);
 
+  // Build orthonormal basis vectors.
   Vec3 f = (target - eye).normalized();
   Vec3 s = f.cross(up).normalized();
   Vec3 u = s.cross(f);
@@ -352,10 +369,14 @@ Mat4 Renderer::view_matrix() const {
   return view;
 }
 
+// Project a world-space 3D point to screen coordinates.
+// Returns (-9999, -9999, 0) if the point is behind the camera or invalid.
+// Applies view transform, perspective projection, and viewport mapping.
 Vec3 Renderer::project(const Vec3& world_pos) const {
   Mat4 view = view_matrix();
   Vec4 view_pos = view * Vec4(world_pos.x(), world_pos.y(), world_pos.z(), 1.0);
 
+  // Reject points behind the near plane.
   if (view_pos.z() >= -0.1) return Vec3(-9999.0, -9999.0, 0.0);
 
   // Perspective projection with 60 degree FOV.
@@ -376,6 +397,7 @@ Vec3 Renderer::project(const Vec3& world_pos) const {
   Vec4 clip = proj * view_pos;
   if (clip.w() <= 0.0) return Vec3(-9999.0, -9999.0, 0.0);
 
+  // Perspective divide to get NDC, then map to screen pixels.
   Vec3 ndc(clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w());
 
   int sx = static_cast<int>((ndc.x() * 0.5 + 0.5) * config_.width);
@@ -384,12 +406,17 @@ Vec3 Renderer::project(const Vec3& world_pos) const {
   return Vec3(static_cast<double>(sx), static_cast<double>(sy), ndc.z());
 }
 
+// Draw the car as a 3D wireframe mesh using the loaded OBJ geometry.
+// Applies model matrix (position + heading rotation), view matrix (chase camera),
+// and perspective projection to each triangle. Triangles behind the camera are culled.
+// Each triangle edge is drawn as a GDI line with per-vertex colors averaged from the mesh.
 void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
   if (car_meshes_.empty()) return;
 
   Vec3 car_pos(state.position.x(), 0.5, state.position.y());
   double heading = state.heading;
 
+  // Build model matrix: translate to car position and rotate around Y by heading.
   Mat4 model = Mat4::Identity();
   model(0, 0) = std::cos(heading); model(0, 2) = std::sin(heading);
   model(2, 0) = -std::sin(heading); model(2, 2) = std::cos(heading);
@@ -403,10 +430,12 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       int i1 = mesh.indices[i * 3 + 1];
       int i2 = mesh.indices[i * 3 + 2];
 
+      // Scale vertices to fit within ~5 world units.
       Vec3 v0 = mesh.vertices[i0] * car_mesh_scale_;
       Vec3 v1 = mesh.vertices[i1] * car_mesh_scale_;
       Vec3 v2 = mesh.vertices[i2] * car_mesh_scale_;
 
+      // Transform to world space (model matrix + car position).
       Vec4 p0_4d = model * Vec4(v0.x(), v0.y(), v0.z(), 1.0);
       Vec4 p1_4d = model * Vec4(v1.x(), v1.y(), v1.z(), 1.0);
       Vec4 p2_4d = model * Vec4(v2.x(), v2.y(), v2.z(), 1.0);
@@ -415,11 +444,14 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       Vec3 p1 = Vec3(p1_4d.x(), p1_4d.y(), p1_4d.z()) + car_pos;
       Vec3 p2 = Vec3(p2_4d.x(), p2_4d.y(), p2_4d.z()) + car_pos;
 
+      // Project to screen space.
       Vec3 s0 = project(p0);
       Vec3 s1 = project(p1);
       Vec3 s2 = project(p2);
 
+      // Cull triangles that are behind the camera or off-screen.
       if (s0.z() > -1.0 || s1.z() > -1.0 || s2.z() > -1.0) {
+        // Compute average vertex color for the triangle.
         Vec3 color(0.6, 0.6, 0.6);
         if (mesh.colors.size() == mesh.vertices.size() && mesh.colors.size() > i0) {
           color = (mesh.colors[i0] + mesh.colors[i1] + mesh.colors[i2]) / 3.0;
@@ -430,6 +462,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
         HPEN tri_pen = CreatePen(PS_SOLID, 1, RGB(r, g, b));
         HPEN old_pen = (HPEN)SelectObject(hdc, tri_pen);
 
+        // Draw the three edges of the triangle.
         MoveToEx(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()), nullptr);
         LineTo(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()));
         MoveToEx(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()), nullptr);
@@ -443,6 +476,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
     }
   }
 
+  // Clean up all created GDI pens.
   for (HPEN pen : pens_to_delete) {
     DeleteObject(pen);
   }
