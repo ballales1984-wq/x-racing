@@ -34,6 +34,8 @@ class Renderer {
 
   // Load an external car mesh (OBJ) for 3D rendering.
   void load_car_mesh(const std::string& filename);
+  // Toggle 3D wireframe car mode (called from window procedure).
+  void toggle_3d_mode();
   // Switch the active track layout at runtime.
   void set_track_type(track::TrackType type);
 
@@ -65,7 +67,8 @@ class Renderer {
   bool running_ = false;
   double time_ = 0.0;
   std::vector<p0::assets::Mesh> car_meshes_;
-  bool show_3d_car_ = false;
+  bool show_3d_car_ = true;
+  float car_mesh_scale_ = 1.0f;
   track::TrackType current_track_type_ = track::TrackType::Default;
 };
 

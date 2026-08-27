@@ -93,10 +93,11 @@ class Track {
     return ::p0::track::friction_for_surface(type);
   }
 
- private:
-  void build_default_track();
-  void build_pit_track();
-  TrackPoint interpolate(double distance) const;
+  private:
+   void build_default_track();
+   void build_pit_track();
+   TrackPoint interpolate(double distance, int i0, int i1, double frac) const;
+   void find_adjacent_points(double distance, int& i0, int& i1, double& frac) const;
 
   std::vector<TrackPoint> points_;
   std::vector<double> pit_box_positions_;

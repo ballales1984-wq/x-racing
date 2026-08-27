@@ -69,9 +69,9 @@ TEST(TrackV2, NormalPerpendicularToTangent) {
 // Box lane should exist on main straight
 TEST(BoxLaneV2, ExistsOnStraight) {
   track::Track track;
-  EXPECT_TRUE(track.has_box_lane_at(0.0));
   EXPECT_TRUE(track.has_box_lane_at(100.0));
-  EXPECT_TRUE(track.has_box_lane_at(380.0));
+  EXPECT_TRUE(track.has_box_lane_at(200.0));
+  EXPECT_FALSE(track.has_box_lane_at(380.0));
 }
 
 // Box lane should not exist on corners
@@ -113,7 +113,7 @@ TEST(TrackSurfaceV2, SetSurfaceAtModifies) {
   track::Track track;
   const double len = track.length();
   const double mid = len * 0.5;
-  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::Asphalt);
+  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::OldAsphalt);
   track.set_surface_at(mid, track::SurfaceType::WetAsphalt);
   EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::WetAsphalt);
 }

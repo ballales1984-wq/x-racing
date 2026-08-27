@@ -10,10 +10,10 @@ namespace Project0.Unity.Setup
         [MenuItem("Project0/Generate Telemetry")]
         public static void Generate()
         {
-            var exePath = @"D:\x-racing\build\game\Release\auto_drive.exe";
+            var exePath = @"D:\x-racing\gen_telemetry.exe";
             if (!File.Exists(exePath))
             {
-                UnityEngine.Debug.LogError($"auto_drive.exe not found at {exePath}");
+                UnityEngine.Debug.LogError($"gen_telemetry.exe not found at {exePath}");
                 return;
             }
 
@@ -24,7 +24,7 @@ namespace Project0.Unity.Setup
                 Directory.CreateDirectory(dir);
             }
 
-            UnityEngine.Debug.Log($"Starting auto_drive.exe...");
+            UnityEngine.Debug.Log($"Starting gen_telemetry.exe...");
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -42,12 +42,12 @@ namespace Project0.Unity.Setup
 
             if (!exited)
             {
-                UnityEngine.Debug.LogWarning("auto_drive.exe did not finish within 120 seconds. Telemetry may be incomplete.");
+                UnityEngine.Debug.Log($"gen_telemetry.exe did not finish within 120 seconds. Telemetry may be incomplete.");
                 process.Kill();
                 return;
             }
 
-            UnityEngine.Debug.Log($"auto_drive.exe exited with code {process.ExitCode}");
+            UnityEngine.Debug.Log($"gen_telemetry.exe exited with code {process.ExitCode}");
 
             if (process.ExitCode == 0)
             {
@@ -56,7 +56,7 @@ namespace Project0.Unity.Setup
             else
             {
                 var error = process.StandardError.ReadToEnd();
-                UnityEngine.Debug.LogError($"auto_drive.exe failed with code {process.ExitCode}: {error}");
+                UnityEngine.Debug.LogError($"gen_telemetry.exe failed with code {process.ExitCode}: {error}");
             }
         }
     }

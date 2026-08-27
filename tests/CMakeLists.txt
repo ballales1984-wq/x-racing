@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.20)
-
 set(TEST_SOURCES
   simulation_test.cpp
   physics_test.cpp

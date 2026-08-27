@@ -243,7 +243,7 @@ void Track::build_pit_track() {
     points_.push_back(point);
   }
 
-  pit_box_positions_ = {600.0, 700.0, 800.0, 900.0};
+  pit_box_positions_ = {850.0, 950.0, 1050.0, 1150.0};
 
   // Compute cumulative arc-length distance for each sampled point.
   for (size_t i = 0; i < points_.size(); ++i) {
@@ -272,6 +272,44 @@ void Track::build_pit_track() {
   }
 }
 
+// Find the two adjacent points surrounding a given distance along the track.
+// Uses binary search on the cumulative distance array for accuracy regardless
+// of non-uniform point spacing.
+void Track::find_adjacent_points(double distance, int& i0, int& i1, double& frac) const {
+  if (points_.size() < 2) {
+    i0 = i1 = 0;
+    frac = 0.0;
+    return;
+  }
+
+  // Binary search for the first point with distance >= target
+  int lo = 0;
+  int hi = static_cast<int>(points_.size()) - 1;
+  while (lo < hi) {
+    const int mid = lo + (hi - lo) / 2;
+    if (points_[mid].distance < distance) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  i0 = std::max(lo - 1, 0);
+  i1 = std::min(lo, static_cast<int>(points_.size()) - 1);
+
+  if (i0 == i1) {
+    frac = 0.0;
+    return;
+  }
+
+  const double seg_len = points_[i1].distance - points_[i0].distance;
+  if (seg_len > kEpsilon) {
+    frac = (distance - points_[i0].distance) / seg_len;
+  } else {
+    frac = 0.0;
+  }
+}
+
 // Query track data at distance d (wraps around the loop).
 // Returns linearly interpolated geometry between stored points.
 TrackPoint Track::at(double distance) const {
@@ -282,16 +320,15 @@ TrackPoint Track::at(double distance) const {
   distance = std::fmod(distance, total_length_);
   if (distance < 0.0) distance += total_length_;
 
-  const double step = total_length_ / (points_.size() - 1);
-  const double raw_index = distance / step;
-  const int index = static_cast<int>(std::floor(raw_index));
-
-  if (index >= static_cast<int>(points_.size()) - 1) {
+  // Handle exact end-of-track case
+  if (distance >= points_.back().distance - kEpsilon) {
     return points_.back();
   }
 
-  const double frac = raw_index - index;
-  return interpolate(distance);
+  int i0, i1;
+  double frac;
+  find_adjacent_points(distance, i0, i1, frac);
+  return interpolate(distance, i0, i1, frac);
 }
 
 bool Track::has_box_lane_at(double distance) const {
@@ -310,14 +347,14 @@ SurfaceType Track::surface_type_at(double distance) const {
   distance = std::fmod(distance, total_length_);
   if (distance < 0.0) distance += total_length_;
 
-  const double step = total_length_ / (points_.size() - 1);
-  const double raw_index = distance / step;
-  const int index = static_cast<int>(std::floor(raw_index));
+  if (distance >= points_.back().distance - kEpsilon) {
+    return points_.back().surface_type;
+  }
 
-  const int i0 = std::clamp(index, 0, static_cast<int>(points_.size()) - 1);
-  const int i1 = std::clamp(index + 1, 0, static_cast<int>(points_.size()) - 1);
+  int i0, i1;
+  double frac;
+  find_adjacent_points(distance, i0, i1, frac);
 
-  const double frac = raw_index - index;
   return (frac < 0.5) ? points_[i0].surface_type : points_[i1].surface_type;
 }
 
@@ -327,29 +364,23 @@ void Track::set_surface_at(double distance, SurfaceType type) {
   distance = std::fmod(distance, total_length_);
   if (distance < 0.0) distance += total_length_;
 
-  const double step = total_length_ / (points_.size() - 1);
-  const double raw_index = distance / step;
-  const int index = static_cast<int>(std::floor(raw_index));
+  if (distance >= points_.back().distance - kEpsilon) {
+    points_.back().surface_type = type;
+    points_.back().friction = friction_for_surface(type);
+    return;
+  }
 
-  const int i0 = std::clamp(index, 0, static_cast<int>(points_.size()) - 1);
-  const int i1 = std::clamp(index + 1, 0, static_cast<int>(points_.size()) - 1);
+  int i0, i1;
+  double frac;
+  find_adjacent_points(distance, i0, i1, frac);
 
-  const double frac = raw_index - index;
   const int target = (frac < 0.5) ? i0 : i1;
   points_[target].surface_type = type;
   points_[target].friction = friction_for_surface(type);
 }
 
 // Linear interpolation between two adjacent track points
-TrackPoint Track::interpolate(double distance) const {
-  const double step = total_length_ / (points_.size() - 1);
-  const double raw_index = distance / step;
-  const int index = static_cast<int>(std::floor(raw_index));
-  const double frac = raw_index - index;
-
-  const int i0 = std::clamp(index, 0, static_cast<int>(points_.size()) - 1);
-  const int i1 = std::clamp(index + 1, 0, static_cast<int>(points_.size()) - 1);
-
+TrackPoint Track::interpolate(double distance, int i0, int i1, double frac) const {
   TrackPoint result;
   result.position = lerp(points_[i0].position, points_[i1].position, frac);
   result.tangent = lerp(points_[i0].tangent, points_[i1].tangent, frac).normalized();

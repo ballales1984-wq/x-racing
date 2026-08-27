@@ -9,17 +9,33 @@
 
 namespace p0::renderer {
 
+static Renderer* g_renderer = nullptr;
+
 static const char* kWindowClass = "X-Racing";
 static const char* kWindowTitle = "X-Racing Simulator";
 
-// Window message handler: closes the application on window destroy or ESC.
 static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   switch (msg) {
     case WM_DESTROY:
       PostQuitMessage(0);
       return 0;
     case WM_KEYDOWN:
-      if (wparam == VK_ESCAPE) PostQuitMessage(0);
+      if (wparam == VK_ESCAPE) {
+        PostQuitMessage(0);
+        return 0;
+      }
+      if (wparam == 'M' && g_renderer) {
+        g_renderer->toggle_3d_mode();
+        return 0;
+      }
+      if (wparam == '1' && g_renderer) {
+        g_renderer->set_track_type(track::TrackType::Default);
+        return 0;
+      }
+      if (wparam == '2' && g_renderer) {
+        g_renderer->set_track_type(track::TrackType::PitCircuit);
+        return 0;
+      }
       return 0;
     default:
       return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -30,6 +46,7 @@ Renderer::Renderer(simulation::Simulation& sim, const RendererConfig& config)
     : sim_(sim), config_(config) {}
 
 Renderer::~Renderer() {
+  g_renderer = nullptr;
   if (mem_bitmap_) DeleteObject(mem_bitmap_);
   if (mem_dc_) DeleteDC(mem_dc_);
   if (window_) DestroyWindow(window_);
@@ -60,6 +77,8 @@ bool Renderer::initialize() {
 
   if (!window_) return false;
 
+  g_renderer = this;
+
   HDC hdc = GetDC(window_);
   mem_dc_ = CreateCompatibleDC(hdc);
   mem_bitmap_ = CreateCompatibleBitmap(hdc, config_.width, config_.height);
@@ -76,9 +95,12 @@ void Renderer::run() {
   if (!initialize()) return;
 
   running_ = true;
-  load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+  load_car_mesh("D:/x-racing/assets/models/car_from_fbx.obj");
   if (car_meshes_.empty()) {
     load_car_mesh("D:/x-racing/assets/models/car.obj");
+  }
+  if (car_meshes_.empty()) {
+    load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
   }
   std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
   telemetry::Telemetry tel;
@@ -253,6 +275,15 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   TextOutA(hdc, 10, 130, buf, (int)strlen(buf));
 }
 
+void Renderer::toggle_3d_mode() {
+  show_3d_car_ = !show_3d_car_;
+  std::cout << "3D car mode: " << (show_3d_car_ ? "ON" : "OFF") << std::endl;
+  if (window_) {
+    std::string title = show_3d_car_ ? "X-Racing Simulator [3D ON]" : "X-Racing Simulator [3D OFF]";
+    SetWindowTextA(window_, title.c_str());
+  }
+}
+
 // Poll the keyboard and populate the per-frame input state.
 // W/S or Up/Down drive throttle/brake; A/D or Left/Right steer; arrows also shift.
 void Renderer::set_track_type(track::TrackType type) {
@@ -273,15 +304,28 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState('D') & 0x8000) input.steering = 1.0;
   if (GetAsyncKeyState(VK_UP) & 0x8000) input.upshift = true;
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
-  if (GetAsyncKeyState('M') & 0x8000) show_3d_car_ = !show_3d_car_;
-  if (GetAsyncKeyState('1') & 0x8000) set_track_type(track::TrackType::Default);
-  if (GetAsyncKeyState('2') & 0x8000) set_track_type(track::TrackType::PitCircuit);
 }
 
 void Renderer::load_car_mesh(const std::string& filename) {
   car_meshes_.clear();
+  car_mesh_scale_ = 1.0f;
   p0::assets::Mesh mesh;
   if (p0::assets::MeshLoader::LoadOBJ(filename, mesh)) {
+    if (!mesh.vertices.empty()) {
+      Vec3 min_v = mesh.vertices[0];
+      Vec3 max_v = mesh.vertices[0];
+      for (const auto& v : mesh.vertices) {
+        min_v = min_v.cwiseMin(v);
+        max_v = max_v.cwiseMax(v);
+      }
+      Vec3 size = max_v - min_v;
+      double max_dim = std::abs(size.x());
+      if (std::abs(size.y()) > max_dim) max_dim = std::abs(size.y());
+      if (std::abs(size.z()) > max_dim) max_dim = std::abs(size.z());
+      if (max_dim > 1e-6) {
+        car_mesh_scale_ = static_cast<float>(5.0 / max_dim);
+      }
+    }
     car_meshes_.push_back(std::move(mesh));
   }
 }
@@ -358,9 +402,9 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
     size_t tri_count = mesh.indices.size() / 3;
     // Project each triangle to screen space and draw wireframe edges.
     for (size_t i = 0; i < tri_count; ++i) {
-      Vec3 v0 = mesh.vertices[mesh.indices[i * 3]];
-      Vec3 v1 = mesh.vertices[mesh.indices[i * 3 + 1]];
-      Vec3 v2 = mesh.vertices[mesh.indices[i * 3 + 2]];
+      Vec3 v0 = mesh.vertices[mesh.indices[i * 3]] * car_mesh_scale_;
+      Vec3 v1 = mesh.vertices[mesh.indices[i * 3 + 1]] * car_mesh_scale_;
+      Vec3 v2 = mesh.vertices[mesh.indices[i * 3 + 2]] * car_mesh_scale_;
 
       Vec4 p0_4d = model * Vec4(v0.x(), v0.y(), v0.z(), 1.0);
       Vec4 p1_4d = model * Vec4(v1.x(), v1.y(), v1.z(), 1.0);

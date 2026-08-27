@@ -23,10 +23,6 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.rpm = vehicle_params_.idle_rpm;
   state_.gear = 1;
   state_.lateral_velocity = 0.0;
-  state_.front_tire_temp = vehicle_params_.ambient_temperature;
-  state_.rear_tire_temp = vehicle_params_.ambient_temperature;
-  state_.front_tire_wear = 1.0;
-  state_.rear_tire_wear = 1.0;
   state_.fl_tire_load = 0.0;
   state_.fr_tire_load = 0.0;
   state_.rl_tire_load = 0.0;

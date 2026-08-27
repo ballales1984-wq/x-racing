@@ -3,6 +3,8 @@ build/
 cmake-build-*/
 out/
 build2/
+build3/
+build_old/
 
 # IDE
 .vscode/
@@ -47,6 +49,7 @@ env/
 # Data
 data/output/
 data/telemetry/
+*.log
 
 # OS
 .DS_Store
@@ -63,5 +66,17 @@ UnityProject/obj/
 UnityProject/Assets/Materials/
 UnityProject/Assets/Settings/
 
+# Agent Manager / Kilo
+.kilo/
+.kilo/worktrees/
 
-XRacing/
+# CMake presets
+CMakePresets.json
+CMakeUserPresets.json
+
+# Large binary assets (keep source FBX only)
+assets/models/*.obj
+UnityProject/Assets/*.fbx
+
+# Test artifacts
+Testing/
