@@ -3,9 +3,11 @@ add_library(project0_engine STATIC
   simulation/simulation.cpp
   telemetry/telemetry.cpp
   vehicle/vehicle_generator.cpp
+  vehicle/car_model.cpp
   vehicle/mesh_exporter.cpp
   vehicle/glb_exporter.cpp
   assets/mesh_loader.cpp
+  assets/assimp_loader.cpp
   input/platform/windows_input.cpp
   input/platform/auto_input.cpp
 )
@@ -15,6 +17,10 @@ target_include_directories(project0_engine PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/..
   ${CMAKE_CURRENT_SOURCE_DIR}/../vendor
 )
+
+if(PROJECT0_BUILD_ASSIMP)
+  target_link_libraries(project0_engine PUBLIC assimp)
+endif()
 
 target_compile_features(project0_engine PUBLIC cxx_std_20)
 

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include "vehicle/vehicle.h"
 #include "vehicle/vehicle_generator.h"
+#include "vehicle/car_model.h"
 #include "vehicle/mesh_exporter.h"
 #include "assets/mesh.h"
 
@@ -96,7 +97,8 @@ TEST(VehicleGenerator, MeshRoundTripPreservesTriangles) {
   vehicle::MeshExporter::ExportOBJ(original, test_file);
 
   p0::assets::Mesh loaded;
-  bool ok = p0::assets::MeshLoader::LoadOBJ(test_file, loaded);
+  std::vector<p0::assets::Material> loaded_materials;
+  bool ok = p0::assets::MeshLoader::LoadOBJ(test_file, loaded, loaded_materials);
   EXPECT_TRUE(ok);
   EXPECT_EQ(loaded.indices.size(), original.indices.size());
 }
@@ -118,4 +120,77 @@ TEST(VehicleGenerator, SpoilerWithinBody) {
   vehicle::VehicleParams params;
   vehicle::VehicleGeometry geo = vehicle::VehicleGenerator::FromParams(params);
   EXPECT_LE(geo.spoiler_width, geo.body_width * 1.1);
+}
+
+// CarRegistry should be a singleton with two default models registered
+TEST(CarRegistry, HasTwoDefaultModels) {
+  auto& registry = vehicle::CarRegistry::instance();
+  EXPECT_EQ(registry.size(), 2u);
+}
+
+// CarRegistry should find the Porsche 911 model by id
+TEST(CarRegistry, FindsPorsche911) {
+  auto& registry = vehicle::CarRegistry::instance();
+  const auto* model = registry.get("porsche_911");
+  ASSERT_NE(model, nullptr);
+  EXPECT_EQ(model->name, "Porsche 911 Turbo S");
+  EXPECT_GT(model->params.mass, 0.0);
+  EXPECT_GT(model->params.max_power, 0.0);
+  EXPECT_GT(model->geometry.body_length, 0.0);
+}
+
+// CarRegistry should find the Ferrari F12 model by id
+TEST(CarRegistry, FindsFerrariF12) {
+  auto& registry = vehicle::CarRegistry::instance();
+  const auto* model = registry.get("ferrari_f12");
+  ASSERT_NE(model, nullptr);
+  EXPECT_EQ(model->name, "Ferrari F12berlinetta");
+  EXPECT_GT(model->params.mass, 0.0);
+  EXPECT_GT(model->params.max_power, 0.0);
+  EXPECT_GT(model->geometry.body_length, 0.0);
+}
+
+// CarRegistry should return nullptr for unknown id
+TEST(CarRegistry, UnknownIdReturnsNullptr) {
+  auto& registry = vehicle::CarRegistry::instance();
+  EXPECT_EQ(registry.get("nonexistent"), nullptr);
+  EXPECT_FALSE(registry.has("nonexistent"));
+}
+
+// CarRegistry should produce different params for different cars
+TEST(CarRegistry, CarsHaveDistinctParams) {
+  auto& registry = vehicle::CarRegistry::instance();
+  const auto* porsche = registry.get("porsche_911");
+  const auto* ferrari = registry.get("ferrari_f12");
+  ASSERT_NE(porsche, nullptr);
+  ASSERT_NE(ferrari, nullptr);
+
+  EXPECT_NE(porsche->params.mass, ferrari->params.mass);
+  EXPECT_NE(porsche->params.max_power, ferrari->params.max_power);
+  EXPECT_NE(porsche->params.wheelbase, ferrari->params.wheelbase);
+  EXPECT_NE(porsche->params.camber_gain_per_roll, ferrari->params.camber_gain_per_roll);
+}
+
+// Each car model should generate a valid, non-empty mesh
+TEST(CarRegistry, GenerateMeshForPorsche) {
+  auto& registry = vehicle::CarRegistry::instance();
+  const auto* model = registry.get("porsche_911");
+  ASSERT_NE(model, nullptr);
+
+  vehicle::VehicleGeometry geo = vehicle::VehicleGenerator::FromParams(model->params);
+  vehicle::MeshData mesh = vehicle::VehicleGenerator::GenerateCar(geo);
+  EXPECT_GT(mesh.vertices.size(), 0u);
+  EXPECT_GT(mesh.indices.size(), 0u);
+  EXPECT_EQ(mesh.indices.size() % 3, 0u);
+}
+
+// All models in the registry should have valid geometry assigned
+TEST(CarRegistry, AllModelsHaveGeometry) {
+  auto& registry = vehicle::CarRegistry::instance();
+  for (const auto& model : registry.all()) {
+    EXPECT_GT(model.geometry.body_length, 0.0);
+    EXPECT_GT(model.geometry.body_width, 0.0);
+    EXPECT_GT(model.geometry.body_height, 0.0);
+    EXPECT_GT(model.geometry.wheel_radius, 0.0);
+  }
 }
