@@ -155,7 +155,7 @@ MeshData VehicleGenerator::GenerateCabin(const VehicleGeometry& geo) {
     double roofY = geo.ride_height + geo.wheel_radius + geo.body_height * 0.5 + geo.cabin_height;
     Vec3 roofCenter(0, roofY, 0);
     Vec3 roofSize(geo.cabin_length * 0.85, 0.05, geo.cabin_width * 0.95);
-    AddBox(cabin, cabinCenter, roofSize);
+    AddBox(cabin, roofCenter, roofSize);
 
     // A-pillars (windshield frame)
     double pillarHeight = geo.cabin_height * 0.8;
@@ -301,7 +301,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     double hy = size[1] * 0.5;
     double hz = size[2] * 0.5;
 
-    // 8 vertices of the box
     Vec3 v000(center[0] - hx, center[1] - hy, center[2] - hz);
     Vec3 v100(center[0] + hx, center[1] - hy, center[2] - hz);
     Vec3 v110(center[0] + hx, center[1] + hy, center[2] - hz);
@@ -313,7 +312,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
 
     int baseIndex = mesh.vertices.size();
 
-    // Add vertices
     mesh.vertices.push_back(v000);
     mesh.vertices.push_back(v100);
     mesh.vertices.push_back(v110);
@@ -323,47 +321,12 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.vertices.push_back(v111);
     mesh.vertices.push_back(v011);
 
-    // Add normals (per face)
-    Vec3 nx(1, 0, 0), ny(0, 1, 0), nz(0, 0, 1);
+    for (int i = 0; i < 8; ++i) {
+        mesh.normals.push_back(Vec3(0, 1, 0));
+        mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
+    }
 
-    // Front face (z-)
-    mesh.normals.push_back(-nz);
-    mesh.normals.push_back(-nz);
-    mesh.normals.push_back(-nz);
-    mesh.normals.push_back(-nz);
-
-    // Back face (z+)
-    mesh.normals.push_back(nz);
-    mesh.normals.push_back(nz);
-    mesh.normals.push_back(nz);
-    mesh.normals.push_back(nz);
-
-    // Top face (y+)
-    mesh.normals.push_back(ny);
-    mesh.normals.push_back(ny);
-    mesh.normals.push_back(ny);
-    mesh.normals.push_back(ny);
-
-    // Bottom face (y-)
-    mesh.normals.push_back(-ny);
-    mesh.normals.push_back(-ny);
-    mesh.normals.push_back(-ny);
-    mesh.normals.push_back(-ny);
-
-    // Right face (x+)
-    mesh.normals.push_back(nx);
-    mesh.normals.push_back(nx);
-    mesh.normals.push_back(nx);
-    mesh.normals.push_back(nx);
-
-    // Left face (x-)
-    mesh.normals.push_back(-nx);
-    mesh.normals.push_back(-nx);
-    mesh.normals.push_back(-nx);
-    mesh.normals.push_back(-nx);
-
-    // Add UVs
-    for (int i = 0; i < 24; i++) {
+    for (int i = 0; i < 24; ++i) {
         mesh.uvs.push_back(Vec2(0, 0));
     }
 
@@ -427,16 +390,30 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
         double x = radius * cos(angle);
         double z = radius * sin(angle);
 
-        // Bottom vertex
         mesh.vertices.push_back(Vec3(center[0] + x, center[1] - halfHeight, center[2] + z));
         mesh.normals.push_back(Vec3(cos(angle), 0, sin(angle)));
+        mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
         mesh.uvs.push_back(Vec2((double)i / segments, 0));
 
-        // Top vertex
         mesh.vertices.push_back(Vec3(center[0] + x, center[1] + halfHeight, center[2] + z));
         mesh.normals.push_back(Vec3(cos(angle), 0, sin(angle)));
+        mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
         mesh.uvs.push_back(Vec2((double)i / segments, 1));
     }
+
+    // Bottom center
+    mesh.vertices.push_back(Vec3(center[0], center[1] - halfHeight, center[2]));
+    mesh.normals.push_back(Vec3(0, -1, 0));
+    mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
+    mesh.uvs.push_back(Vec2(0.5, 0.5));
+
+    // Top center
+    mesh.vertices.push_back(Vec3(center[0], center[1] + halfHeight, center[2]));
+    mesh.normals.push_back(Vec3(0, 1, 0));
+    mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
+    mesh.uvs.push_back(Vec2(0.5, 0.5));
+
+    int capBaseIndex = mesh.vertices.size() - 2;
 
     // Create side faces
     for (int i = 0; i < segments; i++) {
@@ -454,19 +431,6 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
         mesh.indices.push_back(br);
         mesh.indices.push_back(tr);
     }
-
-    // Create top and bottom caps
-    int capBaseIndex = mesh.vertices.size();
-
-    // Bottom center
-    mesh.vertices.push_back(Vec3(center[0], center[1] - halfHeight, center[2]));
-    mesh.normals.push_back(Vec3(0, -1, 0));
-    mesh.uvs.push_back(Vec2(0.5, 0.5));
-
-    // Top center
-    mesh.vertices.push_back(Vec3(center[0], center[1] + halfHeight, center[2]));
-    mesh.normals.push_back(Vec3(0, 1, 0));
-    mesh.uvs.push_back(Vec2(0.5, 0.5));
 
     for (int i = 0; i < segments; i++) {
         int next = (i + 1) % segments;
@@ -495,6 +459,9 @@ void VehicleGenerator::MergeMesh(MeshData& target, const MeshData& source) {
     }
     for (const auto& uv : source.uvs) {
         target.uvs.push_back(uv);
+    }
+    for (const auto& c : source.colors) {
+        target.colors.push_back(c);
     }
     for (const auto& idx : source.indices) {
         target.indices.push_back(baseIndex + idx);

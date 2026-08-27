@@ -6,9 +6,11 @@
 #include "vehicle/vehicle.h"
 #include "input/input.h"
 #include "telemetry/telemetry.h"
-#include "engine/common.h"
+#include "common.h"
 #include <iostream>
 #include <cmath>
+
+using namespace p0;
 
 int main() {
     p0::track::Track track;

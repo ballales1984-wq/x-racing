@@ -10,7 +10,6 @@ namespace p0::vehicle {
 
 // Project 0 — GLB (binary glTF) mesh exporter
 // Namespace: p0::vehicle
-namespace p0::vehicle {
 
 // Export mesh to GLB (binary glTF) format for use in engines and 3D tools.
 class GLBExporter {

@@ -38,6 +38,7 @@ Il progetto separa chiaramente la simulazione fisica dal rendering, permettendo 
 - **Tracciato parametrico** chiuso con multiple superfici
 - **Telemetria CSV** per analisi e validazione
 - **33+ unit test** con Google Test
+- **Esportatore SVG tracciati** con diagrammi interattivi
 - **Plugin Unity** per rendering in tempo reale
 
 ---
@@ -102,6 +103,7 @@ x-racing/
 │   ├── physics_test.cpp      # Validazione modello Pacejka
 │   ├── vehicle_test.cpp      # Test parametri veicolo
 │   ├── track_test.cpp        # Test generazione tracciato
+│   ├── track_diagram_test.cpp # Test esportazione SVG tracciati
 │   ├── telemetry_test.cpp    # Test registrazione telemetria
 │   └── gameplay_test.cpp     # Test loop gameplay
 ├── experiments/               # Strumenti di analisi e profiling
@@ -136,7 +138,8 @@ x-racing/
 │       └── ProjectVersion.txt
 ├── tools/                     # Strumenti di sviluppo
 │   ├── fbx_to_obj/           # Convertitori FBX→OBJ
-│   └── track_generator/      # Generatore tracciati
+│   ├── track_generator/      # Generatore tracciati
+│   └── track_diagram/        # Esportatore diagrammi SVG tracciati
 ├── data/                      # Dati runtime
 │   ├── telemetry/            # Output telemetria CSV
 │   └── models/               # Modelli 3D
@@ -261,9 +264,9 @@ Plugin nativo Unity:
 
 ## Unity Integration
 
-Unity 6000.0.82f1 con Universal Render Pipeline (URP).
+Unity 6000.0.82f1 con Universal Render Pipeline (URP) e TextMesh Pro.
 
-### Script Principali
+### Dipendenze Unity
 
 | Script | Funzione |
 |--------|----------|
@@ -397,6 +400,8 @@ cmake -B build -G "Visual Studio 17 2022" -A x64 -DPROJECT0_BUILD_RENDERER=ON
 | `gen_telemetry` | EXE | Generatore telemetria |
 | `project0_tests` | EXE | Unit test (33+ casi) |
 | `track_analysis` | EXE | Analisi geometria tracciato |
+| `track_svg` | EXE | Esportazione diagramma SVG tracciato |
+| `track_diagram` | EXE | Esportatore SVG tracciato (CLI) |
 | `project0_renderer` | Static Lib | Renderer Win32 GDI |
 
 ### Esecuzione
@@ -416,6 +421,12 @@ cmake -B build -G "Visual Studio 17 2022" -A x64 -DPROJECT0_BUILD_RENDERER=ON
 
 # Analisi tracciato
 .\build\experiments\Release\track_analysis.exe
+
+# Esportazione SVG tracciato
+.\build\experiments\Release\track_svg.exe -o track.svg -t pit
+
+# Diagramma tracciato (CLI)
+.\build\tools\Release\track_diagram.exe -o diagram.svg -t default --no-chart
 
 # Test con CTest
 ctest --output-on-failure -C Release
@@ -608,7 +619,8 @@ public static extern void SimPlugin_GetVehicleState(out VehicleState state);
 - Dopo il primo avvio, se mancano oggetti tracciato/HUD, riesegui i menu Project0
 - `LegacyRuntime.ttf` è usato per il testo HUD integrato in Unity 2022+
 - Effetto vento in `update_weather()` è un placeholder (`wind_speed = 0.0`); non ancora implementato
-- La mesh del veicolo è attualmente un box semplice; la generazione procedurale è disponibile ma non integrata nel gameplay
+- La mesh del veicolo nel renderer Win32 GDI è un rettangolo 2D; la generazione procedurale è disponibile ma non integrata nel gameplay
+- Il tool `track_diagram` genera SVG; richiede un browser per la visualizzazione
 
 ---
 

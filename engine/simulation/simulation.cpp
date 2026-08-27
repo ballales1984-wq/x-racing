@@ -51,7 +51,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
   const double dt = params_.dt / params_.substeps;
 
-  if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+  if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size()) + 1) {
     state_.gear++;
   }
   if (input.downshift && state_.gear > 1) {
@@ -185,6 +185,7 @@ void Simulation::update_engine_forces(const input::InputState& input) {
   const double total_ratio = gear_ratio * vehicle_params_.final_drive;
   const double wheel_torque = engine_torque * total_ratio * (1.0 - vehicle_params_.drivetrain_loss);
   const double engine_force = wheel_torque / vehicle_params_.wheel_radius;
+  state_.engine_torque = engine_torque;
 
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
   state_.acceleration = forward_dir * engine_force / m;
@@ -202,7 +203,7 @@ void Simulation::update_engine_forces(const input::InputState& input) {
 
   const bool manual_shift = (input.upshift || input.downshift);
   if (!manual_shift) {
-    if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
+    if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size()) + 1) {
       state_.gear++;
       target_rpm = compute_rpm(state_.gear);
       state_.rpm = std::max(state_.rpm - max_rpm_accel * 2.0, target_rpm);
@@ -476,7 +477,7 @@ void Simulation::update_tire_forces(double dt) {
   // Calculate longitudinal slip from engine/braking forces
   // Approximate: use total longitudinal acceleration to estimate slip
   const double a_long = state_.acceleration.dot(forward_dir);
-  const double engine_force = vehicle_params_.max_torque *
+  const double engine_force = state_.engine_torque *
     vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0, static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)] *
     vehicle_params_.final_drive * (1.0 - vehicle_params_.drivetrain_loss) / vehicle_params_.wheel_radius;
   const double drive_force = engine_force * state_.throttle;

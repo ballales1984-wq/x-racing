@@ -1,5 +1,5 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Project0.Unity
 {
@@ -7,13 +7,13 @@ namespace Project0.Unity
     {
         [Header("References")]
         public CarController carController;
-        public Text speedText;
-        public Text rpmText;
-        public Text gearText;
-        public Text lapTimeText;
-        public Text bestLapText;
-        public Text lapCountText;
-        public Text slipText;
+        public TMP_Text speedText;
+        public TMP_Text rpmText;
+        public TMP_Text gearText;
+        public TMP_Text lapTimeText;
+        public TMP_Text bestLapText;
+        public TMP_Text lapCountText;
+        public TMP_Text slipText;
 
         [Header("Settings")]
         public float updateInterval = 0.1f;

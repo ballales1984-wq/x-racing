@@ -13,7 +13,8 @@
     "com.unity.modules.unitywebrequest": "1.0.0",
     "com.unity.modules.vehicles": "1.0.0",
     "com.unity.modules.video": "1.0.0",
-    "com.unity.modules.wind": "1.0.0"
+    "com.unity.modules.wind": "1.0.0",
+    "com.unity.textmeshpro": "3.0.6"
   },
   "scopedRegistries": [],
   "testables": []

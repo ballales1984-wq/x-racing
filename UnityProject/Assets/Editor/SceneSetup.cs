@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using UnityEditor.SceneManagement;
+using TMPro;
 using UnityEngine.UI;
 
 namespace Project0.Unity.Setup
@@ -11,22 +12,49 @@ namespace Project0.Unity.Setup
         public static void SetupScene()
         {
             var car = GameObject.Find("Car");
-            if (car == null)
+            if (car != null)
+            {
+                Object.DestroyImmediate(car);
+            }
+
+            string[] fbxPaths = new string[]
+            {
+                "Assets/Hi3D_Untitled_allparts_20260826_190129.fbx",
+                "Assets/Hi3D_Untitled_allparts_20260826_184047.fbx"
+            };
+
+            GameObject carModel = null;
+            foreach (var fbxPath in fbxPaths)
+            {
+                carModel = AssetDatabase.LoadAssetAtPath<GameObject>(fbxPath);
+                if (carModel != null)
+                {
+                    Debug.Log($"Loaded car model from: {fbxPath}");
+                    break;
+                }
+            }
+
+            if (carModel != null)
+            {
+                car = Object.Instantiate(carModel);
+                car.name = "Car";
+            }
+            else
             {
                 car = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 car.name = "Car";
+                Debug.LogWarning("No car FBX found, using placeholder cube");
             }
 
-            car.transform.position = new Vector3(0f, 0.9f, 0f);
-            car.transform.localScale = new Vector3(1.9f, 1.1f, 5.3f);
-            car.transform.eulerAngles = new Vector3(0f, 270f, 0f);
+            car.transform.position = new Vector3(0f, 0.5f, 0f);
+            car.transform.localScale = new Vector3(500f, 500f, 500f);
+            car.transform.eulerAngles = new Vector3(0f, 90f, 0f);
 
-            var carRenderer = car.GetComponent<Renderer>();
-            if (carRenderer != null)
+            var carRenderers = car.GetComponentsInChildren<Renderer>();
+            Shader shader = Shader.Find("Standard");
+            foreach (var carRenderer in carRenderers)
             {
-                Shader shader = Shader.Find("Standard");
                 Material carMat = shader != null ? new Material(shader) : new Material(Shader.Find("Standard"));
-
                 if (carMat != null)
                 {
                     Color redColor = new Color(0.9f, 0.1f, 0.1f);
@@ -52,7 +80,7 @@ namespace Project0.Unity.Setup
             }
 
             camera.transform.SetParent(car.transform, false);
-            camera.transform.localPosition = new Vector3(0f, 1.05f, 1.4f);
+            camera.transform.localPosition = new Vector3(0f, 0.0018f, 0.0006f);
             camera.transform.localRotation = Quaternion.identity;
 
             carController.followCamera = camera.GetComponent<Camera>();
@@ -89,7 +117,7 @@ namespace Project0.Unity.Setup
             carHUD.carController = carController;
             carController.carHUD = carHUD;
 
-            foreach (var text in hud.GetComponentsInChildren<Text>())
+            foreach (var text in hud.GetComponentsInChildren<TMP_Text>())
             {
                 if (text.name == "SpeedText") carHUD.speedText = text;
                 else if (text.name == "RPMText") carHUD.rpmText = text;
@@ -105,12 +133,11 @@ namespace Project0.Unity.Setup
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
+            var text = go.AddComponent<TextMeshProUGUI>();
             text.text = defaultText;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = 24;
             text.color = Color.white;
-            text.alignment = TextAnchor.MiddleLeft;
+            text.alignment = TextAlignmentOptions.Left;
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0, 0);
             rect.anchorMax = new Vector2(1, 1);

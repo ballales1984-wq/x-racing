@@ -22,6 +22,7 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
     std::vector<Vec3> temp_vertices;
     std::vector<Vec3> temp_normals;
     std::vector<Vec2> temp_uvs;
+    std::vector<Vec3> temp_colors;
     std::vector<int> vertex_indices;
     std::vector<int> normal_indices;
     std::vector<int> uv_indices;
@@ -35,11 +36,17 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
         std::string prefix;
         iss >> prefix;
 
-        // Vertex position (x, y, z)
+        // Vertex position (x, y, z) with optional color (r, g, b)
         if (prefix == "v") {
             Vec3 v;
             iss >> v.x() >> v.y() >> v.z();
             temp_vertices.push_back(v);
+            Vec3 c(1.0, 1.0, 1.0);
+            if (iss >> c.x() >> c.y() >> c.z()) {
+                temp_colors.push_back(c);
+            } else {
+                temp_colors.push_back(c);
+            }
         // Vertex normal (nx, ny, nz)
         } else if (prefix == "vn") {
             Vec3 n;
@@ -91,6 +98,7 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
     out_mesh.vertices.reserve(face_count * 3);
     out_mesh.normals.reserve(face_count * 3);
     out_mesh.uvs.reserve(face_count * 3);
+    out_mesh.colors.reserve(face_count * 3);
     out_mesh.indices.reserve(face_count * 3);
 
     // Copy expanded vertex data into the output mesh, guarding against
@@ -108,6 +116,11 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
         }
         if (ui >= 0 && ui < static_cast<int>(temp_uvs.size())) {
             out_mesh.uvs.push_back(temp_uvs[ui]);
+        }
+        if (vi >= 0 && vi < static_cast<int>(temp_colors.size())) {
+            out_mesh.colors.push_back(temp_colors[vi]);
+        } else {
+            out_mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
         }
 
         out_mesh.indices.push_back(static_cast<int>(i));

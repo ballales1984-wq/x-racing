@@ -95,7 +95,7 @@ void Renderer::run() {
   if (!initialize()) return;
 
   running_ = true;
-  load_car_mesh("D:/x-racing/assets/models/car_from_fbx.obj");
+  load_car_mesh("D:/x-racing/assets/models/car_mesh.obj");
   if (car_meshes_.empty()) {
     load_car_mesh("D:/x-racing/assets/models/car.obj");
   }
@@ -336,8 +336,8 @@ Mat4 Renderer::view_matrix() const {
 
   double heading = state.heading;
   // Chase-camera: eye behind and above the car, looking forward.
-  Vec3 eye = car_pos + Vec3(-std::sin(heading) * 8.0, 4.0, -std::cos(heading) * 8.0);
-  Vec3 target = car_pos + Vec3(std::sin(heading) * 2.0, 0.0, std::cos(heading) * 2.0);
+  Vec3 eye = car_pos + Vec3(-std::cos(heading) * 8.0, 4.0, -std::sin(heading) * 8.0);
+  Vec3 target = car_pos + Vec3(std::cos(heading) * 2.0, 0.0, std::sin(heading) * 2.0);
   Vec3 up(0.0, 1.0, 0.0);
 
   Vec3 f = (target - eye).normalized();
@@ -390,21 +390,22 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
   Vec3 car_pos(state.position.x(), 0.5, state.position.y());
   double heading = state.heading;
 
-  // Yaw rotation matrix for the car body.
   Mat4 model = Mat4::Identity();
   model(0, 0) = std::cos(heading); model(0, 2) = std::sin(heading);
   model(2, 0) = -std::sin(heading); model(2, 2) = std::cos(heading);
 
-  HPEN car_pen = CreatePen(PS_SOLID, 1, RGB(255, 150, 150));
-  HPEN old_pen = (HPEN)SelectObject(hdc, car_pen);
+  std::vector<HPEN> pens_to_delete;
 
   for (const auto& mesh : car_meshes_) {
     size_t tri_count = mesh.indices.size() / 3;
-    // Project each triangle to screen space and draw wireframe edges.
     for (size_t i = 0; i < tri_count; ++i) {
-      Vec3 v0 = mesh.vertices[mesh.indices[i * 3]] * car_mesh_scale_;
-      Vec3 v1 = mesh.vertices[mesh.indices[i * 3 + 1]] * car_mesh_scale_;
-      Vec3 v2 = mesh.vertices[mesh.indices[i * 3 + 2]] * car_mesh_scale_;
+      int i0 = mesh.indices[i * 3];
+      int i1 = mesh.indices[i * 3 + 1];
+      int i2 = mesh.indices[i * 3 + 2];
+
+      Vec3 v0 = mesh.vertices[i0] * car_mesh_scale_;
+      Vec3 v1 = mesh.vertices[i1] * car_mesh_scale_;
+      Vec3 v2 = mesh.vertices[i2] * car_mesh_scale_;
 
       Vec4 p0_4d = model * Vec4(v0.x(), v0.y(), v0.z(), 1.0);
       Vec4 p1_4d = model * Vec4(v1.x(), v1.y(), v1.z(), 1.0);
@@ -419,18 +420,32 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       Vec3 s2 = project(p2);
 
       if (s0.z() > -1.0 || s1.z() > -1.0 || s2.z() > -1.0) {
+        Vec3 color(0.6, 0.6, 0.6);
+        if (mesh.colors.size() == mesh.vertices.size() && mesh.colors.size() > i0) {
+          color = (mesh.colors[i0] + mesh.colors[i1] + mesh.colors[i2]) / 3.0;
+        }
+        int r = static_cast<int>(std::clamp(color.x(), 0.0, 1.0) * 255.0);
+        int g = static_cast<int>(std::clamp(color.y(), 0.0, 1.0) * 255.0);
+        int b = static_cast<int>(std::clamp(color.z(), 0.0, 1.0) * 255.0);
+        HPEN tri_pen = CreatePen(PS_SOLID, 1, RGB(r, g, b));
+        HPEN old_pen = (HPEN)SelectObject(hdc, tri_pen);
+
         MoveToEx(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()), nullptr);
         LineTo(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()));
         MoveToEx(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()), nullptr);
         LineTo(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()));
         MoveToEx(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()), nullptr);
         LineTo(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()));
+
+        SelectObject(hdc, old_pen);
+        pens_to_delete.push_back(tri_pen);
       }
     }
   }
 
-  SelectObject(hdc, old_pen);
-  DeleteObject(car_pen);
+  for (HPEN pen : pens_to_delete) {
+    DeleteObject(pen);
+  }
 }
 
 }

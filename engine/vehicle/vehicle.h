@@ -84,6 +84,7 @@ struct VehicleState {
   double throttle = 0.0;                 // [0,1], accelerator pedal
   double brake = 0.0;                    // [0,1], brake pedal
   double rpm = 800.0;                    // engine RPM
+  double engine_torque = 0.0;            // Nm, actual engine torque
   int gear = 1;                          // current gear (1-based)
   double slip_ratio = 0.0;               // longitudinal slip [-1, +1]
   double slip_angle = 0.0;               // lateral slip angle, rad

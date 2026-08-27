@@ -26,6 +26,8 @@ if(PROJECT0_BUILD_GAMEPLAY)
   add_subdirectory(game)
 endif()
 
+add_subdirectory(tools)
+
 if(PROJECT0_BUILD_RENDERER)
   add_subdirectory(renderer)
   add_executable(project0_app main.cpp)

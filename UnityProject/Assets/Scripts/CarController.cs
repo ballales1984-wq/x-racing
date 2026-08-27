@@ -23,7 +23,7 @@ namespace Project0.Unity
         public float cameraFollowHeight = 2f;
         public float cameraSmoothTime = 0.15f;
         public float cameraRotationSmoothTime = 0.1f;
-        public Vector3 firstPersonOffset = new Vector3(0f, 0.9f, 0.3f);
+        public Vector3 firstPersonOffset = new Vector3(0f, 0.0018f, 0.0006f);
         public KeyCode toggleCameraKey = KeyCode.C;
 
         [Header("Direct Control Physics")]

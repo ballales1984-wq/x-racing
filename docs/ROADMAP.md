@@ -9,7 +9,7 @@
 ## Stato Attuale
 
 | Componente | Stato |
-|---|---|
+|---|
 | Build system (CMake) | ✅ |
 | Tipi matematici + utility | ✅ |
 | Modello pneumatici (Pacejka) | ✅ |
@@ -20,7 +20,8 @@
 | Telemetria + export CSV | ✅ |
 | Meteo (pioggia, temperatura, grip) | ✅ |
 | Gameplay (input, timing giri) | ✅ |
-| Unit test (33 GoogleTest) | ✅ |
+| Diagrammi tracciato SVG | ✅ |
+| Unit test (35+ GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ✅ |
 | Integrazione editor Unity | ✅ |
 | AI (traiettoria, avversari) | ⏳ prossimo |
@@ -144,7 +145,7 @@ Niente alberi, niente dettagli grafici, niente AI sofisticata.
 - [ ] Guardrail (barriere perimetrali)
 - [ ] Area di run-off (zona errore)
 - [ ] Sistema checkpoint (volumi trigger sulla spline)
-- [ ] Export dati tracciato (JSON / binario per gameplay)
+- [x] Export dati tracciato (SVG, JSON / binario per gameplay)
 
 **Criterio di completamento:** si può definire un nuovo tracciato modificando solo i parametri spline e generare l'intera geometria automaticamente.
 
@@ -272,15 +273,18 @@ x-racing/
 │   ├── physics_test.cpp      - Validazione Pacejka
 │   ├── vehicle_test.cpp      - Test veicolo
 │   ├── track_test.cpp        - Test tracciato
+│   ├── track_diagram_test.cpp - Test esportazione SVG tracciati
 │   ├── telemetry_test.cpp    - Test telemetria
 │   └── gameplay_test.cpp     - Test gameplay
 ├── experiments/
 │   ├── track_analysis.cpp    - Analisi geometria tracciato
+│   ├── track_svg.cpp         - Esportazione SVG tracciati
 │   ├── ai_experiments.cpp    - [pianificato] Esperimenti ML/AI
 │   └── performance.cpp       - [pianificato] Profiling, benchmark
 ├── tools/
 │   ├── fbx_to_obj/           - Convertitori FBX→OBJ
-│   └── track_generator/      - Generatore tracciati
+│   ├── track_generator/      - Generatore tracciati
+│   └── track_diagram/        - Esportatore diagrammi SVG tracciati
 ├── data/
 │   ├── telemetry/            - Output telemetria CSV
 │   └── models/               - Modelli 3D
@@ -319,6 +323,7 @@ x-racing/
 | Eigen | 3.4+ | Algebra lineare (vettori, matrici) |
 | Google Test | 1.14+ | Unit testing |
 | Unity | 6000.0.82f1 | Rendering produzione |
+| TextMesh Pro | 3.0+ | HUD e testo Unity |
 | CMake | 3.20+ | Build system |
 | Visual Studio | 2022 | IDE / compilatore |
 

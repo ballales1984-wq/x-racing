@@ -77,6 +77,10 @@ CMakeUserPresets.json
 # Large binary assets (keep source FBX only)
 assets/models/*.obj
 UnityProject/Assets/*.fbx
+UnityProject/Assets/*.fbx.meta
 
 # Test artifacts
 Testing/
+
+# Generated track diagrams
+*.svg
