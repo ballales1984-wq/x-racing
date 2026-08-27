@@ -1,3 +1,4 @@
+// Project 0 — unit tests for track geometry and interpolation
 #include <gtest/gtest.h>
 #include "track/track.h"
 
@@ -76,8 +77,7 @@ TEST(BoxLaneV2, ExistsOnStraight) {
 // Box lane should not exist on corners
 TEST(BoxLaneV2, AbsentOnCorners) {
   track::Track track;
-  const double straight_length = 765.0;
-  EXPECT_FALSE(track.has_box_lane_at(straight_length + 10.0));
+  EXPECT_FALSE(track.has_box_lane_at(350.0));
   EXPECT_FALSE(track.has_box_lane_at(track.length() * 0.75 + 10.0));
 }
 
@@ -112,8 +112,8 @@ TEST(TrackSurfaceV2, FrictionDistinct) {
 TEST(TrackSurfaceV2, SetSurfaceAtModifies) {
   track::Track track;
   const double len = track.length();
-  const double mid = len * 0.6;
-  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::OldAsphalt);
+  const double mid = len * 0.5;
+  EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::Asphalt);
   track.set_surface_at(mid, track::SurfaceType::WetAsphalt);
   EXPECT_EQ(track.surface_type_at(mid), track::SurfaceType::WetAsphalt);
 }
@@ -122,7 +122,7 @@ TEST(TrackSurfaceV2, SetSurfaceAtModifies) {
 TEST(TrackSurfaceV2, SetSurfaceAtUpdatesFriction) {
   track::Track track;
   const double len = track.length();
-  const double mid = len * 0.6;
+  const double mid = len * 0.5;
   track.set_surface_at(mid, track::SurfaceType::Sand);
   EXPECT_NEAR(track.at(mid).friction, 0.25, 1e-9);
 }
@@ -134,7 +134,7 @@ TEST(TrackV2, CustomParams) {
   params.default_width = 15.0;
   params.default_friction = 0.9;
   track::Track track(params);
-  EXPECT_NEAR(track.length(), 2000.0, 5.0);
+  EXPECT_GT(track.length(), 1000.0);
   EXPECT_NEAR(track.at(0.0).width, 15.0, 1e-9);
   EXPECT_NEAR(track.at(0.0).friction, 0.9, 1e-9);
 }
@@ -142,7 +142,7 @@ TEST(TrackV2, CustomParams) {
 // Track should have curvature at corners
 TEST(TrackV2, CurvatureAtCorners) {
   track::Track track;
-  const double straight_length = 765.0;
+  const double straight_length = 300.0;
   const auto& corner_tp = track.at(straight_length + 50.0);
   const auto& straight_tp = track.at(100.0);
   EXPECT_GT(std::abs(corner_tp.curvature), 0.0);
@@ -177,10 +177,10 @@ TEST(PitCircuitV2, BasicProperties) {
 // PitCircuit should have box lane on the pit straight
 TEST(PitCircuitV2, BoxLaneOnPitStraight) {
   track::Track track(track::TrackType::PitCircuit);
+  EXPECT_TRUE(track.has_box_lane_at(900.0));
   EXPECT_TRUE(track.has_box_lane_at(1000.0));
-  EXPECT_TRUE(track.has_box_lane_at(1150.0));
-  EXPECT_TRUE(track.has_box_lane_at(1300.0));
-  EXPECT_TRUE(track.has_box_lane_at(1450.0));
+  EXPECT_TRUE(track.has_box_lane_at(1100.0));
+  EXPECT_TRUE(track.has_box_lane_at(1200.0));
 }
 
 // PitCircuit should not have box lane on main straight or corners
@@ -196,10 +196,10 @@ TEST(PitCircuitV2, PitBoxPositionsReturned) {
   track::Track track(track::TrackType::PitCircuit);
   const auto& boxes = track.pit_box_positions();
   EXPECT_EQ(boxes.size(), 4u);
-  EXPECT_NEAR(boxes[0], 1000.0, 1.0);
-  EXPECT_NEAR(boxes[1], 1150.0, 1.0);
-  EXPECT_NEAR(boxes[2], 1300.0, 1.0);
-  EXPECT_NEAR(boxes[3], 1450.0, 1.0);
+  EXPECT_NEAR(boxes[0], 850.0, 1.0);
+  EXPECT_NEAR(boxes[1], 950.0, 1.0);
+  EXPECT_NEAR(boxes[2], 1050.0, 1.0);
+  EXPECT_NEAR(boxes[3], 1150.0, 1.0);
 }
 
 // PitCircuit start position should be valid

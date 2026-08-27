@@ -1,3 +1,4 @@
+// Project 0 — unit tests for gameplay loop and lap timing
 #include <gtest/gtest.h>
 #include "game/gameplay.h"
 #include "simulation/simulation.h"

@@ -1,3 +1,5 @@
+// Project 0 — gameplay loop implementation (console/headless mode)
+// Handles input polling, simulation stepping, lap timing and console HUD.
 #include "game/gameplay.h"
 #include <algorithm>
 #include <cmath>

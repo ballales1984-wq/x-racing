@@ -87,27 +87,30 @@ SimulationResult Simulation::step(const input::InputState& input) {
   const double lateral = to_car.dot(tp.normal);
   const double track_half = tp.width / 2.0;
 
-  state_.in_box_lane = false;
-  state_.box_lane_speed = 0.0;
-
   if (tp.has_box_lane) {
     const double box_lane_half = tp.box_lane_width / 2.0;
     const double box_center = -track_half - box_lane_half;
     const double dist_to_box = std::abs(lateral - box_center);
-    const bool inside_box = lateral < -track_half && lateral > -track_half - tp.box_lane_width;
 
-    if (inside_box || (state_.in_box_lane && dist_to_box < box_lane_half + 1.0)) {
-      state_.in_box_lane = true;
-      state_.box_lane_speed = 22.2; // 80 km/h speed limit in box lane
+    if (state_.in_box_lane) {
+      // Auto-exit when car is back on main track (no key needed)
+      if (lateral > -track_half + 1.0) {
+        state_.in_box_lane = false;
+        state_.box_lane_speed = 0.0;
+      } else {
+        state_.in_box_lane = true;
+        state_.box_lane_speed = 22.2;
+      }
+    } else {
+      // Enter when requested AND close to box lane
+      if (state_.box_lane_entry_requested && dist_to_box < box_lane_half + 2.0) {
+        state_.in_box_lane = true;
+        state_.box_lane_speed = 22.2;
+      }
     }
-
-    if (state_.box_lane_entry_requested && !state_.in_box_lane && dist_to_box < box_lane_half + 2.0) {
-      state_.in_box_lane = true;
-      state_.box_lane_speed = 22.2;
-    } else   if (state_.box_lane_entry_requested && state_.in_box_lane && lateral > -track_half + 1.0) {
-      state_.in_box_lane = false;
-      state_.box_lane_speed = 0.0;
-    }
+  } else {
+    state_.in_box_lane = false;
+    state_.box_lane_speed = 0.0;
   }
 
   apply_off_track_physics();

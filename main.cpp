@@ -1,3 +1,7 @@
+// Project 0 — renderer entry point
+// Builds a default track, simulation and vehicle state, then launches
+// the real-time Win32 renderer which handles input, physics stepping
+// and drawing.
 #include "renderer/renderer.h"
 #include "simulation/simulation.h"
 #include "track/track.h"

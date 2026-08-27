@@ -1,8 +1,11 @@
 #include "vehicle_generator.h"
 #include <cmath>
 
+// Project 0 — procedural vehicle mesh generator implementation
+// Builds a simple sports-car shape from box/cylinder primitives.
 namespace p0::vehicle {
 
+// Derive geometry dimensions from physical vehicle parameters.
 VehicleGeometry VehicleGenerator::FromParams(const VehicleParams& params) {
     VehicleGeometry geo;
     geo.wheelbase = params.wheelbase;
@@ -33,6 +36,7 @@ VehicleGeometry VehicleGenerator::FromParams(const VehicleParams& params) {
     return geo;
 }
 
+// Assemble a complete car mesh from all body and component parts.
 MeshData VehicleGenerator::GenerateCar(const VehicleGeometry& geo) {
     MeshData car;
 
@@ -52,6 +56,7 @@ MeshData VehicleGenerator::GenerateCar(const VehicleGeometry& geo) {
     MergeMesh(car, headlights);
     MergeMesh(car, taillights);
 
+    // Position and merge the four wheels at the correct axle locations.
     // Generate 4 wheels
     double wheel_y = geo.ride_height + geo.wheel_radius;
     double front_x = geo.wheelbase * 0.5 - geo.front_overhang + geo.front_overhang;
@@ -100,6 +105,7 @@ MeshData VehicleGenerator::GenerateCar(const VehicleGeometry& geo) {
     return car;
 }
 
+// Build the main body: lower section, hood and rear engine cover.
 MeshData VehicleGenerator::GenerateBody(const VehicleGeometry& geo) {
     MeshData body;
 
@@ -135,6 +141,7 @@ MeshData VehicleGenerator::GenerateBody(const VehicleGeometry& geo) {
     return body;
 }
 
+// Build the passenger cabin with roof and A/C pillars.
 MeshData VehicleGenerator::GenerateCabin(const VehicleGeometry& geo) {
     MeshData cabin;
 
@@ -174,6 +181,7 @@ MeshData VehicleGenerator::GenerateCabin(const VehicleGeometry& geo) {
     return cabin;
 }
 
+// Build a single wheel: tire and rim as concentric cylinders.
 MeshData VehicleGenerator::GenerateWheel(const VehicleGeometry& geo) {
     MeshData wheel;
 
@@ -188,6 +196,7 @@ MeshData VehicleGenerator::GenerateWheel(const VehicleGeometry& geo) {
     return wheel;
 }
 
+// Build the rear spoiler blade and support struts.
 MeshData VehicleGenerator::GenerateSpoiler(const VehicleGeometry& geo) {
     MeshData spoiler;
 
@@ -211,6 +220,7 @@ MeshData VehicleGenerator::GenerateSpoiler(const VehicleGeometry& geo) {
     return spoiler;
 }
 
+// Build the front splitter/diffuser lip.
 MeshData VehicleGenerator::GenerateSplitter(const VehicleGeometry& geo) {
     MeshData splitter;
 
@@ -224,6 +234,7 @@ MeshData VehicleGenerator::GenerateSplitter(const VehicleGeometry& geo) {
     return splitter;
 }
 
+// Build side mirrors with stalks.
 MeshData VehicleGenerator::GenerateSideMirrors(const VehicleGeometry& geo) {
     MeshData mirrors;
 
@@ -248,6 +259,7 @@ MeshData VehicleGenerator::GenerateSideMirrors(const VehicleGeometry& geo) {
     return mirrors;
 }
 
+// Build front headlight blocks.
 MeshData VehicleGenerator::GenerateHeadlights(const VehicleGeometry& geo) {
     MeshData lights;
 
@@ -265,6 +277,7 @@ MeshData VehicleGenerator::GenerateHeadlights(const VehicleGeometry& geo) {
     return lights;
 }
 
+// Build rear taillight blocks.
 MeshData VehicleGenerator::GenerateTaillights(const VehicleGeometry& geo) {
     MeshData lights;
 
@@ -282,6 +295,7 @@ MeshData VehicleGenerator::GenerateTaillights(const VehicleGeometry& geo) {
     return lights;
 }
 
+// Append an axis-aligned box primitive to the mesh.
 void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& size) {
     double hx = size[0] * 0.5;
     double hy = size[1] * 0.5;
@@ -402,6 +416,7 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 7);
 }
 
+// Append a cylinder primitive (approximated by segments) to the mesh.
 void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double radius, double height, int segments) {
     int baseIndex = mesh.vertices.size();
     double halfHeight = height * 0.5;
@@ -468,6 +483,7 @@ void VehicleGenerator::AddCylinder(MeshData& mesh, const Vec3& center, double ra
     }
 }
 
+// Merge source mesh vertices/indices into target mesh, reindexing indices.
 void VehicleGenerator::MergeMesh(MeshData& target, const MeshData& source) {
     int baseIndex = target.vertices.size();
 

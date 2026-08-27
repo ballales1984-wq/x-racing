@@ -3,8 +3,12 @@
 #include <cstring>
 #include <algorithm>
 
+// Project 0 — GLB exporter implementation
+// Writes a minimal glTF 2.0 binary file with PBR material.
 namespace p0::vehicle {
 
+// Export a Mesh to a binary GLB file.
+// The file contains: 12-byte GLB header, JSON chunk, binary chunk.
 bool GLBExporter::ExportGLB(const MeshData& mesh, const std::string& filename) {
     std::ofstream file(filename, std::ios::binary);
     if (!file.is_open()) {
@@ -56,11 +60,14 @@ bool GLBExporter::ExportGLB(const MeshData& mesh, const std::string& filename) {
     return true;
 }
 
+// Generate a complete car mesh and export it to GLB.
 bool GLBExporter::ExportCarGLB(const VehicleGeometry& geo, const std::string& filename) {
     MeshData car = VehicleGenerator::GenerateCar(geo);
     return ExportGLB(car, filename);
 }
 
+// Pack mesh vertex attributes into a flat interleaved binary buffer.
+// Layout: positions (float32 x3), normals (float32 x3), indices (uint32), UVs (float32 x2).
 std::vector<uint8_t> GLBExporter::CreateBinaryBuffer(const MeshData& mesh) {
     std::vector<uint8_t> buffer;
 
@@ -129,6 +136,7 @@ std::vector<uint8_t> GLBExporter::CreateBinaryBuffer(const MeshData& mesh) {
     return buffer;
 }
 
+// Build a minimal glTF 2.0 JSON describing the mesh and buffer views.
 std::string GLBExporter::CreateGLTFJson(const MeshData& mesh, size_t bufferOffset, size_t bufferSize) {
     // Calculate bounds
     double minX = 1e10, minY = 1e10, minZ = 1e10;
@@ -254,6 +262,7 @@ std::string GLBExporter::CreateGLTFJson(const MeshData& mesh, size_t bufferOffse
     return json;
 }
 
+// Append a 32-bit unsigned integer in little-endian byte order.
 void GLBExporter::WriteUint32(std::vector<uint8_t>& buffer, uint32_t value) {
     uint8_t bytes[4];
     bytes[0] = value & 0xFF;
@@ -263,6 +272,7 @@ void GLBExporter::WriteUint32(std::vector<uint8_t>& buffer, uint32_t value) {
     buffer.insert(buffer.end(), bytes, bytes + 4);
 }
 
+// Pad the buffer with zero bytes until its size is a multiple of alignment.
 void GLBExporter::AlignBuffer(std::vector<uint8_t>& buffer, uint32_t alignment) {
     while (buffer.size() % alignment != 0) {
         buffer.push_back(0);

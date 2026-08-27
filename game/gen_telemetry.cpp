@@ -1,3 +1,6 @@
+// Project 0 — telemetry generation tool
+// Runs a scripted AI driver around the track and records telemetry data
+// for offline analysis and Unity integration.
 #include "simulation/simulation.h"
 #include "track/track.h"
 #include "vehicle/vehicle.h"

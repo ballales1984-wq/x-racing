@@ -26,6 +26,7 @@ class WindowsInputManager : public InputManager {
   static constexpr int kDownshiftKey = VK_CONTROL;
   static constexpr int kResetKey = 'R';
   static constexpr int kEscapeKey = VK_ESCAPE;
+  static constexpr int kBoxKey = 'B';
 };
 
 }

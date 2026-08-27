@@ -291,6 +291,7 @@ Mat4 Renderer::view_matrix() const {
   Vec3 car_pos(state.position.x(), 0.0, state.position.y());
 
   double heading = state.heading;
+  // Chase-camera: eye behind and above the car, looking forward.
   Vec3 eye = car_pos + Vec3(-std::sin(heading) * 8.0, 4.0, -std::cos(heading) * 8.0);
   Vec3 target = car_pos + Vec3(std::sin(heading) * 2.0, 0.0, std::cos(heading) * 2.0);
   Vec3 up(0.0, 1.0, 0.0);
@@ -299,6 +300,7 @@ Mat4 Renderer::view_matrix() const {
   Vec3 s = f.cross(up).normalized();
   Vec3 u = s.cross(f);
 
+  // Build look-at matrix from basis vectors and eye position.
   Mat4 view = Mat4::Identity();
   view(0, 0) = s.x(); view(0, 1) = s.y(); view(0, 2) = s.z(); view(0, 3) = -s.dot(eye);
   view(1, 0) = u.x(); view(1, 1) = u.y(); view(1, 2) = u.z(); view(1, 3) = -u.dot(eye);
@@ -312,6 +314,7 @@ Vec3 Renderer::project(const Vec3& world_pos) const {
 
   if (view_pos.z() >= -0.1) return Vec3(-9999.0, -9999.0, 0.0);
 
+  // Perspective projection with 60 degree FOV.
   double fov = 60.0 * kDegToRad;
   double aspect = static_cast<double>(config_.width) / static_cast<double>(config_.height);
   double near_plane = 0.1;
@@ -343,6 +346,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
   Vec3 car_pos(state.position.x(), 0.5, state.position.y());
   double heading = state.heading;
 
+  // Yaw rotation matrix for the car body.
   Mat4 model = Mat4::Identity();
   model(0, 0) = std::cos(heading); model(0, 2) = std::sin(heading);
   model(2, 0) = -std::sin(heading); model(2, 2) = std::cos(heading);
@@ -352,6 +356,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
 
   for (const auto& mesh : car_meshes_) {
     size_t tri_count = mesh.indices.size() / 3;
+    // Project each triangle to screen space and draw wireframe edges.
     for (size_t i = 0; i < tri_count; ++i) {
       Vec3 v0 = mesh.vertices[mesh.indices[i * 3]];
       Vec3 v1 = mesh.vertices[mesh.indices[i * 3 + 1]];

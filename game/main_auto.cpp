@@ -3,6 +3,9 @@
 #include <fstream>
 #include <iostream>
 
+// Project 0 — automated drive entry point
+// Runs a scripted input sequence and logs telemetry to a text file.
+// Useful for regression testing and offline analysis without user input.
 int main() {
   std::ofstream log("D:/x-racing/data/telemetry/auto_drive_log.txt");
   std::cout.rdbuf(log.rdbuf());

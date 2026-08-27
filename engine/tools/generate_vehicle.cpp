@@ -1,3 +1,6 @@
+// Project 0 — vehicle mesh generation tool
+// Generates a parametric car mesh from default VehicleParams and exports
+// it to both OBJ and GLB formats for use in the renderer and external tools.
 #include "vehicle/vehicle.h"
 #include "vehicle/vehicle_generator.h"
 #include "vehicle/mesh_exporter.h"

@@ -1,3 +1,5 @@
+// Project 0 — unit tests for vehicle, mesh generation and export
+// Verifies VehicleState defaults, geometry derivation and mesh I/O.
 #include <gtest/gtest.h>
 #include "vehicle/vehicle.h"
 #include "vehicle/vehicle_generator.h"

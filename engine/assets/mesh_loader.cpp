@@ -5,8 +5,12 @@
 #include <cctype>
 #include <algorithm>
 
+// Project 0 — OBJ mesh loader implementation
+// Parses Wavefront .obj files (vertices, normals, UVs, triangular faces).
 namespace p0::assets {
 
+// Load an OBJ file into a Mesh. Returns false on I/O or parse error.
+// The OBJ format uses 1-based indices; this loader converts them to 0-based.
 bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -22,6 +26,7 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
     std::vector<int> normal_indices;
     std::vector<int> uv_indices;
 
+    // Parse the OBJ file line by line.
     std::string line;
     while (std::getline(file, line)) {
         if (line.empty()) continue;
@@ -30,18 +35,22 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
         std::string prefix;
         iss >> prefix;
 
+        // Vertex position (x, y, z)
         if (prefix == "v") {
             Vec3 v;
             iss >> v.x() >> v.y() >> v.z();
             temp_vertices.push_back(v);
+        // Vertex normal (nx, ny, nz)
         } else if (prefix == "vn") {
             Vec3 n;
             iss >> n.x() >> n.y() >> n.z();
             temp_normals.push_back(n);
+        // Texture coordinate (u, v)
         } else if (prefix == "vt") {
             Vec2 uv;
             iss >> uv.x() >> uv.y();
             temp_uvs.push_back(uv);
+        // Triangular face: supports v, v/vt, and v/vt/vn formats
         } else if (prefix == "f") {
             std::string face_data;
             int vi, ni, ui;
@@ -72,6 +81,7 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
         }
     }
 
+    // Expand indexed OBJ data into per-vertex arrays for the renderer.
     if (vertex_indices.empty()) {
         std::cerr << "No faces found in mesh file: " << filename << std::endl;
         return false;
@@ -83,6 +93,8 @@ bool MeshLoader::LoadOBJ(const std::string& filename, Mesh& out_mesh) {
     out_mesh.uvs.reserve(face_count * 3);
     out_mesh.indices.reserve(face_count * 3);
 
+    // Copy expanded vertex data into the output mesh, guarding against
+    // out-of-range indices (OBJ indices are 1-based, so -1 converts to 0-based).
     for (size_t i = 0; i < vertex_indices.size(); ++i) {
         int vi = vertex_indices[i];
         int ni = normal_indices[i];

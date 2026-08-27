@@ -5,9 +5,11 @@
 #include <vector>
 #include <cmath>
 
+// Project 0 — parametric vehicle mesh generator
+// Namespace: p0::vehicle
 namespace p0::vehicle {
 
-// Mesh data structure
+// Raw mesh data produced by the generator and consumed by exporters/renderer.
 struct MeshData {
     std::vector<Vec3> vertices;
     std::vector<Vec3> normals;
@@ -15,7 +17,8 @@ struct MeshData {
     std::vector<int> indices;
 };
 
-// Vehicle geometry parameters derived from VehicleParams
+// Geometric dimensions derived from VehicleParams for mesh generation.
+// All units are meters unless otherwise noted.
 struct VehicleGeometry {
     double body_length = 4.5;
     double body_width = 1.85;
@@ -40,14 +43,17 @@ struct VehicleGeometry {
     double rear_window_angle = 0.3;
 };
 
+// Procedural car mesh generator.
+// Builds a simple sports-car shape from box/cylinder primitives.
 class VehicleGenerator {
 public:
+    // Compute geometry dimensions from physical vehicle parameters.
     static VehicleGeometry FromParams(const VehicleParams& params);
 
-    // Generate complete car mesh
+    // Generate a complete car mesh by merging all components.
     static MeshData GenerateCar(const VehicleGeometry& geo);
 
-    // Generate individual components
+    // Generate individual car components.
     static MeshData GenerateBody(const VehicleGeometry& geo);
     static MeshData GenerateCabin(const VehicleGeometry& geo);
     static MeshData GenerateWheel(const VehicleGeometry& geo);
@@ -58,8 +64,11 @@ public:
     static MeshData GenerateTaillights(const VehicleGeometry& geo);
 
 private:
+    // Append an axis-aligned box primitive to the mesh.
     static void AddBox(MeshData& mesh, const Vec3& center, const Vec3& size);
+    // Append a cylinder primitive (approximated by segments) to the mesh.
     static void AddCylinder(MeshData& mesh, const Vec3& center, double radius, double height, int segments);
+    // Merge source mesh vertices/indices into target mesh.
     static void MergeMesh(MeshData& target, const MeshData& source);
 };
 
