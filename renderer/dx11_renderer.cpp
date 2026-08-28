@@ -52,9 +52,10 @@ VS_OUTPUT main(VS_INPUT input) {
     bone_matrices[bone_indices.z] * input.bone_weights.z +
     bone_matrices[bone_indices.w] * input.bone_weights.w;
 
-  float4 world_pos = mul(skin_matrix, float4(input.position, 1.0));
+  float4 skinned_pos = mul(skin_matrix, float4(input.position, 1.0));
+  float4 world_pos = mul(model, skinned_pos);
   output.position = mul(view_projection, world_pos);
-  output.normal = normalize(mul((float3x3)skin_matrix, input.normal));
+  output.normal = normalize(mul((float3x3)model, mul((float3x3)skin_matrix, input.normal)));
   output.color = float4(0.9, 0.1, 0.1, 1.0);
   return output;
 }
@@ -423,12 +424,12 @@ void DX11Renderer::update_bone_matrices(float time_seconds) {
 }
 
 void DX11Renderer::play_animation(float delta_time) {
-  if (!has_animation_ || skinned_mesh_.animations.empty()) return;
-
-  const auto& anim = skinned_mesh_.animations[current_animation_];
-  anim_time_ += delta_time;
-  if (anim_time_ > (float)anim.duration_seconds) {
-    anim_time_ = fmod(anim_time_, (float)anim.duration_seconds);
+  if (has_animation_ && !skinned_mesh_.animations.empty()) {
+    const auto& anim = skinned_mesh_.animations[current_animation_];
+    anim_time_ += delta_time;
+    if (anim_time_ > (float)anim.duration_seconds) {
+      anim_time_ = fmod(anim_time_, (float)anim.duration_seconds);
+    }
   }
 
   update_bone_matrices(anim_time_);
@@ -504,10 +505,12 @@ void DX11Renderer::render_frame() {
       float view_proj[16];
       multiply_matrices(view, proj, view_proj);
 
+      float c = cosf(heading);
+      float s = sinf(heading);
       float model[16] = {
-        1, 0, 0, 0,
+        c, 0, s, 0,
         0, 1, 0, 0,
-        0, 0, 1, 0,
+        -s, 0, c, 0,
         cx, 0.5f, cz, 1
       };
 
@@ -546,7 +549,7 @@ void DX11Renderer::render_frame() {
 
 void DX11Renderer::run() {
   running_ = true;
-  load_gltf("D:/x-racing/data/models/vehicle.glb");
+  load_gltf("D:/x-racing/assets/models/test_export.glb");
 
   LARGE_INTEGER freq, prev;
   QueryPerformanceFrequency(&freq);
@@ -574,6 +577,8 @@ void DX11Renderer::run() {
       if (GetAsyncKeyState('A') & 0x8000) input.steering = -1.0;
       if (GetAsyncKeyState('D') & 0x8000) input.steering = 1.0;
       if (GetAsyncKeyState('R') & 0x8000) input.reset = true;
+
+      if (input.reset) sim_.respawn();
 
       sim_.step(input);
       play_animation((float)dt);
