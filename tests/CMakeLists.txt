@@ -21,5 +21,21 @@ add_executable(project0_tests ${TEST_SOURCES})
 target_link_libraries(project0_tests PRIVATE project0_engine GTest::gtest_main)
 target_include_directories(project0_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../tools/track_diagram)
 
+if(PROJECT0_BUILD_ASSIMP)
+  deploy_assimp_dll(project0_tests)
+endif()
+
+if(BUILD_SHARED_LIBS)
+  add_custom_command(TARGET project0_tests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_FILE:gtest>
+      $<TARGET_FILE_DIR:project0_tests>
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      $<TARGET_FILE:gtest_main>
+      $<TARGET_FILE_DIR:project0_tests>
+    COMMENT "Deploying gtest runtime for project0_tests"
+  )
+endif()
+
 include(GoogleTest)
 gtest_add_tests(project0_tests "" ${TEST_SOURCES})
