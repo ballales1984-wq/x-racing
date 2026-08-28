@@ -3,12 +3,14 @@
 #include <commdlg.h>
 #include <sstream>
 #include <iomanip>
-#include <cmath>`n#include <iostream>
+#include <iostream>
+#include <cmath>
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "gdi32.lib")
 
 namespace p0::track_blueprint {
+
 constexpr COLORREF kGridColor = RGB(40, 40, 50);
 constexpr COLORREF kMajorGridColor = RGB(60, 60, 80);
 constexpr COLORREF kTrackFillColor = RGB(80, 80, 90);
@@ -36,6 +38,7 @@ BlueprintEditor::~BlueprintEditor() {
   if (mem_dc_) DeleteDC(mem_dc_);
   if (window_) DestroyWindow(window_);
 }
+
 bool BlueprintEditor::initialize() {
   WNDCLASSEX wc = {};
   wc.cbSize = sizeof(WNDCLASSEX);
@@ -66,6 +69,7 @@ bool BlueprintEditor::initialize() {
   running_ = true;
   return true;
 }
+
 LRESULT CALLBACK BlueprintEditor::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
   BlueprintEditor* editor = nullptr;
   if (msg == WM_NCCREATE) {
@@ -80,12 +84,12 @@ LRESULT CALLBACK BlueprintEditor::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARA
     switch (msg) {
       case WM_CREATE: return editor->handle_create(hwnd);
       case WM_PAINT: return editor->handle_paint(hwnd);
-      case WM_SIZE: return editor->handle_size(LOWORD(lp), HIWORD(lp));
+      case WM_SIZE: return editor->handle_size(hwnd, LOWORD(lp), HIWORD(lp));
       case WM_LBUTTONDOWN: return editor->handle_lbutton_down(hwnd, LOWORD(lp), HIWORD(lp));
       case WM_LBUTTONUP: return editor->handle_lbutton_up(hwnd, LOWORD(lp), HIWORD(lp));
       case WM_RBUTTONDOWN: return editor->handle_rbutton_down(hwnd, LOWORD(lp), HIWORD(lp));
       case WM_MOUSEMOVE: return editor->handle_mouse_move(hwnd, LOWORD(lp), HIWORD(lp));
-      case WM_MOUSEWHEEL: return editor->handle_mouse_wheel(GET_WHEEL_DELTA_WPARAM(wp));
+      case WM_MOUSEWHEEL: return editor->handle_mouse_wheel(hwnd, GET_WHEEL_DELTA_WPARAM(wp));
       case WM_KEYDOWN: return editor->handle_key_down(hwnd, wp);
       case WM_COMMAND: return editor->handle_command(hwnd, wp);
       case WM_CLOSE: return editor->handle_close(hwnd);
@@ -94,6 +98,7 @@ LRESULT CALLBACK BlueprintEditor::wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARA
   }
   return DefWindowProc(hwnd, msg, wp, lp);
 }
+
 LRESULT BlueprintEditor::handle_create(HWND hwnd) {
   window_ = hwnd;
   HMENU menubar = CreateMenu();
@@ -142,6 +147,7 @@ LRESULT BlueprintEditor::handle_size(HWND, int width, int height) {
   InvalidateRect(window_, nullptr, TRUE);
   return 0;
 }
+
 LRESULT BlueprintEditor::handle_paint(HWND hwnd) {
   PAINTSTRUCT ps; HDC hdc = BeginPaint(hwnd, &ps);
   if (mem_bitmap_ && mem_dc_) {
@@ -212,6 +218,7 @@ LRESULT BlueprintEditor::handle_lbutton_down(HWND hwnd, int x, int y) {
   }
   InvalidateRect(hwnd, nullptr, FALSE); return 0;
 }
+
 LRESULT BlueprintEditor::handle_lbutton_up(HWND, int, int) {
   dragging_ = false; ReleaseCapture(); return 0;
 }
@@ -247,11 +254,12 @@ LRESULT BlueprintEditor::handle_mouse_move(HWND hwnd, int x, int y) {
   InvalidateRect(hwnd, nullptr, FALSE); return 0;
 }
 
-LRESULT BlueprintEditor::handle_mouse_wheel(HWND, int delta) { {
+LRESULT BlueprintEditor::handle_mouse_wheel(HWND, int delta) {
   double factor = (delta > 0) ? 1.1 : 0.9;
   config_.scale = std::max(0.5, std::min(50.0, config_.scale * factor));
   InvalidateRect(window_, nullptr, FALSE); return 0;
 }
+
 LRESULT BlueprintEditor::handle_key_down(HWND, WPARAM vk) {
   switch (vk) {
     case 'V': current_tool_ = Tool::Select; tool_name_ = "Select"; break;
@@ -304,6 +312,7 @@ LRESULT BlueprintEditor::handle_command(HWND hwnd, WPARAM wp) {
 LRESULT BlueprintEditor::handle_close(HWND) {
   running_ = false; DestroyWindow(window_); return 0;
 }
+
 void BlueprintEditor::draw_grid(HDC hdc) {
   int w = config_.width, h = config_.height;
   for (double gx = std::floor(config_.offset.x() / kGridSize) * kGridSize;
@@ -336,7 +345,7 @@ void BlueprintEditor::draw_grid(HDC hdc) {
 void BlueprintEditor::draw_ruler(HDC hdc) {
   int ruler_h = 24, ruler_w = 60;
   HBRUSH bg = CreateSolidBrush(kRulerBg);
-  HBRUSH old_brush = SelectObject(hdc, bg);
+  HBRUSH old_brush = (HBRUSH)SelectObject(hdc, bg);
   HPEN pen = CreatePen(PS_SOLID, 1, RGB(50, 50, 60));
   HGDIOBJ old_pen = SelectObject(hdc, pen);
   Rectangle(hdc, 0, 0, config_.width, ruler_h);
@@ -371,6 +380,7 @@ void BlueprintEditor::draw_ruler(HDC hdc) {
   }
   SelectObject(hdc, old_font); DeleteObject(font);
 }
+
 void BlueprintEditor::draw_track_preview(HDC hdc) {
   std::vector<Vec2> centerline;
   for (const auto& el : track_.elements) {
@@ -439,6 +449,7 @@ void BlueprintEditor::draw_track_preview(HDC hdc) {
   DeleteObject(edge_pen); DeleteObject(center_pen);
   SelectObject(hdc, old_brush); DeleteObject(fill_brush);
 }
+
 void BlueprintEditor::draw_elements(HDC hdc) {
   for (const auto& el : track_.elements) {
     int sx = world_to_screen_x(el.position.x()), sy = world_to_screen_y(el.position.y());
@@ -478,6 +489,7 @@ void BlueprintEditor::draw_elements(HDC hdc) {
     }
   }
 }
+
 void BlueprintEditor::draw_selection(HDC hdc) {
   if (selected_index_ >= 0 && selected_index_ < (int)track_.elements.size()) {
     const auto& el = track_.elements[selected_index_];
@@ -527,6 +539,7 @@ void BlueprintEditor::draw_hud(HDC hdc) {
   TextOutA(hdc, config_.width - 250, config_.height - 20, buf, (int)std::strlen(buf));
   SelectObject(hdc, old_font); DeleteObject(font);
 }
+
 Vec2 BlueprintEditor::screen_to_world(int sx, int sy) const {
   return Vec2((sx - config_.offset.x()) / config_.scale,
               -(sy - config_.offset.y()) / config_.scale);
@@ -563,6 +576,7 @@ void BlueprintEditor::add_straight(const Vec2& from, const Vec2& to) {
   selected_index_ = (int)track_.elements.size() - 1;
   status_text_ = "Added straight: " + std::to_string((int)start_el.length) + "m";
 }
+
 void BlueprintEditor::add_curve(const Vec2& center, double radius, double arc_angle, bool left) {
   Vec2 start = track_.elements.empty() ? center + Vec2(0.0, -radius)
                                        : track_.elements.back().position;
@@ -613,6 +627,7 @@ void BlueprintEditor::recompute_track() {
     if (el.type == ElementType::PitBox) track_.pit_box_positions.push_back(el.position);
   if (!track_.elements.empty()) track_.start_position = track_.elements[0].position;
 }
+
 void BlueprintEditor::close_loop() {
   if (track_.elements.size() >= 2) {
     const auto& first = track_.elements[0];
@@ -656,6 +671,7 @@ std::string BlueprintEditor::element_type_name(ElementType type) const {
     default: return "unknown";
   }
 }
+
 bool BlueprintEditor::export_json(const std::string& path) {
   std::ofstream file(path);
   if (!file.is_open()) return false;
@@ -665,6 +681,7 @@ bool BlueprintEditor::export_json(const std::string& path) {
   file << "  \"width_m\": " << track_.track_width << ",\n";
   file << "  \"start_position\": {\"x\": " << std::fixed << std::setprecision(2)
        << track_.start_position.x() << ", \"y\": " << track_.start_position.y() << "},\n";
+  file << "  \"start_heading_deg\": " << track_.start_heading << ",\n";
   file << "  \"elements\": [\n";
   for (size_t i = 0; i < track_.elements.size(); ++i) {
     const auto& el = track_.elements[i];
@@ -690,10 +707,10 @@ bool BlueprintEditor::export_json(const std::string& path) {
 bool BlueprintEditor::export_svg(const std::string& path) {
   std::ofstream file(path);
   if (!file.is_open()) return false;
-  file << "<?xml version=""1.0"" encoding=""UTF-8""?>\n";
-  file << "<svg xmlns=""http://www.w3.org/2000/svg"" width=""1200"" height=""800"">\n";
-  file << "  <rect width=""100%"" height=""100%"" fill=""#1a1a1a""/>\n";
-  file << "  <text x=""20"" y=""30"" fill=""#888"" font-family=""monospace"" font-size=""14"">";
+  file << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+  file << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"800\">\n";
+  file << "  <rect width=\"100%\" height=\"100%\" fill=\"#1a1a1a\"/>\n";
+  file << "  <text x=\"20\" y=\"30\" fill=\"#888\" font-family=\"monospace\" font-size=\"14\">";
   file << track_.track_name << " - Blueprint</text>\n";
   std::vector<Vec2> centerline;
   for (const auto& el : track_.elements)
@@ -701,29 +718,29 @@ bool BlueprintEditor::export_svg(const std::string& path) {
         el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve)
       centerline.push_back(el.position);
   if (centerline.size() >= 2) {
-    file << "  <polyline points=""";
+    file << "  <polyline points=\"";
     for (size_t i = 0; i < centerline.size(); ++i) {
       double sx = centerline[i].x() * 3.0 + 600.0;
       double sy = -centerline[i].y() * 3.0 + 400.0;
       file << sx << "," << sy << " ";
     }
-    file << """ fill=""none"" stroke=""#ffff00"" stroke-width=""3""/>\n";
+    file << "\" fill=\"none\" stroke=\"#ffff00\" stroke-width=\"3\"/>\n";
   }
   for (const auto& el : track_.elements) {
     double sx = el.position.x() * 3.0 + 600.0;
     double sy = -el.position.y() * 3.0 + 400.0;
     if (el.type == ElementType::PitBox) {
-      file << "  <rect x=""" << sx - 12 << """ y=""" << sy - 6
-           << """ width=""24"" height=""12"" fill=""#888"" stroke=""#666""/>\n";
+      file << "  <rect x=\"" << sx - 12 << "\" y=\"" << sy - 6
+           << "\" width=\"24\" height=\"12\" fill=\"#888\" stroke=\"#666\"/>\n";
     } else if (el.type == ElementType::StartFinish) {
-      file << "  <line x1=""" << sx - 20 << """ y1=""" << sy - 10
-           << """ x2=""" << sx + 20 << """ y2=""" << sy + 10
-           << """ stroke=""#FFD700"" stroke-width=""3""/>\n";
+      file << "  <line x1=\"" << sx - 20 << "\" y1=\"" << sy - 10
+           << "\" x2=\"" << sx + 20 << "\" y2=\"" << sy + 10
+           << "\" stroke=\"#FFD700\" stroke-width=\"3\"/>\n";
     } else if (el.type == ElementType::Barrier) {
       Vec2 end = el.position + el.tangent * el.length;
       double ex = end.x() * 3.0 + 600.0, ey = -end.y() * 3.0 + 400.0;
-      file << "  <line x1=""" << sx << """ y1=""" << sy << """ x2=""" << ex
-           << """ y2=""" << ey << """ stroke=""#ff8c00"" stroke-width=""3""/>\n";
+      file << "  <line x1=\"" << sx << "\" y1=\"" << sy << "\" x2=\"" << ex
+           << "\" y2=\"" << ey << "\" stroke=\"#ff8c00\" stroke-width=\"3\"/>\n";
     }
   }
   file << "</svg>\n";
@@ -731,6 +748,7 @@ bool BlueprintEditor::export_svg(const std::string& path) {
   std::cout << "SVG blueprint exported to: " << path << std::endl;
   return true;
 }
+
 int BlueprintEditor::run() {
   MSG msg;
   while (running_ && GetMessage(&msg, nullptr, 0, 0)) {
@@ -741,3 +759,5 @@ int BlueprintEditor::run() {
 }
 
 }
+
+
