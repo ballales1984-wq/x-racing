@@ -23,7 +23,7 @@ namespace Project0.Unity
         public float cameraFollowHeight = 2f;
         public float cameraSmoothTime = 0.15f;
         public float cameraRotationSmoothTime = 0.1f;
-        public Vector3 firstPersonOffset = new Vector3(0f, 0.0018f, 0.0006f);
+        public Vector3 firstPersonOffset = new Vector3(0f, 1.5f, -0.5f);
         public KeyCode toggleCameraKey = KeyCode.C;
 
         [Header("Direct Control Physics")]
@@ -55,7 +55,6 @@ namespace Project0.Unity
         private float currentHeading = 0f;
         private float cameraRotationVelocity;
 
-        // Sim Plugin state (accessible by HUD)
         public float currentRpm = 0f;
         public int currentGear = 1;
         public float currentSteerAngle = 0f;
@@ -87,7 +86,6 @@ namespace Project0.Unity
             }
 
             UpdateCamera();
-
             CheckStartLineCrossing();
         }
 
@@ -110,7 +108,7 @@ namespace Project0.Unity
             {
                 followCamera.transform.SetParent(transform);
                 followCamera.transform.localPosition = firstPersonOffset;
-                followCamera.transform.localRotation = Quaternion.identity;
+                followCamera.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
             }
             else
             {
@@ -122,7 +120,6 @@ namespace Project0.Unity
         {
             if (!SimPlugin.Initialize())
             {
-                Debug.LogError("Failed to initialize sim plugin");
                 return;
             }
 
@@ -130,30 +127,16 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-            {
-                throttle = 1f;
-            }
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-            {
-                brake = 1f;
-            }
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {
-                steer = 1f;
-            }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            {
-                steer = -1f;
-            }
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle = 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) brake = 1f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer = 1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer = -1f;
 
             var state = SimPlugin.Update(Time.deltaTime, throttle, brake, steer);
-
             transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
             float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 90f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
-            // Store state for HUD
             currentSpeed = (float)state.speed;
             currentRpm = (float)state.rpm;
             currentGear = state.gear;
@@ -167,22 +150,10 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow))
-            {
-                throttle = 1f;
-            }
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow))
-            {
-                brake = 1f;
-            }
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {
-                steer = 1f;
-            }
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
-            {
-                steer = -1f;
-            }
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle = 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) brake = 1f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer = 1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer = -1f;
 
             if (throttle > 0f)
             {
@@ -219,11 +190,9 @@ namespace Project0.Unity
 
             Vector3 forward = new Vector3(Mathf.Sin(currentHeading), 0f, Mathf.Cos(currentHeading));
             Vector3 move = forward * currentSpeed * Time.deltaTime;
-
             transform.position += move;
             transform.eulerAngles = new Vector3(0f, currentHeading * Mathf.Rad2Deg, 0f);
 
-            // Simulate RPM and gear for HUD
             float speedFrac = Mathf.Abs(currentSpeed) / maxSpeed;
             currentRpm = 800f + speedFrac * 7000f;
             currentGear = Mathf.Clamp(Mathf.FloorToInt(speedFrac * 6f) + 1, 1, 6);
@@ -293,8 +262,9 @@ namespace Project0.Unity
 
             if (firstPersonView)
             {
+                followCamera.transform.SetParent(transform);
                 followCamera.transform.localPosition = firstPersonOffset;
-                followCamera.transform.localRotation = Quaternion.identity;
+                followCamera.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
                 return;
             }
 
@@ -307,8 +277,6 @@ namespace Project0.Unity
 
         void CheckStartLineCrossing()
         {
-            if (carHUD == null) return;
-
             Vector2 carPos2D = new Vector2(transform.position.x, transform.position.z);
             Vector2 startLine2D = new Vector2(startLinePosition.x, startLinePosition.z);
             float distFromStart = Vector2.Distance(carPos2D, startLine2D);
@@ -318,14 +286,18 @@ namespace Project0.Unity
                 if (distFromStart > startLineThreshold)
                 {
                     lapStarted = true;
-                    carHUD.BeginLap();
+                    if (carHUD != null) carHUD.BeginLap();
                 }
             }
             else
             {
                 if (distFromStart <= startLineThreshold && allCheckpointsPassed)
                 {
-                    carHUD.EndLap();
+                    bool valid = true;
+                    if (carHUD != null)
+                    {
+                        carHUD.EndLap(valid);
+                    }
                     lapStarted = false;
                     allCheckpointsPassed = false;
                     lastCheckpoint = -1;
@@ -456,7 +428,7 @@ namespace Project0.Unity
 
         private void OnValidate()
         {
-            if (autoReload && !loaded && File.Exists(telemetryPath) && !useDirectControl && !useSimPlugin)
+            if (autoReload && !loaded && !useDirectControl && !useSimPlugin)
             {
                 LoadTelemetry();
             }

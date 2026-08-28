@@ -9,7 +9,23 @@ option(PROJECT0_BUILD_TESTS "Build tests" ON)
 option(PROJECT0_BUILD_RENDERER "Build renderer" OFF)
 option(PROJECT0_BUILD_EXPERIMENTS "Build experiments" ON)
 option(PROJECT0_BUILD_GAMEPLAY "Build gameplay" ON)
-option(PROJECT0_BUILD_ASSIMP "Build with Assimp importer" ON)
+option(PROJECT0_BUILD_ASSIMP "Build with Assimp importer" OFF)
+
+if(PROJECT0_BUILD_ASSIMP)
+  include(FetchContent)
+  FetchContent_Declare(assimp
+    GIT_REPOSITORY https://github.com/assimp/assimp.git
+    GIT_TAG v5.4.3
+  )
+  # Build only the importer library; disable tests/tools/samples and
+  # bundle zlib so there is no external dependency.
+  set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+  set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+  set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
+  set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(assimp)
+endif()
 
 add_subdirectory(engine)
 

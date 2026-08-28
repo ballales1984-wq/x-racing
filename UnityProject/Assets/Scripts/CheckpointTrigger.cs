@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace Project0.Unity
 {
@@ -15,14 +16,7 @@ namespace Project0.Unity
         {
             boxCol = GetComponent<BoxCollider>();
             boxCol.isTrigger = true;
-
-            Transform trackTransform = GameObject.Find("Track")?.transform;
-            if (trackTransform != null)
-            {
-                Transform parent = trackTransform.parent;
-                if (parent != null)
-                    transform.SetParent(parent);
-            }
+            boxCol.size = new Vector3(3f, 3f, 3f);
         }
 
         void OnTriggerEnter(Collider other)

@@ -4,6 +4,7 @@
 #include "simulation/simulation.h"
 #include "telemetry/telemetry.h"
 #include "../engine/input/input_manager.h"
+#include "game_state.h"
 #include <chrono>
 #include <memory>
 #include <string>
@@ -45,11 +46,23 @@ class Gameplay {
   // Test helpers
   void update_lap_timing(const simulation::SimulationResult& result);
 
+  // Game flow
+  void handle_menu_input(const input::InputState& input);
+  void handle_countdown();
+  void handle_racing(const simulation::SimulationResult& result);
+  void show_results();
+  void save_best_times();
+  void load_best_times();
+  void reset_race();
+
  private:
   // Poll the input manager for the latest driver input.
   input::InputState poll_input();
   // Render the current state to the console HUD.
   void render_console(const simulation::SimulationResult& result);
+  void render_menu();
+  void render_countdown();
+  void render_results();
 
  private:
   simulation::Simulation& sim_;

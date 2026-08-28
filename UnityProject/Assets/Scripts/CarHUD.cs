@@ -7,13 +7,14 @@ namespace Project0.Unity
     {
         [Header("References")]
         public CarController carController;
+        public XRRaceManager raceManager;
         public TMP_Text speedText;
         public TMP_Text rpmText;
         public TMP_Text gearText;
         public TMP_Text lapTimeText;
         public TMP_Text bestLapText;
         public TMP_Text lapCountText;
-        public TMP_Text slipText;
+        public TMP_Text positionText;
 
         [Header("Settings")]
         public float updateInterval = 0.1f;
@@ -23,6 +24,18 @@ namespace Project0.Unity
         private float _bestLapTime = float.MaxValue;
         private bool _lapStarted = false;
         private int _lapCount = 0;
+
+        void Start()
+        {
+            if (raceManager == null)
+            {
+                raceManager = FindObjectOfType<XRRaceManager>();
+            }
+            if (carController == null)
+            {
+                carController = FindObjectOfType<CarController>();
+            }
+        }
 
         void Update()
         {
@@ -35,26 +48,26 @@ namespace Project0.Unity
                 UpdateHUD();
             }
 
-            if (_lapStarted)
+            if (_lapStarted && raceManager != null && raceManager.CurrentState == GameState.RACING)
             {
-                _currentLapTime += Time.deltaTime;
+                _currentLapTime = raceManager.CurrentLapTime;
             }
         }
 
         void UpdateHUD()
         {
-            if (speedText != null)
+            if (speedText != null && carController != null)
             {
                 float speedKmh = carController.currentSpeed * 3.6f;
                 speedText.text = $"{(int)speedKmh} km/h";
             }
 
-            if (rpmText != null)
+            if (rpmText != null && carController != null)
             {
                 rpmText.text = $"{(int)carController.currentRpm} RPM";
             }
 
-            if (gearText != null)
+            if (gearText != null && carController != null)
             {
                 int gear = carController.currentGear;
                 gearText.text = gear > 0 ? gear.ToString() : (carController.currentSpeed > 0.1f ? "R" : "N");
@@ -67,17 +80,15 @@ namespace Project0.Unity
 
             if (bestLapText != null)
             {
-                bestLapText.text = _bestLapTime < float.MaxValue ? FormatTime(_bestLapTime) : "--:--";
+                float displayBest = _bestLapTime < float.MaxValue ? _bestLapTime : (raceManager != null ? raceManager.BestLapTime : float.MaxValue);
+                bestLapText.text = displayBest < float.MaxValue ? $"Best: {FormatTime(displayBest)}" : "Best: --:--.---";
             }
 
             if (lapCountText != null)
             {
-                lapCountText.text = $"Lap {_lapCount}";
-            }
-
-            if (slipText != null)
-            {
-                slipText.text = $"Steer: {carController.currentSteerAngle * Mathf.Rad2Deg:F1}°";
+                int displayLaps = raceManager != null ? raceManager.CompletedLaps : _lapCount;
+                int totalLaps = raceManager != null ? raceManager.lapCount : 3;
+                lapCountText.text = $"Lap {displayLaps}/{totalLaps}";
             }
         }
 
@@ -87,11 +98,11 @@ namespace Project0.Unity
             _lapStarted = true;
         }
 
-        public void EndLap()
+        public void EndLap(bool valid)
         {
             if (_currentLapTime > 5f)
             {
-                if (_currentLapTime < _bestLapTime)
+                if (valid && _currentLapTime < _bestLapTime)
                 {
                     _bestLapTime = _currentLapTime;
                 }
@@ -102,9 +113,9 @@ namespace Project0.Unity
 
         string FormatTime(float time)
         {
-            int minutes = (int)(time / 60);
-            float seconds = time % 60;
-            return $"{minutes:00}:{seconds:00.00}";
+            int minutes = (int)(time / 60f);
+            float seconds = time % 60f;
+            return $"{minutes:00}:{seconds:00.000}";
         }
     }
 }
