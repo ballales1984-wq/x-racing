@@ -26,6 +26,9 @@ namespace Project0.Unity
         public int trackType = 0;
         public string trackName = "Default Circuit";
 
+        [Header("Track")]
+        public XRTrackGenerator trackGenerator;
+
         [Header("Countdown")]
         public float countdownDuration = 3f;
 
@@ -84,7 +87,11 @@ namespace Project0.Unity
             countdownTimer = 0f;
             lastCountdownNumber = -1;
 
-            carController.ResetCarPosition();
+            // Position and enable the car first so a track-generation failure can
+            // never leave the player stuck in the menu with a frozen car.
+            Vector3 startPos = (trackGenerator != null) ? trackGenerator.GetStartPosition() : carController.startLinePosition;
+            float startHeading = (trackGenerator != null) ? trackGenerator.GetStartHeading() : Mathf.PI * 0.5f;
+            carController.SetStartPose(startPos, startHeading);
             carController.enabled = true;
 
             bestLapTime = float.MaxValue;
@@ -95,6 +102,22 @@ namespace Project0.Unity
             lapValid = new bool[lapCount];
 
             carController.ResetCheckpoints();
+
+            // Regenerate the track with the currently selected layout so the player
+            // actually sees the chosen circuit (with its pit lane and pit boxes)
+            // instead of the default scene track.
+            if (trackGenerator != null)
+            {
+                try
+                {
+                    trackGenerator.trackType = (TrackType)trackType;
+                    trackGenerator.GenerateTrack();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"Track generation failed: {e}");
+                }
+            }
         }
 
         void UpdateCountdown()

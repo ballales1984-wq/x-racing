@@ -14,7 +14,8 @@ namespace Project0.Unity.Setup
             CreateOrFind("Main Camera", (cam) =>
             {
                 cam.tag = "MainCamera";
-                cam.AddComponent<Camera>();
+                if (cam.GetComponent<Camera>() == null)
+                    cam.AddComponent<Camera>();
                 cam.transform.position = new Vector3(0f, 5f, -10f);
                 cam.transform.LookAt(Vector3.zero);
             });

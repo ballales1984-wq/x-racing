@@ -1,3 +1,5 @@
+// X-Racing — GLB exporter implementation
+// Author: alessio
 #include "glb_exporter.h"
 #include <iostream>
 #include <cstring>

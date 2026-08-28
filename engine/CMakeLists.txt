@@ -19,10 +19,19 @@ target_include_directories(project0_engine PUBLIC
 )
 
 if(PROJECT0_BUILD_ASSIMP)
-  # The `assimp` target is provided by FetchContent in the root CMakeLists.
   target_sources(project0_engine PRIVATE assets/assimp_loader.cpp)
-  target_link_libraries(project0_engine PUBLIC assimp)
+  target_include_directories(project0_engine PUBLIC ${ASSIMP_INCLUDE_DIR})
+  target_link_libraries(project0_engine PUBLIC ${ASSIMP_LIBRARY})
   target_compile_definitions(project0_engine PUBLIC ASSIMP_AVAILABLE)
+
+  function(deploy_assimp_dll target)
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ASSIMP_DLL}
+        $<TARGET_FILE_DIR:${target}>
+      COMMENT "Deploying Assimp runtime for ${target}"
+    )
+  endfunction()
 endif()
 
 target_compile_features(project0_engine PUBLIC cxx_std_20)
@@ -49,13 +58,25 @@ set_target_properties(sim_plugin PROPERTIES
   SUFFIX ".dll"
 )
 
-if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../UnityProject/Assets/Plugins")
+if(PROJECT0_BUILD_ASSIMP)
+  deploy_assimp_dll(sim_plugin)
+endif()
+
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../UnityProject/Assets/Plugins")
   add_custom_command(TARGET sim_plugin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
       $<TARGET_FILE:sim_plugin>
-      "${CMAKE_CURRENT_SOURCE_DIR}/../../UnityProject/Assets/Plugins/sim_plugin.dll"
+      "${CMAKE_CURRENT_SOURCE_DIR}/../UnityProject/Assets/Plugins/sim_plugin.dll"
     COMMENT "Deploying sim_plugin.dll to Unity project"
   )
+  if(PROJECT0_BUILD_ASSIMP)
+    add_custom_command(TARGET sim_plugin POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${ASSIMP_DLL}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../UnityProject/Assets/Plugins"
+      COMMENT "Deploying Assimp runtime to Unity project"
+    )
+  endif()
 endif()
 
 # Vehicle generator tool
@@ -70,3 +91,7 @@ target_include_directories(generate_vehicle PRIVATE
 )
 
 target_link_libraries(generate_vehicle PRIVATE project0_engine)
+
+if(PROJECT0_BUILD_ASSIMP)
+  deploy_assimp_dll(generate_vehicle)
+endif()

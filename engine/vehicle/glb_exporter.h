@@ -1,3 +1,5 @@
+// X-Racing — GLB (binary glTF) mesh exporter
+// Author: alessio
 #pragma once
 
 #include "vehicle/vehicle_generator.h"

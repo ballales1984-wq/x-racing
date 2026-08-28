@@ -1,4 +1,5 @@
-// Project 0 — vehicle mesh generation tool
+// X-Racing — vehicle mesh generation tool
+// Author: alessio
 // Generates parametric car meshes for every model in the CarRegistry and
 // exports them to OBJ + GLB for use in the renderer and external tools.
 #include "vehicle/car_model.h"
@@ -20,6 +21,7 @@ int main() {
     for (const auto& model : registry.all()) {
         std::cout << "\nCar: " << model.name << " (id: " << model.id << ")" << std::endl;
         std::cout << "  Description: " << model.description << std::endl;
+        std::cout << "  Author:      " << model.author << std::endl;
         std::cout << "  Mass:       " << model.params.mass << " kg" << std::endl;
         std::cout << "  Wheelbase:  " << model.params.wheelbase << " m" << std::endl;
         std::cout << "  Track:      " << model.params.track_width << " m" << std::endl;

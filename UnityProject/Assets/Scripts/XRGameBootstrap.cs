@@ -34,14 +34,13 @@ namespace Project0.Unity
                 carHUD = FindObjectOfType<CarHUD>();
             }
 
-            if (trackGenerator != null)
-            {
-                trackGenerator.GenerateTrack();
-            }
-
             if (raceManager != null && carController != null)
             {
                 raceManager.carController = carController;
+            }
+            if (raceManager != null && trackGenerator != null)
+            {
+                raceManager.trackGenerator = trackGenerator;
             }
             if (raceManager != null && carHUD != null)
             {
@@ -69,6 +68,18 @@ namespace Project0.Unity
             if (carController != null)
             {
                 carController.enabled = false;
+            }
+
+            if (trackGenerator != null)
+            {
+                try
+                {
+                    trackGenerator.GenerateTrack();
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"Initial track generation failed: {e}");
+                }
             }
         }
     }

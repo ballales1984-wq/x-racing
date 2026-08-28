@@ -1,3 +1,5 @@
+// X-Racing — parametric vehicle mesh generator implementation
+// Author: alessio
 #include "vehicle_generator.h"
 #include <cmath>
 

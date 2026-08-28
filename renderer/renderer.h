@@ -41,13 +41,17 @@ class Renderer {
   // Switch the active track layout at runtime.
   void set_track_type(track::TrackType type);
 
- private:
-  // Draw the track centerline and boundaries.
-  void draw_track(HDC hdc);
-  // Draw the pit/box lane in red.
-  void draw_box_lane(HDC hdc);
-  // Draw the car as a 2D rotated rectangle.
-  void draw_car(HDC hdc, const vehicle::VehicleState& state);
+  private:
+   // Draw the track centerline and boundaries.
+   void draw_track(HDC hdc);
+   // Draw the pit/box lane in red.
+   void draw_box_lane(HDC hdc);
+   // Draw start/finish line in gold.
+   void draw_start_finish(HDC hdc);
+   // Draw direction arrows along the track centerline.
+   void draw_direction_arrows(HDC hdc);
+   // Draw the car as a 2D rotated rectangle.
+   void draw_car(HDC hdc, const vehicle::VehicleState& state);
   // Draw the car as a 3D wireframe using the loaded mesh and a simple projection.
   void draw_car_3d(HDC hdc, const vehicle::VehicleState& state);
   // Draw speed, RPM, gear, lap and telemetry HUD overlay.

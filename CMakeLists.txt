@@ -12,19 +12,9 @@ option(PROJECT0_BUILD_GAMEPLAY "Build gameplay" ON)
 option(PROJECT0_BUILD_ASSIMP "Build with Assimp importer" OFF)
 
 if(PROJECT0_BUILD_ASSIMP)
-  include(FetchContent)
-  FetchContent_Declare(assimp
-    GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG v5.4.3
-  )
-  # Build only the importer library; disable tests/tools/samples and
-  # bundle zlib so there is no external dependency.
-  set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
-  set(ASSIMP_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-  set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)
-  set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(assimp)
+  set(ASSIMP_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/assimp/include)
+  set(ASSIMP_LIBRARY ${CMAKE_CURRENT_SOURCE_DIR}/vendor/assimp/lib/assimp.lib)
+  set(ASSIMP_DLL ${CMAKE_CURRENT_SOURCE_DIR}/vendor/assimp/bin/assimp-vc143-mt.dll)
 endif()
 
 add_subdirectory(engine)
@@ -50,4 +40,8 @@ if(PROJECT0_BUILD_RENDERER)
   add_subdirectory(renderer)
   add_executable(project0_app main.cpp)
   target_link_libraries(project0_app PRIVATE project0_renderer project0_engine)
+
+  if(PROJECT0_BUILD_ASSIMP)
+    deploy_assimp_dll(project0_app)
+  endif()
 endif()

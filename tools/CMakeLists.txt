@@ -13,3 +13,7 @@ add_executable(track_diagram
   track_diagram/main.cpp
 )
 target_link_libraries(track_diagram PRIVATE project0_tools)
+
+if(PROJECT0_BUILD_ASSIMP)
+  deploy_assimp_dll(track_diagram)
+endif()

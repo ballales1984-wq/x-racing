@@ -61,7 +61,8 @@ struct TrackParams {
 // Track layout variant.
 enum class TrackType : uint8_t {
   Default = 0,    // original oval-ish circuit with box lane on first straight
-  PitCircuit      // road course with dedicated pit lane and pit boxes
+  PitCircuit,     // road course with dedicated pit lane and pit boxes
+  CustomCircuit  // custom road course with clear direction and box lane
 };
 
 // Parametric closed-loop track.
@@ -96,6 +97,7 @@ class Track {
   private:
    void build_default_track();
    void build_pit_track();
+   void build_custom_track();
    TrackPoint interpolate(double distance, int i0, int i1, double frac) const;
    void find_adjacent_points(double distance, int& i0, int& i1, double& frac) const;
 

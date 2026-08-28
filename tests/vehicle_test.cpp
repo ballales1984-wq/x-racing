@@ -137,6 +137,7 @@ TEST(CarRegistry, FindsPorsche911) {
   EXPECT_GT(model->params.mass, 0.0);
   EXPECT_GT(model->params.max_power, 0.0);
   EXPECT_GT(model->geometry.body_length, 0.0);
+  EXPECT_FALSE(model->author.empty());
 }
 
 // CarRegistry should find the Ferrari F12 model by id
@@ -148,6 +149,7 @@ TEST(CarRegistry, FindsFerrariF12) {
   EXPECT_GT(model->params.mass, 0.0);
   EXPECT_GT(model->params.max_power, 0.0);
   EXPECT_GT(model->geometry.body_length, 0.0);
+  EXPECT_FALSE(model->author.empty());
 }
 
 // CarRegistry should return nullptr for unknown id

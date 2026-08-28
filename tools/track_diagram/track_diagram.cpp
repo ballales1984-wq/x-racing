@@ -546,8 +546,10 @@ bool TrackSvgExporter::export_svg() {
         << "\" font-size=\"12\" text-anchor=\"middle\" fill=\"#888\">";
     if (track_.track_type() == track::TrackType::Default) {
         oss << "Track: Default (Oval)";
-    } else {
+    } else if (track_.track_type() == track::TrackType::PitCircuit) {
         oss << "Track: PitCircuit (Road Course)";
+    } else {
+        oss << "Track: CustomCircuit (Road Course)";
     }
     oss << " | Length: " << std::fixed << std::setprecision(1) << track_.length() << "m</text>\n";
 

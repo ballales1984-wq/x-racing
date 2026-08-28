@@ -1,3 +1,5 @@
+// X-Racing — car model registry implementation
+// Author: alessio
 #include "car_model.h"
 #include "mesh_exporter.h"
 #include "glb_exporter.h"
@@ -26,6 +28,7 @@ void CarRegistry::initialize_default_models() {
         model.id = "porsche_911";
         model.name = "Porsche 911 Turbo S";
         model.description = "Rear-engine sports car";
+        model.author = "alessio";
         model.mesh_path = "D:/x-racing/data/models/porsche_911.obj";
 
         VehicleParams& p = model.params;
@@ -58,6 +61,7 @@ void CarRegistry::initialize_default_models() {
         model.id = "ferrari_f12";
         model.name = "Ferrari F12berlinetta";
         model.description = "Mid-engine V12 supercar";
+        model.author = "alessio";
         model.mesh_path = "D:/x-racing/data/models/ferrari_f12.obj";
 
         VehicleParams& p = model.params;

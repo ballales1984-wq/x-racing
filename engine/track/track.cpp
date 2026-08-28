@@ -18,6 +18,8 @@ Track::Track(TrackType type, const TrackParams& params) {
   default_surface_ = params.default_surface;
   if (type == TrackType::PitCircuit) {
     build_pit_track();
+  } else if (type == TrackType::CustomCircuit) {
+    build_custom_track();
   } else {
     build_default_track();
   }
@@ -246,6 +248,133 @@ void Track::build_pit_track() {
   }
 
   pit_box_positions_ = {850.0, 950.0, 1050.0, 1150.0};
+
+  // Compute cumulative arc-length distance for each sampled point.
+  for (size_t i = 0; i < points_.size(); ++i) {
+    if (i == 0) {
+      points_[i].distance = 0.0;
+    } else {
+      double segmentLength = (points_[i].position - points_[i - 1].position).norm();
+      points_[i].distance = points_[i - 1].distance + segmentLength;
+    }
+  }
+  total_length_ = points_.back().distance;
+
+  // Compute local curvature at each point from the turning angle between
+  // adjacent segments (finite-difference approximation).
+  for (size_t i = 0; i < points_.size(); ++i) {
+    const auto& prev = points_[(i > 0) ? i - 1 : points_.size() - 2];
+    const auto& next = points_[(i + 1 < points_.size()) ? i + 1 : 0];
+    const Vec2 d1 = points_[i].position - prev.position;
+    const Vec2 d2 = next.position - points_[i].position;
+    const double cross = p0::physics::cross2(d1.normalized(), d2.normalized());
+    const double len1 = d1.norm();
+    const double len2 = d2.norm();
+    if (len1 > kEpsilon && len2 > kEpsilon) {
+      points_[i].curvature = cross / ((len1 + len2) * 0.5);
+    }
+  }
+}
+
+// Build a custom clockwise road course with a clear pit lane on the back straight.
+//   - main straight heading east (0 .. 450 m): NO box lane
+//   - right hairpin (450 .. ~858 m), center (450, -130), radius 130 m, clockwise
+//   - pit straight heading west (~858 .. 1258 m): BOX LANE on right side
+//   - left hairpin (~1258 .. ~1667 m), center (50, -130), radius 130 m, counter-clockwise
+// Start/finish is at (0, 0) heading east.
+void Track::build_custom_track() {
+  points_.clear();
+  pit_box_positions_.clear();
+  const double L1 = 450.0;
+  const double R = 130.0;
+  const double L2 = 400.0;
+  const int segmentsPerStraight = 120;
+  const int segmentsPerCurve = 60;
+
+  Vec2 tangent(1.0, 0.0);
+  Vec2 normal(-tangent.y(), tangent.x());
+
+  // Section 1: main straight heading east (0 .. 450 m). NO box lane.
+  for (int i = 0; i <= segmentsPerStraight; ++i) {
+    double t = static_cast<double>(i) / segmentsPerStraight;
+    TrackPoint point;
+    point.position = tangent * (t * L1);
+    point.tangent = tangent;
+    point.normal = normal;
+    point.width = default_width_;
+    point.friction = default_friction_;
+    point.surface_type = SurfaceType::Asphalt;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Section 2: right hairpin, center (L1, -R), clockwise.
+  Vec2 cornerCenter2(L1, -R);
+  for (int i = 1; i <= segmentsPerCurve; ++i) {
+    double t = static_cast<double>(i) / segmentsPerCurve;
+    double angle = kHalfPi - t * kPi;
+    Vec2 p = cornerCenter2 + Vec2(R * std::cos(angle), R * std::sin(angle));
+    Vec2 tang(-std::sin(angle), std::cos(angle));
+    tang.normalize();
+    Vec2 norm(-tang.y(), tang.x());
+    TrackPoint point;
+    point.position = p;
+    point.tangent = tang;
+    point.normal = norm;
+    point.width = default_width_;
+    point.friction = default_friction_ * 0.98;
+    point.surface_type = SurfaceType::OldAsphalt;
+    point.curvature = -1.0 / R;
+    point.banking = 0.02;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  // Section 3: pit straight heading west. BOX LANE on right side of travel.
+  Vec2 pos3(L1, -2.0 * R);
+  Vec2 tangent3(-1.0, 0.0);
+  Vec2 normal3(-tangent3.y(), tangent3.x());
+  for (int i = 1; i <= segmentsPerStraight; ++i) {
+    double t = static_cast<double>(i) / segmentsPerStraight;
+    TrackPoint point;
+    point.position = pos3 + tangent3 * (t * L2);
+    point.tangent = tangent3;
+    point.normal = normal3;
+    point.width = default_width_;
+    point.friction = default_friction_ * 0.95;
+    point.surface_type = SurfaceType::Asphalt;
+    point.curvature = 0.0;
+    point.banking = 0.0;
+    point.has_box_lane = true;
+    point.box_lane_width = 4.0;
+    points_.push_back(point);
+  }
+
+  // Section 4: left hairpin, center (L1 - L2, -R), counter-clockwise.
+  Vec2 cornerCenter4(L1 - L2, -R);
+  for (int i = 1; i <= segmentsPerCurve; ++i) {
+    double t = static_cast<double>(i) / segmentsPerCurve;
+    double angle = -kHalfPi - t * kPi;
+    Vec2 p = cornerCenter4 + Vec2(R * std::cos(angle), R * std::sin(angle));
+    Vec2 tang(-std::sin(angle), std::cos(angle));
+    tang.normalize();
+    Vec2 norm(-tang.y(), tang.x());
+    TrackPoint point;
+    point.position = p;
+    point.tangent = tang;
+    point.normal = norm;
+    point.width = default_width_;
+    point.friction = default_friction_ * 0.97;
+    point.surface_type = SurfaceType::Gravel;
+    point.curvature = 1.0 / R;
+    point.banking = -0.02;
+    point.has_box_lane = false;
+    points_.push_back(point);
+  }
+
+  pit_box_positions_ = {900.0, 1000.0, 1100.0, 1200.0};
 
   // Compute cumulative arc-length distance for each sampled point.
   for (size_t i = 0; i < points_.size(); ++i) {

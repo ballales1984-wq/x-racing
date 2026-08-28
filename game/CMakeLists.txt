@@ -17,4 +17,10 @@ if(PROJECT0_BUILD_GAMEPLAY)
 
   add_executable(gen_telemetry gen_telemetry.cpp gameplay.cpp)
   target_link_libraries(gen_telemetry PRIVATE project0_gameplay)
+
+  if(PROJECT0_BUILD_ASSIMP)
+    deploy_assimp_dll(project0_gameplay_exe)
+    deploy_assimp_dll(auto_drive)
+    deploy_assimp_dll(gen_telemetry)
+  endif()
 endif()

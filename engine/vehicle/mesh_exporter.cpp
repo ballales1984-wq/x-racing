@@ -1,3 +1,5 @@
+// X-Racing — OBJ mesh exporter implementation
+// Author: alessio
 #include "mesh_exporter.h"
 #include <iostream>
 #include <sstream>

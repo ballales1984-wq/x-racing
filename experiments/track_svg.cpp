@@ -1,6 +1,6 @@
 // Project 0 — SVG track export experiment
-// Command-line tool to generate an SVG diagram of the default or pit circuit track.
-// Usage: track_svg [-t default|pit] [-o output.svg] [--no-chart] [--no-legend]
+// Command-line tool to generate an SVG diagram of the default, pit circuit, or custom track.
+// Usage: track_svg [-t default|pit|custom] [-o output.svg] [--no-chart] [--no-legend]
 #include "track/track.h"
 #include "track_diagram.h"
 #include <iostream>
@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
         if (arg == "-t" && i + 1 < argc) {
             std::string val = argv[++i];
             if (val == "pit" || val == "PitCircuit") type = track::TrackType::PitCircuit;
+            else if (val == "custom" || val == "CustomCircuit") type = track::TrackType::CustomCircuit;
             else type = track::TrackType::Default;
         } else if (arg == "-o" && i + 1 < argc) {
             output = argv[++i];
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Track SVG exported to: " << output << std::endl;
-    std::cout << "Track type: " << (type == track::TrackType::PitCircuit ? "PitCircuit" : "Default") << std::endl;
+    std::cout << "Track type: " << (type == track::TrackType::PitCircuit ? "PitCircuit" : type == track::TrackType::CustomCircuit ? "CustomCircuit" : "Default") << std::endl;
     std::cout << "Track length: " << track.length() << " m" << std::endl;
     return 0;
 }

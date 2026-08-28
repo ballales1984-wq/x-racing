@@ -1,3 +1,5 @@
+// X-Racing — vehicle physics definition
+// Author: alessio
 #pragma once
 
 #include "common.h"

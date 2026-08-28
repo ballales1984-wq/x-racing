@@ -38,6 +38,10 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
         g_renderer->set_track_type(track::TrackType::PitCircuit);
         return 0;
       }
+      if (wparam == '3' && g_renderer) {
+        g_renderer->set_track_type(track::TrackType::CustomCircuit);
+        return 0;
+      }
       return 0;
     default:
       return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -104,7 +108,7 @@ void Renderer::run() {
   running_ = true;
   {
     p0::assets::GLTFSkinnedMesh skinned;
-    if (p0::assets::GLTFLoader::LoadSkinned("D:/x-racing/data/models/vehicle.glb", skinned) && !skinned.positions.empty()) {
+    if (p0::assets::GLTFLoader::LoadSkinned("D:/x-racing/assets/models/test_export.glb", skinned) && !skinned.positions.empty()) {
       car_meshes_.clear();
       p0::assets::Mesh mesh;
       mesh.vertices.reserve(skinned.positions.size() / 3);
@@ -188,6 +192,8 @@ void Renderer::run() {
 
       draw_track(mem_dc);
       draw_box_lane(mem_dc);
+      draw_start_finish(mem_dc);
+      draw_direction_arrows(mem_dc);
       if (show_3d_car_) {
         draw_car_3d(mem_dc, result.state);
       } else {
@@ -260,6 +266,67 @@ void Renderer::draw_box_lane(HDC hdc) {
   DeleteObject(box_pen);
 }
 
+void Renderer::draw_start_finish(HDC hdc) {
+  const track::Track* track = &sim_.track();
+  const auto tp = track->at(0.0);
+  const double half_w = tp.width * 0.5;
+
+  const double nx = tp.normal.x();
+  const double ny = tp.normal.y();
+
+  const int x1 = static_cast<int>((tp.position.x() + nx * half_w) * config_.scale + config_.width / 2);
+  const int y1 = static_cast<int>(-(tp.position.y() + ny * half_w) * config_.scale + config_.height / 2);
+  const int x2 = static_cast<int>((tp.position.x() - nx * half_w) * config_.scale + config_.width / 2);
+  const int y2 = static_cast<int>(-(tp.position.y() - ny * half_w) * config_.scale + config_.height / 2);
+
+  HPEN sf_pen = CreatePen(PS_SOLID, 3, RGB(255, 215, 0));
+  HPEN old_pen = (HPEN)SelectObject(hdc, sf_pen);
+  MoveToEx(hdc, x1, y1, nullptr);
+  LineTo(hdc, x2, y2);
+  SelectObject(hdc, old_pen);
+  DeleteObject(sf_pen);
+
+  const int mid_x = (x1 + x2) / 2;
+  const int mid_y = (y1 + y2) / 2;
+  const int label_y = mid_y - 12;
+  SetBkMode(hdc, TRANSPARENT);
+  SetTextColor(hdc, RGB(255, 215, 0));
+  TextOutA(hdc, mid_x - 30, label_y, "START/FINISH", 12);
+}
+
+void Renderer::draw_direction_arrows(HDC hdc) {
+  const track::Track* track = &sim_.track();
+  const double length = track->length();
+  const double step = 80.0;
+
+  HPEN arrow_pen = CreatePen(PS_SOLID, 2, RGB(180, 180, 180));
+  HPEN old_pen = (HPEN)SelectObject(hdc, arrow_pen);
+  HBRUSH old_brush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+
+  for (double d = 20.0; d < length; d += step) {
+    const auto tp = track->at(d);
+    const int cx = static_cast<int>(tp.position.x() * config_.scale + config_.width / 2);
+    const int cy = static_cast<int>(-tp.position.y() * config_.scale + config_.height / 2);
+
+    const double head_len = 6.0;
+    const double ang = std::atan2(tp.tangent.y(), tp.tangent.x());
+
+    POINT pts[3];
+    pts[0].x = cx + static_cast<int>(std::cos(ang) * 10.0);
+    pts[0].y = cy - static_cast<int>(std::sin(ang) * 10.0);
+    pts[1].x = cx - static_cast<int>(std::cos(ang - 0.5) * head_len);
+    pts[1].y = cy - static_cast<int>(std::sin(ang - 0.5) * head_len);
+    pts[2].x = cx - static_cast<int>(std::cos(ang + 0.5) * head_len);
+    pts[2].y = cy - static_cast<int>(std::sin(ang + 0.5) * head_len);
+
+    Polygon(hdc, pts, 3);
+  }
+
+  SelectObject(hdc, old_pen);
+  SelectObject(hdc, old_brush);
+  DeleteObject(arrow_pen);
+}
+
 // Draw the car as a small rotated rectangle centered at its world position.
 void Renderer::draw_car(HDC hdc, const vehicle::VehicleState& state) {
   // World-to-screen center (y is flipped so +y points up on screen).
@@ -319,7 +386,7 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   sprintf(buf, "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
   TextOutA(hdc, 10, 110, buf, (int)strlen(buf));
 
-  sprintf(buf, "Track: %s (1/2 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : "PitCircuit");
+  sprintf(buf, "Track: %s (1/2/3 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : current_track_type_ == track::TrackType::PitCircuit ? "PitCircuit" : "CustomCircuit");
   TextOutA(hdc, 10, 130, buf, (int)strlen(buf));
 }
 

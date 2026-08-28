@@ -1,3 +1,5 @@
+// X-Racing — OBJ mesh exporter
+// Author: alessio
 #pragma once
 
 #include "vehicle/vehicle_generator.h"

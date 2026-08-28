@@ -1,3 +1,5 @@
+// X-Racing — vehicle subsystem
+// Author: alessio
 #pragma once
 
 #include "vehicle/vehicle.h"
@@ -17,6 +19,7 @@ struct CarModel {
     std::string id;            // machine identifier, e.g. "porsche_911"
     std::string name;          // human-readable name, e.g. "Porsche 911 Turbo S"
     std::string description;   // optional description / body style
+    std::string author;        // author / creator of this car model definition
     std::string mesh_path;     // path to exported OBJ/GLB visual mesh
     VehicleParams params;      // physical parameters
     VehicleGeometry geometry;  // derived geometry (filled from params)

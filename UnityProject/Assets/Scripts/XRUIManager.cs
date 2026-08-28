@@ -96,6 +96,7 @@ namespace Project0.Unity
             if (raceManager != null)
             {
                 raceManager.trackName = trackNames[selectedTrack];
+                raceManager.trackType = selectedTrack;
                 raceManager.lapCount = lapOptions[selectedLapIndex];
                 raceManager.StartRace();
             }

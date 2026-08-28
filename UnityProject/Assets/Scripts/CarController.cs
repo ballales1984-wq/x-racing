@@ -91,12 +91,19 @@ namespace Project0.Unity
 
         public void ResetCarPosition()
         {
-            transform.position = startLinePosition;
-            transform.eulerAngles = Vector3.zero;
+            // Face the track's start direction (main straight heads east / +X).
+            SetStartPose(startLinePosition, Mathf.PI * 0.5f);
+        }
+
+        public void SetStartPose(Vector3 position, float heading)
+        {
+            transform.position = position;
+            currentHeading = heading;
+            transform.eulerAngles = new Vector3(0f, heading * Mathf.Rad2Deg, 0f);
             currentSpeed = 0f;
-            currentHeading = 0f;
             currentRpm = 800f;
             currentGear = 1;
+            currentSteerAngle = 0f;
             ResetCheckpoints();
         }
 
@@ -120,6 +127,9 @@ namespace Project0.Unity
         {
             if (!SimPlugin.Initialize())
             {
+                // Native plugin unavailable (e.g. sim_plugin.dll not deployed). Fall back
+                // to direct control so the car remains drivable instead of freezing.
+                UpdateDirectControl();
                 return;
             }
 
