@@ -11,6 +11,12 @@ namespace Project0.Unity.Setup
         [MenuItem("X-Racing/Setup Complete Scene")]
         public static void SetupCompleteScene()
         {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogError("Scene setup cannot run during play mode. Exit play mode and run the menu item again.");
+                return;
+            }
+
             CreateOrFind("Main Camera", (cam) =>
             {
                 cam.tag = "MainCamera";
@@ -66,10 +72,23 @@ namespace Project0.Unity.Setup
         [MenuItem("X-Racing/Deploy Sim Plugin DLL")]
         public static void DeploySimPlugin()
         {
-            string src = System.IO.Path.Combine(System.IO.Directory.GetParent(Application.dataPath).FullName, "build", "engine", "Release", "sim_plugin.dll");
+            string unityProjectDir = System.IO.Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = System.IO.Directory.GetParent(unityProjectDir).FullName;
+            string[] buildDirs = { "build", "build2", "build3" };
             string dst = System.IO.Path.Combine(Application.dataPath, "Plugins", "sim_plugin.dll");
 
-            if (System.IO.File.Exists(src))
+            string src = null;
+            foreach (var bd in buildDirs)
+            {
+                string candidate = System.IO.Path.Combine(projectRoot, bd, "engine", "Release", "sim_plugin.dll");
+                if (System.IO.File.Exists(candidate))
+                {
+                    src = candidate;
+                    break;
+                }
+            }
+
+            if (src != null)
             {
                 System.IO.File.Copy(src, dst, true);
                 AssetDatabase.Refresh();
@@ -77,7 +96,7 @@ namespace Project0.Unity.Setup
             }
             else
             {
-                Debug.LogError($"sim_plugin.dll not found at: {src}\nBuild the C++ project first (cmake --build build --target sim_plugin)");
+                Debug.LogError($"sim_plugin.dll not found in any build directory under: {projectRoot}\nBuild the C++ project first (cmake --build build --target sim_plugin)");
             }
         }
 

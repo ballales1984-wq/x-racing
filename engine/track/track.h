@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "track_data.h"
 
 // Project 0 — parametric track model
 // Namespace: p0::track
@@ -83,6 +84,11 @@ class Track {
   Vec2 get_start_position() const;
   double get_start_heading() const;
   double length() const { return total_length_; }
+
+  // Generate starting grid slots from track geometry at start/finish line.
+  // Supports SINGLE_COLUMN and TWO_COLUMN layouts.
+  GridDefinition generate_grid(GridLayout layout = GridLayout::TWO_COLUMN,
+                              int slot_count = 20) const;
 
   bool has_box_lane_at(double distance) const;
   double box_lane_width_at(double distance) const;

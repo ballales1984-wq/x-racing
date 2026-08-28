@@ -24,6 +24,7 @@
 | Unit test (35+ GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ✅ |
 | Integrazione editor Unity | ✅ |
+| Race management (pit, validation, config) | ✅ |
 | AI (traiettoria, avversari) | ⏳ prossimo |
 
 ---
@@ -106,9 +107,9 @@ Niente alberi, niente dettagli grafici, niente AI sofisticata.
 - [x] Superfici multiple (asfalto, erba, ghiaia)
 - [x] Box lane
 - [x] Posizione veicolo (respawn, reset)
-- [ ] Start line / griglia
-- [ ] Checkpoint (zone trigger)
-- [ ] Rilevamento giri
+- [x] Start line / griglia (data model)
+- [x] Checkpoint (data model)
+- [ ] Rilevamento giri (runtime)
 - [ ] Collider mesh-based
 
 **Criterio di completamento:** si può definire un tracciato parametrico e la vettura lo percorre correttamente.
@@ -144,7 +145,7 @@ Niente alberi, niente dettagli grafici, niente AI sofisticata.
 - [ ] Cordoli (elevazione/banking opzionale)
 - [ ] Guardrail (barriere perimetrali)
 - [ ] Area di run-off (zona errore)
-- [ ] Sistema checkpoint (volumi trigger sulla spline)
+- [x] Sistema checkpoint (data model, volumi trigger in pianificazione)
 - [x] Export dati tracciato (SVG, JSON / binario per gameplay)
 
 **Criterio di completamento:** si può definire un nuovo tracciato modificando solo i parametri spline e generare l'intera geometria automaticamente.
@@ -172,9 +173,14 @@ Niente alberi, niente dettagli grafici, niente AI sofisticata.
 
 **Obiettivo:** Trasformare la guida libera in una corsa vera e propria.
 
+- [x] Race config (RaceDefinition, CarAssignment, TeamDefinition)
+- [x] Track data system (TrackData, GridDefinition, Checkpoints, StartFinishLine)
+- [x] Pit lane system (PitLaneSystem, PitBox, SpeedDetectionZone)
+- [x] Pit stop FSM (PitStopFSM, PitStopManager)
+- [x] Race manager (RaceManager orchestrator)
+- [x] Validation engine (validate geometry, direction, grid, pit, race, assignments)
 - [ ] Countdown (3-2-1-VIA)
 - [ ] Griglia di partenza (posizioni, spacing)
-- [ ] Race manager (stati: countdown → corsa → finito)
 - [ ] Avversari AI base (waypoint following, velocità fissa)
 - [ ] Classifica (posizione, distacco, miglior giro)
 - [ ] Sistema giri (contatore, validazione giri)

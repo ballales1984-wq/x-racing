@@ -538,4 +538,81 @@ double Track::get_start_heading() const {
   return std::atan2(points_[0].tangent.y(), points_[0].tangent.x());
 }
 
+GridDefinition Track::generate_grid(GridLayout layout, int slot_count) const {
+  GridDefinition def;
+  def.layout = layout;
+  def.max_slots = 30;
+  def.row_spacing = 8.0;
+  def.column_spacing = 6.0;
+
+  if (points_.empty() || slot_count <= 0) return def;
+
+  const auto start_tp = at(0.0);
+  const Vec2 start_pos = start_tp.position;
+  const Vec2 tangent = start_tp.tangent.normalized();
+  const Vec2 normal = start_tp.normal.normalized();
+
+  const double track_width = start_tp.width;
+  const double car_width = 4.0;
+  const double car_depth = 10.0;
+  const double edge_gap = 1.0;
+
+  switch (layout) {
+    case GridLayout::SINGLE_COLUMN: {
+      for (int i = 0; i < slot_count; ++i) {
+        GridSlot slot;
+        slot.slot_id = i + 1;
+        const double longitudinal = car_depth * 0.5 + i * (car_depth + def.row_spacing);
+        slot.transform.position = start_pos - tangent * longitudinal;
+        slot.transform.forward = tangent;
+        slot.width = car_width;
+        slot.depth = car_depth;
+        def.slots.push_back(slot);
+      }
+      break;
+    }
+    case GridLayout::TWO_COLUMN: {
+      for (int i = 0; i < slot_count; ++i) {
+        GridSlot slot;
+        slot.slot_id = i + 1;
+
+        const int row = i / 2;
+        const bool is_odd = (i % 2 == 0);
+
+        double longitudinal = car_depth * 0.5 + row * (car_depth + def.row_spacing);
+
+        if (row == 0 && is_odd) {
+          longitudinal = car_depth * 0.25;
+        }
+
+        const double max_lateral = (track_width * 0.5) - (car_width * 0.5) - edge_gap;
+
+        double avg_curvature = 0.0;
+        int samples = 0;
+        for (double d = 2.0; d < 80.0 && d < total_length_; d += 5.0) {
+          avg_curvature += at(d).curvature;
+          samples++;
+        }
+        if (samples > 0) avg_curvature /= samples;
+
+        const bool pole_left = avg_curvature >= 0.0;
+        const bool left_side = is_odd ? pole_left : !pole_left;
+
+        const double lateral = left_side ? max_lateral : -max_lateral;
+
+        slot.transform.position = start_pos - tangent * longitudinal + normal * lateral;
+        slot.transform.forward = tangent;
+        slot.width = car_width;
+        slot.depth = car_depth;
+        def.slots.push_back(slot);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+
+  return def;
+}
+
 }

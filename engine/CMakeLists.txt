@@ -46,7 +46,7 @@ if(PROJECT0_BUILD_ASSIMP)
   endfunction()
 endif()
 
-target_compile_features(project0_engine PUBLIC cxx_std_20)
+set_target_properties(project0_engine PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
 if(WIN32)
   target_compile_definitions(project0_engine PUBLIC _WIN32_WINNT=0x0600)

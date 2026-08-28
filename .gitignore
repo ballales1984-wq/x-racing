@@ -5,6 +5,10 @@ out/
 build2/
 build3/
 build4/
+build5/
+build_new/
+build_ninja/
+buildx/
 build_old/
 
 # IDE
@@ -83,6 +87,12 @@ UnityProject/Assets/*.fbx.meta
 
 # Test artifacts
 Testing/
+
+# Temp directory
+temp/
+
+# Vendor / third-party assets
+vendor/assimp/
 
 # Generated track diagrams
 *.svg

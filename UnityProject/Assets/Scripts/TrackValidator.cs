@@ -154,8 +154,6 @@ public class TrackValidator : MonoBehaviour
             AddWarning("No pit boxes defined");
         else
             Debug.Log($"  Pit boxes: {pit.pit_box_positions.Count}");
-
-        Debug.Log();
     }
 
     private void ValidateCornerData()
@@ -173,8 +171,6 @@ public class TrackValidator : MonoBehaviour
             float radius = (seg.radius_inner_m + seg.radius_outer_m) * 0.5f;
             Debug.Log($"    Type: {seg.type}, Arc: {seg.arc_angle_deg}°, Radius: {radius:F2}m");
         }
-
-        Debug.Log();
     }
 
     public TrackDirection DetermineTrackDirection()

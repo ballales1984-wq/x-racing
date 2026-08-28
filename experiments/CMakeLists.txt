@@ -16,8 +16,13 @@ if(PROJECT0_BUILD_EXPERIMENTS)
   target_link_libraries(track_svg PRIVATE project0_experiments)
   target_include_directories(track_svg PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../tools/track_diagram)
 
+  add_executable(track_blueprint main_blueprint.cpp track_blueprint.cpp)
+  target_link_libraries(track_blueprint PRIVATE project0_experiments)
+  target_link_libraries(track_blueprint PRIVATE user32 gdi32)
+
   if(PROJECT0_BUILD_ASSIMP)
     deploy_assimp_dll(track_analysis)
     deploy_assimp_dll(track_svg)
+    deploy_assimp_dll(track_blueprint)
   endif()
 endif()

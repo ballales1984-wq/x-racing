@@ -13,8 +13,6 @@ namespace Project0.Unity
         private TrackValidator validator;
         private TrackEditor editor;
 
-        [SerializeField] private bool autoShowInEditor = true;
-
         private void Start()
         {
             // Carica track

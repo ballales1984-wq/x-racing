@@ -21,6 +21,15 @@ int main() {
   initial.speed = 0.0;
   sim.reset(initial);
 
+  auto grid = track.generate_grid(track::GridLayout::TWO_COLUMN, 6);
+  for (const auto& slot : grid.slots) {
+    printf("Grid slot %d: pos=(%.1f, %.1f) fwd=(%.2f, %.2f) w=%.1f d=%.1f\n",
+           slot.slot_id,
+           slot.transform.position.x(), slot.transform.position.y(),
+           slot.transform.forward.x(), slot.transform.forward.y(),
+           slot.width, slot.depth);
+  }
+
   renderer::DX11Config cfg;
   cfg.width = 1280;
   cfg.height = 720;

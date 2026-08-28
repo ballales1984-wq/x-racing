@@ -57,6 +57,7 @@ Il progetto separa chiaramente la simulazione fisica dal rendering, permettendo 
 | M7 | Meteo (pioggia, temperatura, grip) | ✅ |
 | M9 | Gameplay (input, timing giri) | ✅ |
 | M8 | Rendering (Unity) | ✅ Unity 6000.0.82f1, progetto operativo |
+| M9 | Race management (pit, validation, race config) | ✅ |
 | M10 | AI (traiettoria, avversari) | ⏳ prossimo |
 
 ---
@@ -76,6 +77,12 @@ x-racing/
 │   │   └── glb_exporter.h/.cpp       # Esportazione GLB
 │   ├── track/
 │   │   ├── track.h/.cpp      # Tracciato parametrico chiuso
+│   │   ├── track_data.h      # Dati tracciato (grid, checkpoint, pit)
+│   │   ├── race_config.h     # Configurazione gara (tipo, penalità, compound)
+│   │   ├── pit_lane.h/.cpp   # Sistema pit lane runtime
+│   │   ├── pit_stop_fsm.h/.cpp # FSM pit stop per veicolo
+│   │   ├── race_manager.h/.cpp # Orchestratore gara
+│   │   └── validation.h/.cpp  # Validazione tracciato e gara
 │   ├── input/
 │   │   ├── input.h           # Definizione InputState
 │   │   ├── input_manager.h   # Interfaccia input astratta

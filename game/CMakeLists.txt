@@ -9,7 +9,7 @@ target_include_directories(project0_gameplay INTERFACE
 target_link_libraries(project0_gameplay INTERFACE project0_engine)
 
 if(PROJECT0_BUILD_GAMEPLAY)
-  add_executable(project0_gameplay_exe main.cpp gameplay.cpp)
+  add_executable(project0_gameplay_exe main.cpp gameplay.cpp multiplayer_gameplay.cpp)
   target_link_libraries(project0_gameplay_exe PRIVATE project0_gameplay)
 
   add_executable(auto_drive main_auto.cpp gameplay.cpp)

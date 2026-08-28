@@ -11,6 +11,7 @@ set(TEST_SOURCES
   sim_plugin_test.cpp
   ../game/gameplay.cpp
   ../tools/track_diagram/track_diagram.cpp
+  race_results_test.cpp
 )
 
 if(PROJECT0_BUILD_ASSIMP)
