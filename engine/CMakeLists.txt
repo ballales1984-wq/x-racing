@@ -1,6 +1,15 @@
 add_library(project0_engine STATIC
   track/track.cpp
+  track/track_data.h
+  track/race_config.h
+  track/pit_lane.cpp
+  track/pit_stop_fsm.cpp
+  track/validation.cpp
+  track/race_manager.cpp
+  track/race_results.cpp
+  track/result_storage.cpp
   simulation/simulation.cpp
+  simulation/simulation_world.cpp
   telemetry/telemetry.cpp
   vehicle/vehicle_generator.cpp
   vehicle/car_model.cpp
@@ -10,6 +19,9 @@ add_library(project0_engine STATIC
   assets/gltf_loader.cpp
   input/platform/windows_input.cpp
   input/platform/auto_input.cpp
+  network/network_session.cpp
+  network/lobby.cpp
+  ai/ai_driver.cpp
 )
 
 target_include_directories(project0_engine PUBLIC
