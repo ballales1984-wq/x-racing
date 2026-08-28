@@ -102,7 +102,48 @@ void Renderer::run() {
   if (!initialize()) return;
 
   running_ = true;
-  load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+  {
+    p0::assets::GLTFSkinnedMesh skinned;
+    if (p0::assets::GLTFLoader::LoadSkinned("D:/x-racing/data/models/vehicle.glb", skinned) && !skinned.positions.empty()) {
+      car_meshes_.clear();
+      p0::assets::Mesh mesh;
+      mesh.vertices.reserve(skinned.positions.size() / 3);
+      for (size_t i = 0; i < skinned.positions.size(); i += 3) {
+        mesh.vertices.push_back(Vec3(skinned.positions[i], skinned.positions[i + 1], skinned.positions[i + 2]));
+      }
+      mesh.normals.reserve(skinned.normals.size() / 3);
+      for (size_t i = 0; i < skinned.normals.size(); i += 3) {
+        mesh.normals.push_back(Vec3(skinned.normals[i], skinned.normals[i + 1], skinned.normals[i + 2]));
+      }
+      mesh.uvs.reserve(skinned.uvs.size() / 2);
+      for (size_t i = 0; i < skinned.uvs.size(); i += 2) {
+        mesh.uvs.push_back(Vec2(skinned.uvs[i], skinned.uvs[i + 1]));
+      }
+      mesh.indices = skinned.indices;
+      if (!skinned.materials.empty()) {
+        mesh.colors.resize(mesh.vertices.size(), skinned.materials[0].base_color);
+        mesh.material = skinned.materials[0].name;
+      }
+      if (mesh.colors.empty()) {
+        mesh.colors.resize(mesh.vertices.size(), Vec3(0.9, 0.1, 0.1));
+      }
+      Vec3 min_v = mesh.vertices[0];
+      Vec3 max_v = mesh.vertices[0];
+      for (const auto& v : mesh.vertices) {
+        min_v = min_v.cwiseMin(v);
+        max_v = max_v.cwiseMax(v);
+      }
+      Vec3 size = max_v - min_v;
+      double max_dim = std::abs(size.x());
+      if (std::abs(size.y()) > max_dim) max_dim = std::abs(size.y());
+      if (std::abs(size.z()) > max_dim) max_dim = std::abs(size.z());
+      if (max_dim > 1e-6) car_mesh_scale_ = static_cast<float>(5.0 / max_dim);
+      car_meshes_.push_back(std::move(mesh));
+    }
+  }
+  if (car_meshes_.empty()) {
+    load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+  }
   if (car_meshes_.empty()) {
     load_car_mesh("D:/x-racing/assets/models/car_mesh.obj");
   }
@@ -406,22 +447,19 @@ Vec3 Renderer::project(const Vec3& world_pos) const {
   return Vec3(static_cast<double>(sx), static_cast<double>(sy), ndc.z());
 }
 
-// Draw the car as a 3D wireframe mesh using the loaded OBJ geometry.
-// Applies model matrix (position + heading rotation), view matrix (chase camera),
-// and perspective projection to each triangle. Triangles behind the camera are culled.
-// Each triangle edge is drawn as a GDI line with per-vertex colors averaged from the mesh.
+// Draw the car as a filled 3D mesh with simple directional lighting.
+// Uses per-vertex colors from the loaded GLTF/OBJ material and a fixed light direction.
 void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
   if (car_meshes_.empty()) return;
 
   Vec3 car_pos(state.position.x(), 0.5, state.position.y());
   double heading = state.heading;
 
-  // Build model matrix: translate to car position and rotate around Y by heading.
   Mat4 model = Mat4::Identity();
   model(0, 0) = std::cos(heading); model(0, 2) = std::sin(heading);
   model(2, 0) = -std::sin(heading); model(2, 2) = std::cos(heading);
 
-  std::vector<HPEN> pens_to_delete;
+  const Vec3 light_dir = Vec3(0.4, 0.8, 0.3).normalized();
 
   for (const auto& mesh : car_meshes_) {
     size_t tri_count = mesh.indices.size() / 3;
@@ -430,12 +468,10 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       int i1 = mesh.indices[i * 3 + 1];
       int i2 = mesh.indices[i * 3 + 2];
 
-      // Scale vertices to fit within ~5 world units.
       Vec3 v0 = mesh.vertices[i0] * car_mesh_scale_;
       Vec3 v1 = mesh.vertices[i1] * car_mesh_scale_;
       Vec3 v2 = mesh.vertices[i2] * car_mesh_scale_;
 
-      // Transform to world space (model matrix + car position).
       Vec4 p0_4d = model * Vec4(v0.x(), v0.y(), v0.z(), 1.0);
       Vec4 p1_4d = model * Vec4(v1.x(), v1.y(), v1.z(), 1.0);
       Vec4 p2_4d = model * Vec4(v2.x(), v2.y(), v2.z(), 1.0);
@@ -444,41 +480,43 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       Vec3 p1 = Vec3(p1_4d.x(), p1_4d.y(), p1_4d.z()) + car_pos;
       Vec3 p2 = Vec3(p2_4d.x(), p2_4d.y(), p2_4d.z()) + car_pos;
 
-      // Project to screen space.
       Vec3 s0 = project(p0);
       Vec3 s1 = project(p1);
       Vec3 s2 = project(p2);
 
-      // Cull triangles that are behind the camera or off-screen.
       if (s0.z() > -1.0 || s1.z() > -1.0 || s2.z() > -1.0) {
-        // Compute average vertex color for the triangle.
-        Vec3 color(0.6, 0.6, 0.6);
-        if (mesh.colors.size() == mesh.vertices.size() && mesh.colors.size() > i0) {
-          color = (mesh.colors[i0] + mesh.colors[i1] + mesh.colors[i2]) / 3.0;
+        Vec3 base_color(0.6, 0.6, 0.6);
+        if (mesh.colors.size() == mesh.vertices.size() && mesh.colors.size() > static_cast<size_t>(i0)) {
+          base_color = (mesh.colors[i0] + mesh.colors[i1] + mesh.colors[i2]) / 3.0;
         }
-        int r = static_cast<int>(std::clamp(color.x(), 0.0, 1.0) * 255.0);
-        int g = static_cast<int>(std::clamp(color.y(), 0.0, 1.0) * 255.0);
-        int b = static_cast<int>(std::clamp(color.z(), 0.0, 1.0) * 255.0);
-        HPEN tri_pen = CreatePen(PS_SOLID, 1, RGB(r, g, b));
-        HPEN old_pen = (HPEN)SelectObject(hdc, tri_pen);
 
-        // Draw the three edges of the triangle.
-        MoveToEx(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()), nullptr);
-        LineTo(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()));
-        MoveToEx(hdc, static_cast<int>(s1.x()), static_cast<int>(s1.y()), nullptr);
-        LineTo(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()));
-        MoveToEx(hdc, static_cast<int>(s2.x()), static_cast<int>(s2.y()), nullptr);
-        LineTo(hdc, static_cast<int>(s0.x()), static_cast<int>(s0.y()));
+        Vec3 edge1 = v1 - v0;
+        Vec3 edge2 = v2 - v0;
+        Vec3 normal = edge1.cross(edge2).normalized();
+        double ndl = std::max(0.0, normal.dot(light_dir));
+        double light = std::min(1.0, 0.35 + ndl * 0.65);
 
+        int r = static_cast<int>(std::clamp(base_color.x() * light, 0.0, 1.0) * 255.0);
+        int g = static_cast<int>(std::clamp(base_color.y() * light, 0.0, 1.0) * 255.0);
+        int b = static_cast<int>(std::clamp(base_color.z() * light, 0.0, 1.0) * 255.0);
+
+        HBRUSH brush = CreateSolidBrush(RGB(r, g, b));
+        HPEN pen = CreatePen(PS_SOLID, 1, RGB(r, g, b));
+        HBRUSH old_brush = (HBRUSH)SelectObject(hdc, brush);
+        HPEN old_pen = (HPEN)SelectObject(hdc, pen);
+
+        POINT pts[3];
+        pts[0].x = static_cast<int>(s0.x()); pts[0].y = static_cast<int>(s0.y());
+        pts[1].x = static_cast<int>(s1.x()); pts[1].y = static_cast<int>(s1.y());
+        pts[2].x = static_cast<int>(s2.x()); pts[2].y = static_cast<int>(s2.y());
+        Polygon(hdc, pts, 3);
+
+        SelectObject(hdc, old_brush);
         SelectObject(hdc, old_pen);
-        pens_to_delete.push_back(tri_pen);
+        DeleteObject(brush);
+        DeleteObject(pen);
       }
     }
-  }
-
-  // Clean up all created GDI pens.
-  for (HPEN pen : pens_to_delete) {
-    DeleteObject(pen);
   }
 }
 

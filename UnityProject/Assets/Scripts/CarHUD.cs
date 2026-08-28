@@ -15,6 +15,7 @@ namespace Project0.Unity
         public TMP_Text bestLapText;
         public TMP_Text lapCountText;
         public TMP_Text positionText;
+        public TMP_Text slipText;
 
         [Header("Settings")]
         public float updateInterval = 0.1f;

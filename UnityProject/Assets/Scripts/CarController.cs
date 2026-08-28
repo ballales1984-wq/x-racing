@@ -89,7 +89,7 @@ namespace Project0.Unity
             CheckStartLineCrossing();
         }
 
-        void ResetCarPosition()
+        public void ResetCarPosition()
         {
             transform.position = startLinePosition;
             transform.eulerAngles = Vector3.zero;

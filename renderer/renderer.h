@@ -5,6 +5,7 @@
 #include "simulation/simulation.h"
 #include "input/input.h"
 #include "../engine/assets/mesh.h"
+#include "../engine/assets/gltf_loader.h"
 
 // Project 0 — Windows GDI renderer with optional 3D wireframe car
 // Namespace: p0::renderer

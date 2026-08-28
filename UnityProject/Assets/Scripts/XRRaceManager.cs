@@ -11,6 +11,7 @@ namespace Project0.Unity
     {
         [Header("References")]
         public CarController carController;
+        public CarHUD carHUD;
         public Camera followCamera;
         public TMP_Text countdownText;
         public GameObject countdownPanel;
@@ -31,7 +32,6 @@ namespace Project0.Unity
         private GameState state = GameState.MENU;
         private float countdownTimer = 0f;
         private int lastCountdownNumber = -1;
-        private bool raceStarted = false;
 
         private float bestLapTime = float.MaxValue;
         private float currentLapTime = 0f;
@@ -83,7 +83,6 @@ namespace Project0.Unity
             SetState(GameState.COUNTDOWN);
             countdownTimer = 0f;
             lastCountdownNumber = -1;
-            raceStarted = false;
 
             carController.ResetCarPosition();
             carController.enabled = true;
@@ -109,20 +108,16 @@ namespace Project0.Unity
             if (number != lastCountdownNumber)
             {
                 lastCountdownNumber = number;
-                if (number > 0)
+                if (countdownText != null)
                 {
-                    countdownText.text = number.ToString();
-                }
-                else
-                {
-                    countdownText.text = "GO!";
+                    countdownText.text = number > 0 ? number.ToString() : "GO!";
                 }
             }
 
             if (countdownTimer >= countdownDuration + 0.5f)
             {
                 SetState(GameState.RACING);
-                countdownPanel.SetActive(false);
+                if (countdownPanel != null) countdownPanel.SetActive(false);
             }
         }
 
@@ -172,9 +167,9 @@ namespace Project0.Unity
         {
             SetState(GameState.RESULTS);
 
-            resultsBestLap.text = bestLapTime < float.MaxValue ? FormatTime(bestLapTime) : "--:--.---";
-            resultsTotalTime.text = FormatTime(totalRaceTime);
-            resultsLapsText.text = $"Laps: {completedLaps}/{lapCount}";
+            if (resultsBestLap != null) resultsBestLap.text = bestLapTime < float.MaxValue ? FormatTime(bestLapTime) : "--:--.---";
+            if (resultsTotalTime != null) resultsTotalTime.text = FormatTime(totalRaceTime);
+            if (resultsLapsText != null) resultsLapsText.text = $"Laps: {completedLaps}/{lapCount}";
 
             SaveBestTimes();
         }
@@ -223,9 +218,9 @@ namespace Project0.Unity
         {
             state = newState;
 
-            menuPanel.SetActive(state == GameState.MENU);
-            countdownPanel.SetActive(state == GameState.COUNTDOWN);
-            resultsPanel.SetActive(state == GameState.RESULTS);
+            if (menuPanel != null) menuPanel.SetActive(state == GameState.MENU);
+            if (countdownPanel != null) countdownPanel.SetActive(state == GameState.COUNTDOWN);
+            if (resultsPanel != null) resultsPanel.SetActive(state == GameState.RESULTS);
 
             if (carController != null)
             {

@@ -6,7 +6,7 @@ namespace Project0.Unity.Setup
 {
     public static class TrackGenerator
     {
-        [MenuItem("Project0/Generate Track")]
+        [MenuItem("X-Racing/Generate Track")]
         public static void GenerateTrack()
         {
             var trackObj = GameObject.Find("Track");

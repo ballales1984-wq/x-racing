@@ -8,7 +8,7 @@ namespace Project0.Unity.Setup
 {
     public static class SceneSetup
     {
-        [MenuItem("Project0/Setup Scene")]
+        [MenuItem("X-Racing/Setup Scene")]
         public static void SetupScene()
         {
             var car = GameObject.Find("Car");

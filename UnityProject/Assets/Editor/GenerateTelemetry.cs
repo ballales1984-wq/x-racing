@@ -7,7 +7,7 @@ namespace Project0.Unity.Setup
 {
     public static class GenerateTelemetry
     {
-        [MenuItem("Project0/Generate Telemetry")]
+        [MenuItem("X-Racing/Generate Telemetry")]
         public static void Generate()
         {
             var exePath = @"D:\x-racing\gen_telemetry.exe";
