@@ -68,24 +68,35 @@ TEST(Gameplay, RecordsLapWhenAdvancing) {
   auto input_mgr = std::make_unique<FakeInputManager>(input::InputState{});
   gameplay::Gameplay gp(sim, tel, std::move(input_mgr));
 
-  // Simulate first lap completion (0 -> 1)
+  // Accumulate some time during lap 0
   simulation::SimulationResult result;
   result.time = 10.0;
+  result.state.lap = 0;
+  gp.update_lap_timing(result);
+
+  // Simulate first lap completion (0 -> 1) with negligible transition dt
+  result.time = 10.001;
   result.state.lap = 1;
   result.state.distance_along_track = track.length() + 10.0;
   gp.update_lap_timing(result);
 
-  // First lap completion doesn't record (current_lap was 0)
-  EXPECT_EQ(gp.state().lap_times.size(), 0u);
+  // First lap completion is recorded (current_lap transitions 0 -> 1)
+  EXPECT_EQ(gp.state().lap_times.size(), 1u);
+  EXPECT_DOUBLE_EQ(gp.state().lap_times[0].lap_time, 10.0);
 
-  // Simulate second lap completion (1 -> 2)
-  result.time = 25.0;
+  // Accumulate time during lap 1
+  result.time = 15.0;
+  result.state.lap = 1;
+  gp.update_lap_timing(result);
+
+  // Simulate second lap completion (1 -> 2) with negligible transition dt
+  result.time = 15.001;
   result.state.lap = 2;
   result.state.distance_along_track = track.length() * 2 + 10.0;
   gp.update_lap_timing(result);
 
-  EXPECT_EQ(gp.state().lap_times.size(), 1u);
-  EXPECT_GT(gp.state().lap_times[0].lap_time, 0.0);
+  EXPECT_EQ(gp.state().lap_times.size(), 2u);
+  EXPECT_DOUBLE_EQ(gp.state().lap_times[1].lap_time, 5.0);
 }
 
 // Gameplay should mark lap invalid when off track warning is present
@@ -97,25 +108,30 @@ TEST(Gameplay, OffTrackInvalidatesLap) {
   auto input_mgr = std::make_unique<FakeInputManager>(input::InputState{});
   gameplay::Gameplay gp(sim, tel, std::move(input_mgr));
 
-  // Simulate first lap completion
+  // Accumulate some time during lap 0
   simulation::SimulationResult result;
   result.time = 10.0;
+  result.state.lap = 0;
+  gp.update_lap_timing(result);
+
+  // Simulate first lap completion with negligible transition dt
+  result.time = 10.001;
   result.state.lap = 1;
   result.state.distance_along_track = track.length() + 10.0;
   gp.update_lap_timing(result);
 
-  // First lap doesn't record (current_lap was 0)
-  EXPECT_EQ(gp.state().lap_times.size(), 0u);
+  // First lap is recorded (current_lap transitions 0 -> 1)
+  EXPECT_EQ(gp.state().lap_times.size(), 1u);
 
   // Now simulate second lap with off_track warning already set
   gp.set_off_track_warning(true);
-  result.time = 25.0;
+  result.time = 15.001;
   result.state.lap = 2;
   result.state.distance_along_track = track.length() * 2 + 10.0;
   gp.update_lap_timing(result);
 
-  EXPECT_EQ(gp.state().lap_times.size(), 1u);
-  EXPECT_FALSE(gp.state().lap_times[0].valid);
+  EXPECT_EQ(gp.state().lap_times.size(), 2u);
+  EXPECT_FALSE(gp.state().lap_times[1].valid);
 }
 
 // Gameplay should track best lap time across multiple laps
@@ -127,30 +143,48 @@ TEST(Gameplay, BestLapTimeTracking) {
   auto input_mgr = std::make_unique<FakeInputManager>(input::InputState{});
   gameplay::Gameplay gp(sim, tel, std::move(input_mgr));
 
-  // First valid lap: 50s
+  // Accumulate 50s during lap 0
   simulation::SimulationResult result;
   result.time = 50.0;
+  result.state.lap = 0;
+  gp.update_lap_timing(result);
+
+  // First lap completion: transition dt is negligible
+  result.time = 50.001;
   result.state.lap = 1;
   result.state.distance_along_track = track.length() + 10.0;
   gp.update_lap_timing(result);
 
-  // Second valid lap: 40s (better)
-  result.time = 90.0;
+  EXPECT_EQ(gp.state().lap_times.size(), 1u);
+  EXPECT_DOUBLE_EQ(gp.state().lap_times[0].lap_time, 50.0);
+
+  // Accumulate 40s during lap 1
+  result.time = 90.001;
+  result.state.lap = 1;
+  gp.update_lap_timing(result);
+
+  // Second lap completion: lap time ≈ 40s
+  result.time = 90.002;
   result.state.lap = 2;
   result.state.distance_along_track = track.length() * 2 + 10.0;
   gp.update_lap_timing(result);
 
-  EXPECT_EQ(gp.state().lap_times.size(), 1u);
-  EXPECT_DOUBLE_EQ(gp.state().best_lap_time, 50.0);
+  EXPECT_EQ(gp.state().lap_times.size(), 2u);
+  EXPECT_NEAR(gp.state().best_lap_time, 40.0, 0.01);
 
-  // Third valid lap: 45s (even better)
-  result.time = 125.0;
+  // Accumulate 45s during lap 2
+  result.time = 135.002;
+  result.state.lap = 2;
+  gp.update_lap_timing(result);
+
+  // Third lap completion: lap time ≈ 45s (not better than 40s)
+  result.time = 135.003;
   result.state.lap = 3;
   result.state.distance_along_track = track.length() * 3 + 10.0;
   gp.update_lap_timing(result);
 
-  EXPECT_EQ(gp.state().lap_times.size(), 2u);
-  EXPECT_DOUBLE_EQ(gp.state().best_lap_time, 40.0);
+  EXPECT_EQ(gp.state().lap_times.size(), 3u);
+  EXPECT_NEAR(gp.state().best_lap_time, 40.0, 0.01);
 }
 
 // Gameplay should not invalidate lap for off-track on lap 0

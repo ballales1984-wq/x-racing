@@ -1,6 +1,7 @@
 set(TEST_SOURCES
   simulation_test.cpp
   physics_test.cpp
+  tire_model_test.cpp
   vehicle_test.cpp
   track_test.cpp
   track_diagram_test.cpp
@@ -9,9 +10,19 @@ set(TEST_SOURCES
   glb_exporter_test.cpp
   auto_input_test.cpp
   sim_plugin_test.cpp
+  race_results_test.cpp
+  common_test.cpp
+  race_config_test.cpp
+  track_data_test.cpp
+  snapshot_test.cpp
+  pit_stop_fsm_test.cpp
+  pit_lane_test.cpp
+  validation_test.cpp
+  race_manager_test.cpp
+  simulation_world_test.cpp
+  result_storage_test.cpp
   ../game/gameplay.cpp
   ../tools/track_diagram/track_diagram.cpp
-  race_results_test.cpp
 )
 
 if(PROJECT0_BUILD_ASSIMP)
