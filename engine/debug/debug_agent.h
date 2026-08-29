@@ -19,6 +19,7 @@
 #include <functional>
 #include <fstream>
 #include <mutex>
+#include <memory>
 
 namespace p0::debug {
 
@@ -91,7 +92,7 @@ class DebugAgent {
   void record_ai_input(int car_id, const input::InputState& input, const ai::AIDriverParams& params);
   void record_network_snapshot(const network::WorldSnapshot& snapshot);
 
-  void toggle_enabled() { config_.enabled = !config_.enabled; }
+  void toggle_enabled();
   void set_enabled(bool e) { config_.enabled = e; }
   bool is_enabled() const { return config_.enabled; }
 
@@ -107,20 +108,20 @@ class DebugAgent {
   void export_snapshot_json(const std::string& path) const;
   void export_logs_csv(const std::string& path) const;
 
-  DebugConsole* console() { return console_; }
-  const DebugConsole* console() const { return console_; }
+  DebugConsole* console() { return console_.get(); }
+  const DebugConsole* console() const { return console_.get(); }
 
-  DebugPhysics* physics() { return physics_; }
-  const DebugPhysics* physics() const { return physics_; }
+  DebugPhysics* physics() { return physics_.get(); }
+  const DebugPhysics* physics() const { return physics_.get(); }
 
-  DebugAI* ai() { return ai_; }
-  const DebugAI* ai() const { return ai_; }
+  DebugAI* ai() { return ai_.get(); }
+  const DebugAI* ai() const { return ai_.get(); }
 
-  DebugNetwork* network() { return network_; }
-  const DebugNetwork* network() const { return network_; }
+  DebugNetwork* network() { return network_.get(); }
+  const DebugNetwork* network() const { return network_.get(); }
 
-  DebugProfiler* profiler() { return profiler_; }
-  const DebugProfiler* profiler() const { return profiler_; }
+  DebugProfiler* profiler() { return profiler_.get(); }
+  const DebugProfiler* profiler() const { return profiler_.get(); }
 
   void process_console_command(const std::string& cmd_line);
 
@@ -139,11 +140,11 @@ class DebugAgent {
   const track::Track* track_ = nullptr;
   int local_car_id_ = 0;
 
-  DebugConsole* console_ = nullptr;
-  DebugPhysics* physics_ = nullptr;
-  DebugAI* ai_ = nullptr;
-  DebugNetwork* network_ = nullptr;
-  DebugProfiler* profiler_ = nullptr;
+  std::unique_ptr<DebugConsole> console_;
+  std::unique_ptr<DebugPhysics> physics_;
+  std::unique_ptr<DebugAI> ai_;
+  std::unique_ptr<DebugNetwork> network_;
+  std::unique_ptr<DebugProfiler> profiler_;
 
   DebugSnapshot last_snapshot_;
   std::vector<DebugSnapshot> snapshot_history_;

@@ -1,6 +1,8 @@
 set(TEST_SOURCES
   simulation_test.cpp
   physics_test.cpp
+  lap_detector_test.cpp
+  camera_test.cpp
   tire_model_test.cpp
   vehicle_test.cpp
   track_test.cpp

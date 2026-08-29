@@ -3,6 +3,7 @@
 #include "common.h"
 #include "vehicle/vehicle.h"
 #include "track/track.h"
+#include "track/lap_detector.h"
 #include "input/input.h"
 #include "physics/types.h"
 #include "physics/tire_model.h"
@@ -47,6 +48,11 @@ class Simulation {
   }
   vehicle::VehicleParams& mutable_params() { return vehicle_params_; }
 
+  // Maximum reverse speed (m/s) — keeps reverse as a low-speed maneuver.
+  double max_reverse_speed() const { return max_reverse_speed_; }
+  void set_max_reverse_speed(double v) { max_reverse_speed_ = std::max(0.0, v); }
+  bool is_reversing() const { return reversing_; }
+
  private:
   // Physics update stages (called in order each sub-step)
   void update_engine_forces(const input::InputState& input);
@@ -70,6 +76,13 @@ class Simulation {
   vehicle::VehicleState last_valid_state_;
   bool has_valid_state_ = false;
   double frames_off_track_ = 0;  // consecutive off-track frames
+
+  // Reverse handling: engaged only when nearly stopped, cleared at speed.
+  bool reversing_ = false;
+  double max_reverse_speed_ = 8.0;  // m/s, low-speed reverse cap
+
+  // Runtime lap detection with forward-direction validation.
+  track::LapDetector lap_detector_{0.0};
 };
 
 }

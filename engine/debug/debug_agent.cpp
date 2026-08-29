@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
 #include <iomanip>
 #include <sstream>
 
@@ -21,11 +22,11 @@ DebugAgent::~DebugAgent() {
 bool DebugAgent::initialize(const DebugConfig& config) {
   std::lock_guard<std::mutex> lock(mutex_);
   config_ = config;
-  console_ = new DebugConsole();
-  physics_ = new DebugPhysics();
-  ai_ = new DebugAI();
-  network_ = new DebugNetwork();
-  profiler_ = new DebugProfiler();
+  console_ = std::make_unique<DebugConsole>();
+  physics_ = std::make_unique<DebugPhysics>();
+  ai_ = std::make_unique<DebugAI>();
+  network_ = std::make_unique<DebugNetwork>();
+  profiler_ = std::make_unique<DebugProfiler>();
 
   console_->initialize();
   physics_->initialize();
@@ -41,16 +42,11 @@ void DebugAgent::shutdown() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!initialized_) return;
 
-  delete console_;
-  delete physics_;
-  delete ai_;
-  delete network_;
-  delete profiler_;
-  console_ = nullptr;
-  physics_ = nullptr;
-  ai_ = nullptr;
-  network_ = nullptr;
-  profiler_ = nullptr;
+  console_.reset();
+  physics_.reset();
+  ai_.reset();
+  network_.reset();
+  profiler_.reset();
 
   if (!logs_.empty()) {
     export_logs_csv(config_.export_directory + "/debug_log.csv");

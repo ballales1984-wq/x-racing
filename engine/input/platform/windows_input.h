@@ -28,6 +28,7 @@ class WindowsInputManager : public InputManager {
   static constexpr int kResetKey = 'R';
   static constexpr int kEscapeKey = VK_ESCAPE;
   static constexpr int kBoxKey = 'B';
+  static constexpr int kReverseKey = 'X';
 };
 
 }

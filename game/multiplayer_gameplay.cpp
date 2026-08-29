@@ -158,15 +158,14 @@ void MultiplayerGameplay::check_local_finish() {
   }
 }
 
-const vehicle::VehicleState& MultiplayerGameplay::local_state() const {
-  static vehicle::VehicleState empty;
+const vehicle::VehicleState* MultiplayerGameplay::local_state() const {
   if (config_.is_host) {
     const auto* car = world_.get_car(config_.local_car_id);
-    if (car) return car->simulation->state();
+    if (car) return &car->simulation->state();
   } else {
     return world_.get_state(config_.local_car_id);
   }
-  return empty;
+  return nullptr;
 }
 
 std::string MultiplayerGameplay::race_status_text() const {

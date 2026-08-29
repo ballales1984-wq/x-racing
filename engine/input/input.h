@@ -18,6 +18,7 @@ struct InputState {
   bool downshift = false;
   bool reset = false;
   bool enter_exit_box = false;
+  bool reverse = false;  // engage reverse gear (only when nearly stopped)
 };
 
 }

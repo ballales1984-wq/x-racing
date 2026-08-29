@@ -1,7 +1,5 @@
 add_library(project0_engine STATIC
   track/track.cpp
-  track/track_data.h
-  track/race_config.h
   track/pit_lane.cpp
   track/pit_stop_fsm.cpp
   track/validation.cpp

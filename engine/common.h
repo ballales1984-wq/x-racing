@@ -58,4 +58,9 @@ inline Vec2 lerp(const Vec2& a, const Vec2& b, double t) {
   return (1.0 - t) * a + t * b;
 }
 
+// Linear interpolation for Vec3
+inline Vec3 lerp(const Vec3& a, const Vec3& b, double t) {
+  return (1.0 - t) * a + t * b;
+}
+
 }

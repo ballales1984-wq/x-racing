@@ -66,7 +66,7 @@ bool NetworkSession::initialize_host(int port) {
   host_player.car_id = 0;
   host_player.type = PlayerType::HUMAN;
   host_player.state = ConnectionState::READY;
-  std::strcpy(host_player.name, "Host");
+  std::snprintf(host_player.name, kMaxPlayerNameLength, "%s", "Host");
   players_[0] = host_player;
 
   return true;
@@ -90,7 +90,7 @@ bool NetworkSession::initialize_client(const std::string& host_address, int port
 
   JoinRequest req;
   std::memset(&req, 0, sizeof(req));
-  std::strncpy(req.player_name, "Player", kMaxPlayerNameLength - 1);
+  std::snprintf(req.player_name, kMaxPlayerNameLength, "%s", "Player");
   req.requested_car_id = -1;
 
   if (!send_packet(&req, sizeof(req), server_addr)) {
@@ -208,7 +208,7 @@ void NetworkSession::update(double delta_time) {
           info.car_id = assigned_car;
           info.type = PlayerType::HUMAN;
           info.state = ConnectionState::READY;
-          std::strncpy(info.name, req->player_name, kMaxPlayerNameLength - 1);
+          std::snprintf(info.name, kMaxPlayerNameLength, "%s", req->player_name);
           players_[new_pid] = info;
 
           JoinAccept accept;

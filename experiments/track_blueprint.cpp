@@ -117,7 +117,9 @@ LRESULT BlueprintEditor::handle_create(HWND hwnd) {
   AppendMenu(editmenu, MF_STRING, 2001, "Undo\tCtrl+Z");
   AppendMenu(editmenu, MF_STRING, 2002, "Delete Selected\tDel");
   AppendMenu(editmenu, MF_STRING, 2003, "Clear All");
-  AppendMenu(editmenu, MF_STRING, 2004, "Close Loop");
+  AppendMenu(editmenu, MF_STRING, 2004, "Close Loop\tC");
+  AppendMenu(editmenu, MF_STRING, 2005, "Close Loop (Left Curve)\tX");
+  AppendMenu(editmenu, MF_STRING, 2006, "Close Loop (Right Curve)\tY");
   AppendMenu(menubar, MF_POPUP, reinterpret_cast<UINT_PTR>(editmenu), "Edit");
 
   HMENU toolmenu = CreatePopupMenu();
@@ -169,23 +171,37 @@ LRESULT BlueprintEditor::handle_lbutton_down(HWND hwnd, int x, int y) {
   switch (current_tool_) {
     case Tool::Vertex: add_vertex(snap_to_grid(world)); break;
     case Tool::Straight: {
-      if (selected_index_ >= 0 && selected_index_ < (int)track_.elements.size()) {
+      if (track_.elements.empty()) {
+        add_vertex(Vec2(0.0, 0.0));
+        add_straight_from_last(straight_length_);
+      } else if (selected_index_ >= 0 && selected_index_ < (int)track_.elements.size()) {
         auto& el = track_.elements[selected_index_];
-        if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight)
-          add_straight(el.position, snap_to_grid(world));
-      } break;
+        if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight ||
+            el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve) {
+          double length = (world - el.position).norm();
+          if (length > kMinSegmentLength)
+            add_straight_from_last(length);
+        }
+      } else {
+        add_straight_from_last(straight_length_);
+      }
+      break;
     }
     case Tool::LeftCurve:
     case Tool::RightCurve: {
-      if (selected_index_ >= 0 && selected_index_ < (int)track_.elements.size()) {
+      if (track_.elements.empty()) {
+        add_vertex(Vec2(0.0, 0.0));
+        add_curve_from_last(curve_radius_, curve_arc_angle_, current_tool_ == Tool::LeftCurve);
+      } else if (selected_index_ >= 0 && selected_index_ < (int)track_.elements.size()) {
         auto& el = track_.elements[selected_index_];
-        if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight) {
-          Vec2 center = el.position;
-          double radius = (world - center).norm();
-          if (radius > kMinSegmentLength)
-            add_curve(center, radius, kHalfPi, current_tool_ == Tool::LeftCurve);
+        if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight ||
+            el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve) {
+          add_curve_from_last(curve_radius_, curve_arc_angle_, current_tool_ == Tool::LeftCurve);
         }
-      } break;
+      } else {
+        add_curve_from_last(curve_radius_, curve_arc_angle_, current_tool_ == Tool::LeftCurve);
+      }
+      break;
     }
     case Tool::PitBox: add_pit_box(snap_to_grid(world)); break;
     case Tool::StartFinish: set_start_finish(snap_to_grid(world)); break;
@@ -274,8 +290,34 @@ LRESULT BlueprintEditor::handle_key_down(HWND, WPARAM vk) {
     case VK_DELETE: delete_selected(); break;
     case VK_ESCAPE: selected_index_ = -1; break;
     case 'C': close_loop(); break;
+    case 'X': close_loop_with_curve(true); break;
+    case 'Y': close_loop_with_curve(false); break;
     case 'G': config_.show_grid = !config_.show_grid; break;
     case 'N': clear_track(); break;
+    case VK_OEM_4:  // '['
+      curve_radius_ = std::max(10.0, curve_radius_ - 10.0);
+      status_text_ = "Curve radius: " + std::to_string((int)curve_radius_) + "m";
+      break;
+    case VK_OEM_6:  // ']'
+      curve_radius_ = std::min(500.0, curve_radius_ + 10.0);
+      status_text_ = "Curve radius: " + std::to_string((int)curve_radius_) + "m";
+      break;
+    case VK_OEM_COMMA:
+      curve_arc_angle_ = std::max(kPi / 12.0, curve_arc_angle_ - kPi / 12.0);
+      status_text_ = "Curve angle: " + std::to_string((int)(curve_arc_angle_ * kRadToDeg)) + "°";
+      break;
+    case VK_OEM_PERIOD:
+      curve_arc_angle_ = std::min(kTwoPi * 0.75, curve_arc_angle_ + kPi / 12.0);
+      status_text_ = "Curve angle: " + std::to_string((int)(curve_arc_angle_ * kRadToDeg)) + "°";
+      break;
+    case VK_OEM_MINUS:
+      straight_length_ = std::max(20.0, straight_length_ - 20.0);
+      status_text_ = "Straight length: " + std::to_string((int)straight_length_) + "m";
+      break;
+    case VK_OEM_PLUS:
+      straight_length_ = std::min(500.0, straight_length_ + 20.0);
+      status_text_ = "Straight length: " + std::to_string((int)straight_length_) + "m";
+      break;
     case 'Z':
       if (!track_.elements.empty()) { track_.elements.pop_back(); recompute_track(); }
       break;
@@ -305,6 +347,8 @@ LRESULT BlueprintEditor::handle_command(HWND hwnd, WPARAM wp) {
     case 2002: delete_selected(); break;
     case 2003: clear_track(); break;
     case 2004: close_loop(); break;
+    case 2005: close_loop_with_curve(true); break;
+    case 2006: close_loop_with_curve(false); break;
   }
   InvalidateRect(hwnd, nullptr, FALSE); return 0;
 }
@@ -382,27 +426,77 @@ void BlueprintEditor::draw_ruler(HDC hdc) {
 }
 
 void BlueprintEditor::draw_track_preview(HDC hdc) {
-  std::vector<Vec2> centerline;
+  struct PreviewPoint {
+    Vec2 position;
+    Vec2 tangent;
+  };
+  std::vector<PreviewPoint> preview_centerline;
+
+  Vec2 current_pos(0.0, 0.0);
+  Vec2 current_tangent(1.0, 0.0);
+  bool has_position = false;
+
   for (const auto& el : track_.elements) {
-    if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight ||
-        el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve)
-      centerline.push_back(el.position);
+    if (el.type == ElementType::TrackVertex) {
+      preview_centerline.push_back({el.position, el.tangent});
+      current_pos = el.position;
+      current_tangent = el.tangent;
+      has_position = true;
+    } else if (el.type == ElementType::Straight) {
+      if (!has_position) {
+        preview_centerline.push_back({el.position, el.tangent});
+      }
+      Vec2 end_pos = el.position + el.tangent * el.length;
+      preview_centerline.push_back({end_pos, el.tangent});
+      current_pos = end_pos;
+      current_tangent = el.tangent;
+      has_position = true;
+    } else if (el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve) {
+      bool left = (el.type == ElementType::LeftCurve);
+      double heading = std::atan2(el.tangent.y(), el.tangent.x());
+      Vec2 center = TrackBuilder::center_for_curve(el.position, heading, el.radius, left);
+      double start_angle = std::atan2(el.position.y() - center.y(), el.position.x() - center.x());
+      int steps = std::max(8, (int)(std::abs(el.arc_angle) / (kPi / 36.0)));
+
+      for (int i = 1; i <= steps; ++i) {
+        double t = static_cast<double>(i) / steps;
+        double angle = start_angle + t * (left ? el.arc_angle : -el.arc_angle);
+        Vec2 p = center + Vec2(el.radius * std::cos(angle), el.radius * std::sin(angle));
+        double local_heading = heading + t * (left ? el.arc_angle : -el.arc_angle);
+        Vec2 tang(std::cos(local_heading), std::sin(local_heading));
+        preview_centerline.push_back({p, tang});
+      }
+
+      double end_angle = start_angle + (left ? el.arc_angle : -el.arc_angle);
+      Vec2 end_pos = center + Vec2(el.radius * std::cos(end_angle), el.radius * std::sin(end_angle));
+      double end_heading = heading + (left ? el.arc_angle : -el.arc_angle);
+      current_pos = end_pos;
+      current_tangent = Vec2(std::cos(end_heading), std::sin(end_heading));
+      has_position = true;
+    }
   }
-  if (centerline.empty() || centerline.size() < 2) return;
+
+  if (preview_centerline.size() < 2) return;
 
   std::vector<Vec2> left_edge, right_edge;
-  left_edge.reserve(centerline.size());
-  right_edge.reserve(centerline.size());
+  left_edge.reserve(preview_centerline.size());
+  right_edge.reserve(preview_centerline.size());
 
-  for (size_t i = 0; i < centerline.size(); ++i) {
+  for (size_t i = 0; i < preview_centerline.size(); ++i) {
     Vec2 tangent;
-    if (i < centerline.size() - 1) tangent = (centerline[i + 1] - centerline[i]).normalized();
-    else if (centerline.size() > 1) tangent = (centerline[i] - centerline[i - 1]).normalized();
-    else tangent = Vec2(1.0, 0.0);
+    if (preview_centerline[i].tangent.norm() > kEpsilon) {
+      tangent = preview_centerline[i].tangent.normalized();
+    } else if (i < preview_centerline.size() - 1) {
+      tangent = (preview_centerline[i + 1].position - preview_centerline[i].position).normalized();
+    } else if (i > 0) {
+      tangent = (preview_centerline[i].position - preview_centerline[i - 1].position).normalized();
+    } else {
+      tangent = Vec2(1.0, 0.0);
+    }
     Vec2 normal(-tangent.y(), tangent.x());
     double w = track_.track_width * 0.5;
-    left_edge.push_back(centerline[i] + normal * w);
-    right_edge.push_back(centerline[i] - normal * w);
+    left_edge.push_back(preview_centerline[i].position + normal * w);
+    right_edge.push_back(preview_centerline[i].position - normal * w);
   }
 
   HBRUSH fill_brush = CreateSolidBrush(kTrackFillColor);
@@ -439,8 +533,8 @@ void BlueprintEditor::draw_track_preview(HDC hdc) {
   HPEN center_pen = CreatePen(PS_SOLID, 2, kCenterlineColor);
   SelectObject(hdc, center_pen);
   BeginPath(hdc);
-  for (size_t i = 0; i < centerline.size(); ++i) {
-    int sx = world_to_screen_x(centerline[i].x()), sy = world_to_screen_y(centerline[i].y());
+  for (size_t i = 0; i < preview_centerline.size(); ++i) {
+    int sx = world_to_screen_x(preview_centerline[i].position.x()), sy = world_to_screen_y(preview_centerline[i].position.y());
     if (i == 0) MoveToEx(hdc, sx, sy, nullptr); else LineTo(hdc, sx, sy);
   }
   EndPath(hdc); StrokePath(hdc);
@@ -520,13 +614,16 @@ void BlueprintEditor::draw_hud(HDC hdc) {
     DEFAULT_QUALITY, FIXED_PITCH, "Consolas");
   HGDIOBJ old_font = SelectObject(hdc, font);
   SetTextColor(hdc, kTextColor); SetBkMode(hdc, TRANSPARENT);
-  int y = config_.height - 90; char buf[256];
+  int y = config_.height - 120; char buf[256];
   std::snprintf(buf, sizeof(buf), "Tool: %s", tool_name_.c_str());
   TextOutA(hdc, 70, y, buf, (int)std::strlen(buf)); y += 18;
   std::snprintf(buf, sizeof(buf), "Zoom: %.1fx  Grid: %sm",
     config_.scale, config_.snap_to_grid ? "10m" : "off");
   TextOutA(hdc, 70, y, buf, (int)std::strlen(buf)); y += 18;
   std::snprintf(buf, sizeof(buf), "Mouse: (%.1f, %.1f)", mouse_world_.x(), mouse_world_.y());
+  TextOutA(hdc, 70, y, buf, (int)std::strlen(buf)); y += 18;
+  std::snprintf(buf, sizeof(buf), "Curve R: %.0fm  Angle: %.0f°  Straight: %.0fm",
+    curve_radius_, curve_arc_angle_ * kRadToDeg, straight_length_);
   TextOutA(hdc, 70, y, buf, (int)std::strlen(buf)); y += 18;
   std::snprintf(buf, sizeof(buf), "Elements: %d  Selected: %d",
     (int)track_.elements.size(), selected_index_);
@@ -621,6 +718,149 @@ void BlueprintEditor::add_barrier(const Vec2& from, const Vec2& to) {
   status_text_ = "Added barrier: " + std::to_string((int)el.length) + "m";
 }
 
+void BlueprintEditor::add_straight_from_last(double length) {
+  if (track_.elements.empty()) {
+    BlueprintElement start_vert;
+    start_vert.type = ElementType::TrackVertex;
+    start_vert.position = Vec2(0.0, 0.0);
+    start_vert.tangent = Vec2(1.0, 0.0);
+    track_.elements.push_back(start_vert);
+    track_.start_position = Vec2(0.0, 0.0);
+    track_.start_heading = 0.0;
+  }
+
+  Vec2 last_pos = get_last_position();
+  Vec2 last_tangent = get_last_tangent();
+
+  BlueprintElement straight_el;
+  straight_el.type = ElementType::Straight;
+  straight_el.position = last_pos;
+  straight_el.tangent = last_tangent;
+  straight_el.length = length;
+  straight_el.width = track_.track_width;
+  track_.elements.push_back(straight_el);
+
+  Vec2 end_pos = last_pos + last_tangent * length;
+  BlueprintElement end_vert;
+  end_vert.type = ElementType::TrackVertex;
+  end_vert.position = end_pos;
+  end_vert.tangent = last_tangent;
+  track_.elements.push_back(end_vert);
+
+  selected_index_ = (int)track_.elements.size() - 1;
+  status_text_ = "Added straight: " + std::to_string((int)length) + "m (chained)";
+}
+
+void BlueprintEditor::add_curve_from_last(double radius, double arc_angle, bool left) {
+  if (track_.elements.empty()) {
+    BlueprintElement start_vert;
+    start_vert.type = ElementType::TrackVertex;
+    start_vert.position = Vec2(0.0, 0.0);
+    start_vert.tangent = Vec2(1.0, 0.0);
+    track_.elements.push_back(start_vert);
+    track_.start_position = Vec2(0.0, 0.0);
+    track_.start_heading = 0.0;
+  }
+
+  Vec2 last_pos = get_last_position();
+  Vec2 last_tangent = get_last_tangent();
+  double last_heading = std::atan2(last_tangent.y(), last_tangent.x());
+
+  BlueprintElement curve_el;
+  curve_el.type = left ? ElementType::LeftCurve : ElementType::RightCurve;
+  curve_el.position = last_pos;
+  curve_el.tangent = last_tangent;
+  curve_el.radius = radius;
+  curve_el.arc_angle = arc_angle;
+  curve_el.width = track_.track_width;
+  curve_el.length = radius * std::abs(arc_angle);
+  track_.elements.push_back(curve_el);
+
+  Vec2 center = TrackBuilder::center_for_curve(last_pos, last_heading, radius, left);
+  double start_angle = std::atan2(last_pos.y() - center.y(), last_pos.x() - center.x());
+  int steps = std::max(4, (int)(std::abs(arc_angle) / (kPi / 36.0)));
+
+  for (int i = 1; i <= steps; ++i) {
+    double t = static_cast<double>(i) / steps;
+    double angle = start_angle + t * (left ? arc_angle : -arc_angle);
+    Vec2 p = center + Vec2(radius * std::cos(angle), radius * std::sin(angle));
+    double local_heading = last_heading + t * (left ? arc_angle : -arc_angle);
+    BlueprintElement vert;
+    vert.type = ElementType::TrackVertex;
+    vert.position = p;
+    vert.tangent = Vec2(std::cos(local_heading), std::sin(local_heading));
+    vert.radius = radius;
+    vert.width = track_.track_width;
+    track_.elements.push_back(vert);
+  }
+
+  selected_index_ = (int)track_.elements.size() - 1;
+  status_text_ = "Added " + std::string(left ? "left" : "right") +
+                 " curve: R=" + std::to_string((int)radius) +
+                 " angle=" + std::to_string((int)(arc_angle * kRadToDeg)) + "° (chained)";
+}
+
+void BlueprintEditor::close_loop_with_curve(bool left) {
+  if (track_.elements.size() < 2) return;
+
+  const auto& first = track_.elements[0];
+  const auto& last = track_.elements.back();
+
+  Vec2 first_tangent = get_last_tangent();
+  double first_heading = std::atan2(first_tangent.y(), first_tangent.x());
+
+  Vec2 last_tangent = get_last_tangent();
+  double last_heading = std::atan2(last_tangent.y(), last_tangent.x());
+
+  Vec2 delta = first.position - last.position;
+  double dist = delta.norm();
+
+  if (dist < kMinSegmentLength) {
+    status_text_ = "Already closed";
+    InvalidateRect(window_, nullptr, FALSE);
+    return;
+  }
+
+  double required_turn = normalize_angle(first_heading - last_heading);
+  if (!left) required_turn = normalize_angle(last_heading - first_heading);
+
+  double min_radius = dist / (2.0 * std::sin(std::abs(required_turn) * 0.5));
+  double radius = std::max(20.0, min_radius * 1.2);
+  double arc_angle = left ? required_turn : -required_turn;
+
+  if (std::abs(arc_angle) < 0.1) {
+    close_loop();
+    return;
+  }
+
+  add_curve_from_last(radius, std::abs(arc_angle), left);
+  status_text_ = "Loop closed with " + std::string(left ? "left" : "right") + " curve";
+  InvalidateRect(window_, nullptr, FALSE);
+}
+
+Vec2 BlueprintEditor::get_last_position() const {
+  if (track_.elements.empty()) return Vec2(0.0, 0.0);
+  return track_.elements.back().position;
+}
+
+Vec2 BlueprintEditor::get_last_tangent() const {
+  if (track_.elements.empty()) return Vec2(1.0, 0.0);
+  const auto& el = track_.elements.back();
+  if (el.tangent.norm() > kEpsilon) return el.tangent.normalized();
+
+  for (int i = (int)track_.elements.size() - 2; i >= 0; --i) {
+    if (track_.elements[i].tangent.norm() > kEpsilon) {
+      return track_.elements[i].tangent.normalized();
+    }
+  }
+  return Vec2(1.0, 0.0);
+}
+
+double BlueprintEditor::get_last_heading() const {
+  Vec2 t = get_last_tangent();
+  return std::atan2(t.y(), t.x());
+}
+
 void BlueprintEditor::recompute_track() {
   track_.pit_box_positions.clear();
   for (const auto& el : track_.elements)
@@ -692,6 +932,12 @@ bool BlueprintEditor::export_json(const std::string& path) {
       file << ", \"tangent\": {\"x\": " << el.tangent.x() << ", \"y\": " << el.tangent.y() << "}";
       file << ", \"length\": " << el.length;
     }
+    if (el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve) {
+      file << ", \"tangent\": {\"x\": " << el.tangent.x() << ", \"y\": " << el.tangent.y() << "}";
+      file << ", \"radius\": " << el.radius;
+      file << ", \"arc_angle\": " << el.arc_angle;
+      file << ", \"length\": " << el.length;
+    }
     if (el.type == ElementType::Barrier) file << ", \"width\": " << el.width;
     if (el.type == ElementType::PitBox) file << ", \"index\": " << el.pit_box_index;
     file << "}";
@@ -712,16 +958,42 @@ bool BlueprintEditor::export_svg(const std::string& path) {
   file << "  <rect width=\"100%\" height=\"100%\" fill=\"#1a1a1a\"/>\n";
   file << "  <text x=\"20\" y=\"30\" fill=\"#888\" font-family=\"monospace\" font-size=\"14\">";
   file << track_.track_name << " - Blueprint</text>\n";
-  std::vector<Vec2> centerline;
-  for (const auto& el : track_.elements)
-    if (el.type == ElementType::TrackVertex || el.type == ElementType::Straight ||
-        el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve)
-      centerline.push_back(el.position);
-  if (centerline.size() >= 2) {
+
+  struct SVGPoint {
+    Vec2 position;
+    Vec2 tangent;
+  };
+  std::vector<SVGPoint> svg_centerline;
+
+  for (const auto& el : track_.elements) {
+    if (el.type == ElementType::TrackVertex) {
+      svg_centerline.push_back({el.position, el.tangent});
+    } else if (el.type == ElementType::Straight) {
+      Vec2 end_pos = el.position + el.tangent * el.length;
+      svg_centerline.push_back({end_pos, el.tangent});
+    } else if (el.type == ElementType::LeftCurve || el.type == ElementType::RightCurve) {
+      bool left = (el.type == ElementType::LeftCurve);
+      double heading = std::atan2(el.tangent.y(), el.tangent.x());
+      Vec2 center = TrackBuilder::center_for_curve(el.position, heading, el.radius, left);
+      double start_angle = std::atan2(el.position.y() - center.y(), el.position.x() - center.x());
+      int steps = std::max(8, (int)(std::abs(el.arc_angle) / (kPi / 36.0)));
+
+      for (int i = 1; i <= steps; ++i) {
+        double t = static_cast<double>(i) / steps;
+        double angle = start_angle + t * (left ? el.arc_angle : -el.arc_angle);
+        Vec2 p = center + Vec2(el.radius * std::cos(angle), el.radius * std::sin(angle));
+        double local_heading = heading + t * (left ? el.arc_angle : -el.arc_angle);
+        Vec2 tang(std::cos(local_heading), std::sin(local_heading));
+        svg_centerline.push_back({p, tang});
+      }
+    }
+  }
+
+  if (svg_centerline.size() >= 2) {
     file << "  <polyline points=\"";
-    for (size_t i = 0; i < centerline.size(); ++i) {
-      double sx = centerline[i].x() * 3.0 + 600.0;
-      double sy = -centerline[i].y() * 3.0 + 400.0;
+    for (size_t i = 0; i < svg_centerline.size(); ++i) {
+      double sx = svg_centerline[i].position.x() * 3.0 + 600.0;
+      double sy = -svg_centerline[i].position.y() * 3.0 + 400.0;
       file << sx << "," << sy << " ";
     }
     file << "\" fill=\"none\" stroke=\"#ffff00\" stroke-width=\"3\"/>\n";
@@ -756,6 +1028,79 @@ int BlueprintEditor::run() {
     DispatchMessage(&msg);
   }
   return (int)msg.wParam;
+}
+
+TrackBuilder::TrackBuilder() : current_pos_(0.0, 0.0), current_heading_(0.0), track_width_(12.0) {}
+
+BlueprintElement TrackBuilder::add_straight(double length) {
+  BlueprintElement el;
+  el.type = ElementType::Straight;
+  el.position = current_pos_;
+  el.tangent = tangent();
+  el.length = length;
+  el.width = track_width_;
+  el.arc_angle = 0.0;
+  el.radius = 0.0;
+
+  current_pos_ = current_pos_ + tangent() * length;
+  return el;
+}
+
+BlueprintElement TrackBuilder::add_curve(double radius, double arc_angle, bool left) {
+  BlueprintElement el;
+  el.type = left ? ElementType::LeftCurve : ElementType::RightCurve;
+  el.position = current_pos_;
+  el.tangent = tangent();
+  el.radius = radius;
+  el.arc_angle = arc_angle;
+  el.width = track_width_;
+  el.length = radius * std::abs(arc_angle);
+
+  Vec2 center = center_for_curve(current_pos_, current_heading_, radius, left);
+  double start_angle = std::atan2(current_pos_.y() - center.y(), current_pos_.x() - center.x());
+  double end_angle = start_angle + (left ? arc_angle : -arc_angle);
+
+  current_pos_ = center + Vec2(radius * std::cos(end_angle), radius * std::sin(end_angle));
+  current_heading_ = current_heading_ + (left ? arc_angle : -arc_angle);
+
+  return el;
+}
+
+std::vector<BlueprintElement> TrackBuilder::add_curve_samples(double radius, double arc_angle, bool left, int steps) {
+  std::vector<BlueprintElement> samples;
+  double start_heading = current_heading_;
+  Vec2 center = center_for_curve(current_pos_, start_heading, radius, left);
+  double start_angle = std::atan2(current_pos_.y() - center.y(), current_pos_.x() - center.x());
+
+  for (int i = 1; i <= steps; ++i) {
+    double t = static_cast<double>(i) / steps;
+    double angle = start_angle + t * (left ? arc_angle : -arc_angle);
+    BlueprintElement vert;
+    vert.type = ElementType::TrackVertex;
+    vert.position = center + Vec2(radius * std::cos(angle), radius * std::sin(angle));
+    double local_heading = start_heading + t * (left ? arc_angle : -arc_angle);
+    vert.tangent = Vec2(std::cos(local_heading), std::sin(local_heading));
+    vert.radius = radius;
+    vert.width = track_width_;
+    samples.push_back(vert);
+  }
+
+  double end_angle = start_angle + (left ? arc_angle : -arc_angle);
+  current_pos_ = center + Vec2(radius * std::cos(end_angle), radius * std::sin(end_angle));
+  current_heading_ = start_heading + (left ? arc_angle : -arc_angle);
+
+  return samples;
+}
+
+Vec2 TrackBuilder::center_for_curve(const Vec2& pos, double heading, double radius, bool left) {
+  Vec2 t(std::cos(heading), std::sin(heading));
+  Vec2 n(-t.y(), t.x());
+  return pos + n * (left ? radius : -radius);
+}
+
+Vec2 TrackBuilder::end_tangent_for_curve(double heading, double arc_angle, bool left) {
+  double end_heading = heading + (left ? arc_angle : -arc_angle);
+  return Vec2(std::cos(end_heading), std::sin(end_heading));
 }
 
 }

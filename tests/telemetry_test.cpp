@@ -146,6 +146,19 @@ TEST(TelemetryV2, ZeroDt) {
   EXPECT_DOUBLE_EQ(tel.frames()[0].time, 0.0);
 }
 
+// Telemetry should mark lap transitions
+TEST(TelemetryV2, MarkLapSetsLapNumber) {
+  telemetry::Telemetry tel;
+  vehicle::VehicleState state;
+  state.speed = 50.0;
+  tel.record(state, 1.0 / 60.0);
+  EXPECT_EQ(tel.frames()[0].lap_number, 0);
+
+  tel.mark_lap(1);
+  tel.record(state, 1.0 / 60.0);
+  EXPECT_EQ(tel.frames()[1].lap_number, 1);
+}
+
 // Longitudinal g should be computed when moving forward
 TEST(TelemetryV2, LongitudinalGComputed) {
   telemetry::Telemetry tel;

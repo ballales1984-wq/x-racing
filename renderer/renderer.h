@@ -5,6 +5,7 @@
 #include "common.h"
 #include "simulation/simulation.h"
 #include "input/input.h"
+#include "../engine/camera/camera.h"
 #include "../engine/assets/mesh.h"
 #include "../engine/assets/gltf_loader.h"
 
@@ -19,6 +20,12 @@ struct RendererConfig {
   double scale = 4.0;
   bool show_grid = true;
   bool show_telemetry = true;
+
+  // Chase-camera tuning (Phase 1.4).
+  double cam_distance = 8.0;    // m, eye distance behind the car
+  double cam_height = 4.0;      // m, eye height above the car
+  double cam_look_ahead = 2.0; // m, target offset ahead of the car
+  double cam_smoothing = 8.0;   // 1/s, camera smoothing rate
 };
 
 // Real-time renderer for the simulation.
@@ -59,24 +66,24 @@ class Renderer {
   // Poll keyboard and build the per-frame input state.
   void handle_input(input::InputState& input);
 
-  // Project a 3D world point to 2D screen coordinates using a look-at view matrix
-  // and a perspective projection.
-  Vec3 project(const Vec3& world_pos) const;
-  // Build a simple look-at view matrix following the car from behind.
-  Mat4 view_matrix() const;
+   // Project a 3D world point to 2D screen coordinates using a look-at view matrix
+   // and a perspective projection (delegates to the chase camera).
+   Vec3 project(const Vec3& world_pos) const;
+   // Build a simple look-at view matrix following the car from behind.
+   Mat4 view_matrix() const;
 
-   simulation::Simulation& sim_;
-   RendererConfig config_;
-   HWND window_ = nullptr;
-   HDC mem_dc_ = nullptr;
-   HBITMAP mem_bitmap_ = nullptr;
-   bool running_ = false;
-   double time_ = 0.0;
-   std::vector<p0::assets::Mesh> car_meshes_;
-   bool show_3d_car_ = true;
-   float car_mesh_scale_ = 1.0f;
-   track::TrackType current_track_type_ = track::TrackType::Default;
-   track::Track current_track_;
-};
+    simulation::Simulation& sim_;
+    RendererConfig config_;
+    HWND window_ = nullptr;
+    HDC mem_dc_ = nullptr;
+    HBITMAP mem_bitmap_ = nullptr;
+    bool running_ = false;
+    double time_ = 0.0;
+    std::vector<p0::assets::Mesh> car_meshes_;
+    bool show_3d_car_ = true;
+    float car_mesh_scale_ = 1.0f;
+    track::TrackType current_track_type_ = track::TrackType::Default;
+    track::Track current_track_;
+    p0::camera::ChaseCamera camera_;
 
 }

@@ -11,6 +11,7 @@ namespace p0::telemetry {
 // One frame of telemetry data recorded per simulation step
 struct TelemetryFrame {
   double time = 0.0;                     // s, cumulative time
+  int lap_number = 0;                    // current lap number
   double distance = 0.0;                 // m, distance along track
   double speed = 0.0;                     // m/s
   double rpm = 0.0;                       // engine RPM
@@ -37,12 +38,14 @@ struct TelemetryFrame {
 class Telemetry {
  public:
   void record(const vehicle::VehicleState& state, double dt);
+  void mark_lap(int lap_number) { current_lap_ = lap_number; }
   const std::vector<TelemetryFrame>& frames() const { return frames_; }
-  void clear() { frames_.clear(); }
+  void clear() { frames_.clear(); current_lap_ = 0; }
   void save_csv(const std::string& path) const;
 
  private:
   std::vector<TelemetryFrame> frames_;
+  int current_lap_ = 0;
 };
 
 }

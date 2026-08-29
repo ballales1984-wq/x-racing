@@ -226,13 +226,12 @@ CarInstance* SimulationWorld::get_car(int car_id) {
   return it != cars_.end() ? &it->second : nullptr;
 }
 
-const vehicle::VehicleState& SimulationWorld::get_state(int car_id) const {
-  static vehicle::VehicleState empty;
+const vehicle::VehicleState* SimulationWorld::get_state(int car_id) const {
   auto it = cars_.find(car_id);
   if (it != cars_.end() && it->second.simulation) {
-    return it->second.simulation->state();
+    return &it->second.simulation->state();
   }
-  return empty;
+  return nullptr;
 }
 
 const track::Track& SimulationWorld::track() const {

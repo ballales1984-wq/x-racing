@@ -748,3 +748,78 @@ TEST(OffTrackAndRespawn, RespawnRestoresValidState) {
   EXPECT_NEAR(sim.state().distance_along_track, dist_before, 1e-3);
 }
 
+// Phase 1.1: Reverse — holding reverse from a standstill drives the car backward.
+TEST(Reverse, MovesBackwardFromStandstill) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 0.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.reverse = true;
+  input.throttle = 1.0;
+
+  double start_x = sim.state().position.x();
+  for (int i = 0; i < 600; ++i) {
+    sim.step(input);
+    EXPECT_LE(sim.state().speed, sim.max_reverse_speed() + 1e-6);
+  }
+
+  EXPECT_GT(sim.state().speed, 0.5);
+  EXPECT_LT(sim.state().position.x(), start_x);
+}
+
+// Phase 1.1: Reverse must NOT engage while the car is moving forward quickly.
+TEST(Reverse, IgnoredAtSpeed) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 30.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.reverse = true;
+  input.throttle = 1.0;
+
+  for (int i = 0; i < 120; ++i) sim.step(input);
+
+  // Car keeps moving forward; reverse never engaged.
+  EXPECT_GT(sim.state().speed, 0.0);
+  EXPECT_FALSE(sim.is_reversing());
+}
+
+// Phase 1.3: A full lap completed in the forward direction increments the lap count.
+TEST(LapDetection, ForwardLapIncrementsCount) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  const double track_len = track.length();
+  for (int i = 0; i < 20000; ++i) {
+    sim.step(input);
+    if (sim.state().lap >= 1) break;
+  }
+
+  EXPECT_GE(sim.state().lap, 1);
+  EXPECT_GE(sim.state().distance_along_track, 0.0);
+  EXPECT_LT(sim.state().distance_along_track, track_len);
+}
+
+

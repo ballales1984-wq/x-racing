@@ -363,31 +363,32 @@ namespace Project0.Unity
                     if (string.IsNullOrEmpty(line)) continue;
 
                     var parts = line.Split(',');
-                    if (parts.Length < 19) continue;
+                    if (parts.Length < 20) continue;
 
                     try
                     {
                         TelemetryFrame frame = new TelemetryFrame
                         {
                             time = float.Parse(parts[0]),
-                            distance = float.Parse(parts[1]),
-                            speed = float.Parse(parts[2]),
-                            rpm = float.Parse(parts[3]),
-                            gear = int.Parse(parts[4]),
-                            throttle = float.Parse(parts[5]),
-                            brake = float.Parse(parts[6]),
-                            steer = float.Parse(parts[7]),
-                            slipAngle = float.Parse(parts[8]),
-                            slipRatio = float.Parse(parts[9]),
-                            posX = float.Parse(parts[10]),
-                            posY = float.Parse(parts[11]),
-                            velX = float.Parse(parts[12]),
-                            velY = float.Parse(parts[13]),
-                            accX = float.Parse(parts[14]),
-                            accY = float.Parse(parts[15]),
-                            heading = float.Parse(parts[16]),
-                            lateralG = float.Parse(parts[17]),
-                            longitudinalG = float.Parse(parts[18])
+                            lapNumber = int.Parse(parts[1]),
+                            distance = float.Parse(parts[2]),
+                            speed = float.Parse(parts[3]),
+                            rpm = float.Parse(parts[4]),
+                            gear = int.Parse(parts[5]),
+                            throttle = float.Parse(parts[6]),
+                            brake = float.Parse(parts[7]),
+                            steer = float.Parse(parts[8]),
+                            slipAngle = float.Parse(parts[9]),
+                            slipRatio = float.Parse(parts[10]),
+                            posX = float.Parse(parts[11]),
+                            posY = float.Parse(parts[12]),
+                            velX = float.Parse(parts[13]),
+                            velY = float.Parse(parts[14]),
+                            accX = float.Parse(parts[15]),
+                            accY = float.Parse(parts[16]),
+                            heading = float.Parse(parts[17]),
+                            lateralG = float.Parse(parts[18]),
+                            longitudinalG = float.Parse(parts[19])
                         };
                         data.Add(frame);
                     }
@@ -464,6 +465,7 @@ namespace Project0.Unity
     public struct TelemetryFrame
     {
         public float time;
+        public int lapNumber;
         public float distance;
         public float speed;
         public float rpm;

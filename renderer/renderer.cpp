@@ -155,6 +155,15 @@ void Renderer::run() {
     load_car_mesh("D:/x-racing/assets/models/car.obj");
   }
   std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
+
+  // Configure and prime the chase camera from the current car pose.
+  camera_.set_config(p0::camera::CameraConfig{
+    config_.cam_distance, config_.cam_height, config_.cam_look_ahead, config_.cam_smoothing});
+  {
+    const auto& s = sim_.state();
+    camera_.update(s.position, s.heading, s.speed, 0.0);
+  }
+
   telemetry::Telemetry tel;
   LARGE_INTEGER freq, prev, curr;
   QueryPerformanceFrequency(&freq);
@@ -180,6 +189,7 @@ void Renderer::run() {
     if (dt > 0.0 && dt < 0.1) {
       handle_input(input);
       const auto result = sim_.step(input);
+      camera_.update(result.state.position, result.state.heading, result.state.speed, dt);
       tel.record(result.state, dt);
       time_ += dt;
 
@@ -215,7 +225,7 @@ void Renderer::draw_track(HDC hdc) {
   const double length = track->length();
 
   HPEN track_pen = CreatePen(PS_SOLID, 3, RGB(100, 100, 100));
-  HPEN old_pen = (HPEN)SelectObject(hdc, track_pen);
+  HPEN old_pen = static_cast<HPEN>(SelectObject(hdc, track_pen));
 
   for (int i = 0; i < static_cast<int>(length); i += step) {
     track::TrackPoint p0 = track->at(i);
@@ -368,26 +378,26 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   char buf[128];
   const auto& s = result.state;
 
-  sprintf(buf, "Speed: %.1f km/h", s.speed * 3.6);
-  TextOutA(hdc, 10, 10, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "Speed: %.1f km/h", s.speed * 3.6);
+  TextOutA(hdc, 10, 10, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "RPM: %d", static_cast<int>(s.rpm));
-  TextOutA(hdc, 10, 30, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "RPM: %d", static_cast<int>(s.rpm));
+  TextOutA(hdc, 10, 30, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "Gear: %d", s.gear);
-  TextOutA(hdc, 10, 50, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "Gear: %d", s.gear);
+  TextOutA(hdc, 10, 50, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "Time: %.2f s", result.time);
-  TextOutA(hdc, 10, 70, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "Time: %.2f s", result.time);
+  TextOutA(hdc, 10, 70, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "Lap: %d", s.lap);
-  TextOutA(hdc, 10, 90, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "Lap: %d", s.lap);
+  TextOutA(hdc, 10, 90, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
-  TextOutA(hdc, 10, 110, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
+  TextOutA(hdc, 10, 110, buf, static_cast<int>(std::strlen(buf)));
 
-  sprintf(buf, "Track: %s (1/2/3 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : current_track_type_ == track::TrackType::PitCircuit ? "PitCircuit" : "CustomCircuit");
-  TextOutA(hdc, 10, 130, buf, (int)strlen(buf));
+  snprintf(buf, sizeof(buf), "Track: %s (1/2/3 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : current_track_type_ == track::TrackType::PitCircuit ? "PitCircuit" : "CustomCircuit");
+  TextOutA(hdc, 10, 130, buf, static_cast<int>(std::strlen(buf)));
 }
 
 void Renderer::toggle_3d_mode() {
@@ -420,6 +430,7 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState('S') & 0x8000) input.brake = 1.0;
   if (GetAsyncKeyState('A') & 0x8000) input.steering = -1.0;
   if (GetAsyncKeyState('D') & 0x8000) input.steering = 1.0;
+  if (GetAsyncKeyState('X') & 0x8000) input.reverse = true;
   if (GetAsyncKeyState(VK_UP) & 0x8000) input.upshift = true;
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
 }
@@ -453,66 +464,16 @@ void Renderer::load_car_mesh(const std::string& filename) {
 }
 
 // Build the chase-camera view matrix.
-// Eye position is behind and above the car; target is ahead of the car.
-// Constructs an orthonormal basis (side, up, forward) from the look-at direction.
+// Delegates to the smoothed ChaseCamera owned by the renderer.
 Mat4 Renderer::view_matrix() const {
-  const auto& state = sim_.state();
-  Vec3 car_pos(state.position.x(), 0.0, state.position.y());
-
-  double heading = state.heading;
-  // Chase-camera: eye behind and above the car, looking forward.
-  Vec3 eye = car_pos + Vec3(-std::cos(heading) * 8.0, 4.0, -std::sin(heading) * 8.0);
-  Vec3 target = car_pos + Vec3(std::cos(heading) * 2.0, 0.0, std::sin(heading) * 2.0);
-  Vec3 up(0.0, 1.0, 0.0);
-
-  // Build orthonormal basis vectors.
-  Vec3 f = (target - eye).normalized();
-  Vec3 s = f.cross(up).normalized();
-  Vec3 u = s.cross(f);
-
-  // Build look-at matrix from basis vectors and eye position.
-  Mat4 view = Mat4::Identity();
-  view(0, 0) = s.x(); view(0, 1) = s.y(); view(0, 2) = s.z(); view(0, 3) = -s.dot(eye);
-  view(1, 0) = u.x(); view(1, 1) = u.y(); view(1, 2) = u.z(); view(1, 3) = -u.dot(eye);
-  view(2, 0) = -f.x(); view(2, 1) = -f.y(); view(2, 2) = -f.z(); view(2, 3) = f.dot(eye);
-  return view;
+  return camera_.view_matrix();
 }
 
 // Project a world-space 3D point to screen coordinates.
 // Returns (-9999, -9999, 0) if the point is behind the camera or invalid.
-// Applies view transform, perspective projection, and viewport mapping.
+// Delegates to the ChaseCamera owned by the renderer.
 Vec3 Renderer::project(const Vec3& world_pos) const {
-  Mat4 view = view_matrix();
-  Vec4 view_pos = view * Vec4(world_pos.x(), world_pos.y(), world_pos.z(), 1.0);
-
-  // Reject points behind the near plane.
-  if (view_pos.z() >= -0.1) return Vec3(-9999.0, -9999.0, 0.0);
-
-  // Perspective projection with 60 degree FOV.
-  double fov = 60.0 * kDegToRad;
-  double aspect = static_cast<double>(config_.width) / static_cast<double>(config_.height);
-  double near_plane = 0.1;
-  double far_plane = 200.0;
-  double f = 1.0 / std::tan(fov / 2.0);
-
-  Mat4 proj = Mat4::Identity();
-  proj(0, 0) = f / aspect;
-  proj(1, 1) = f;
-  proj(2, 2) = (far_plane + near_plane) / (near_plane - far_plane);
-  proj(2, 3) = (2.0 * far_plane * near_plane) / (near_plane - far_plane);
-  proj(3, 2) = -1.0;
-  proj(3, 3) = 0.0;
-
-  Vec4 clip = proj * view_pos;
-  if (clip.w() <= 0.0) return Vec3(-9999.0, -9999.0, 0.0);
-
-  // Perspective divide to get NDC, then map to screen pixels.
-  Vec3 ndc(clip.x() / clip.w(), clip.y() / clip.w(), clip.z() / clip.w());
-
-  int sx = static_cast<int>((ndc.x() * 0.5 + 0.5) * config_.width);
-  int sy = static_cast<int>((1.0 - (ndc.y() * 0.5 + 0.5)) * config_.height);
-
-  return Vec3(static_cast<double>(sx), static_cast<double>(sy), ndc.z());
+  return camera_.project(world_pos, config_.width, config_.height);
 }
 
 // Draw the car as a filled 3D mesh with simple directional lighting.

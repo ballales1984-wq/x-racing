@@ -201,8 +201,9 @@ TEST(SimulationWorld, GetStateReturnsReference) {
   world.initialize(t);
 
   int id = world.add_car(p0::vehicle::VehicleParams{}, DriverType::HUMAN, 0, "P1");
-  const p0::vehicle::VehicleState& state = world.get_state(id);
-  EXPECT_TRUE(state.position.x() >= 0.0 || true);
+  const p0::vehicle::VehicleState* state = world.get_state(id);
+  ASSERT_NE(state, nullptr);
+  EXPECT_TRUE(state->position.x() >= 0.0 || true);
 }
 
 TEST(SimulationWorld, LapCompletedCallbackFires) {

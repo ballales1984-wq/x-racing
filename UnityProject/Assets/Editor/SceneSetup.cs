@@ -11,6 +11,12 @@ namespace Project0.Unity.Setup
         [MenuItem("X-Racing/Setup Scene")]
         public static void SetupScene()
         {
+            if (EditorApplication.isPlaying)
+            {
+                Debug.LogError("Scene setup cannot run during play mode. Exit play mode and run the menu item again.");
+                return;
+            }
+
             var car = GameObject.Find("Car");
             if (car != null)
             {

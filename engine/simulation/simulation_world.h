@@ -83,7 +83,7 @@ class SimulationWorld {
 
   const CarInstance* get_car(int car_id) const;
   CarInstance* get_car(int car_id);
-  const vehicle::VehicleState& get_state(int car_id) const;
+  const vehicle::VehicleState* get_state(int car_id) const;
   const std::unordered_map<int, CarInstance>& cars() const { return cars_; }
   int car_count() const { return static_cast<int>(cars_.size()); }
   int active_car_count() const;

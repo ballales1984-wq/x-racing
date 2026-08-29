@@ -15,11 +15,18 @@ Simulation::Simulation(const SimulationParams& params) : params_(params) {}
 
 void Simulation::set_track(const track::Track& track) {
   track_ = &track;
+  lap_detector_.set_track_length(track.length());
+  lap_detector_.reset(state_.distance_along_track);
 }
 
 void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_ = initial_state;
   state_.lap = 0;
+  reversing_ = false;
+  if (track_) {
+    lap_detector_.set_track_length(track_->length());
+  }
+  lap_detector_.reset(state_.distance_along_track);
   state_.rpm = vehicle_params_.idle_rpm;
   state_.gear = 1;
   state_.lateral_velocity = 0.0;
@@ -59,6 +66,15 @@ SimulationResult Simulation::step(const input::InputState& input) {
   }
 
   state_.box_lane_entry_requested = input.enter_exit_box;
+
+  // Reverse engagement: the reverse gear can only be engaged from a near
+  // standstill. Once released the car always returns to forward drive, and a
+  // fast forward approach ignores the reverse request entirely.
+  if (!input.reverse) {
+    reversing_ = false;
+  } else if (state_.speed < 1.0) {
+    reversing_ = true;
+  }
 
   for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
     state_.acceleration = Vec2::Zero();
@@ -150,6 +166,7 @@ void Simulation::update_engine_forces(const input::InputState& input) {
     const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
     const double torque = vehicle_params_.max_torque * state_.throttle * 0.8;
     double engine_force = torque / vehicle_params_.wheel_radius;
+    if (reversing_) engine_force = -engine_force;
 
     const double static_front = m * kGravity * (vehicle_params_.cg_to_rear / vehicle_params_.wheelbase);
     const double static_rear = m * kGravity * (vehicle_params_.cg_to_front / vehicle_params_.wheelbase);
@@ -190,6 +207,7 @@ void Simulation::update_engine_forces(const input::InputState& input) {
   const double wheel_torque = engine_torque * total_ratio * (1.0 - vehicle_params_.drivetrain_loss);
   double engine_force = wheel_torque / vehicle_params_.wheel_radius;
   state_.engine_torque = engine_torque;
+  if (reversing_) engine_force = -engine_force;
 
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
   double available_tire_grip = vehicle_params_.tire_mu * (state_.fl_tire_load + state_.fr_tire_load + state_.rl_tire_load + state_.rr_tire_load);
@@ -333,7 +351,7 @@ void Simulation::update_tire_temperature() {
   if (track_) {
     const double track_len = track_->length();
     if (track_len > kEpsilon) {
-      wear_rate += vehicle_params_.tire_wear_per_lap / track_len * speed;
+      wear_rate += vehicle_params_.tire_wear_per_lap / track_len * std::abs(speed);
     }
   }
   state_.front_tire_wear -= wear_rate * (params_.dt / params_.substeps);
@@ -626,7 +644,8 @@ void Simulation::integrate(double dt) {
   const double a_lat = state_.acceleration.dot(right_dir);
 
   double new_long_speed = state_.speed + a_long * dt;
-  new_long_speed = clamp(new_long_speed, 0.0, 150.0);
+  // Signed longitudinal speed: forward is positive, reverse is negative.
+  new_long_speed = clamp(new_long_speed, -max_reverse_speed_, 150.0);
 
   double new_lat_speed = state_.lateral_velocity + a_lat * dt;
   const double lat_speed_max = 30.0;
@@ -639,9 +658,16 @@ void Simulation::integrate(double dt) {
   state_.acceleration = Vec2::Zero();
 
   if (track_) {
+    const double track_len = track_->length();
     state_.distance_along_track += new_long_speed * dt;
-    if (state_.distance_along_track >= track_->length()) {
-      state_.distance_along_track -= track_->length();
+    // Wrap distance into [0, L); detect start/finish line crossings.
+    while (state_.distance_along_track >= track_len) {
+      state_.distance_along_track -= track_len;
+    }
+    while (state_.distance_along_track < 0.0) {
+      state_.distance_along_track += track_len;
+    }
+    if (lap_detector_.update(state_.distance_along_track)) {
       state_.lap += 1;
     }
   }
@@ -676,9 +702,11 @@ void Simulation::apply_off_track_physics() {
   const bool off_track = std::abs(lateral) > track_half && !state_.in_box_lane;
   if (!off_track) return;
 
-  // Dampen speed quickly (rough terrain rolling resistance)
+  // Dampen speed quickly (rough terrain rolling resistance).
+  // Preserve the sign of the speed so reversing off-track still works.
   const double terrain_drag = std::max(0.0, 1.0 - 4.0 * (params_.dt / params_.substeps));
-  state_.speed = std::max(0.0, state_.speed * terrain_drag);
+  const double speed_sign = (state_.speed < 0.0) ? -1.0 : 1.0;
+  state_.speed = speed_sign * std::max(0.0, std::abs(state_.speed) * terrain_drag);
 
   const double lateral_damping = std::max(0.0, 1.0 - 8.0 * (params_.dt / params_.substeps));
   state_.lateral_velocity *= lateral_damping;
@@ -697,7 +725,7 @@ void Simulation::apply_off_track_physics() {
     const double barrier_stiffness = 80000.0;  // N/m — stiff wall
     const double barrier_damping  = 5000.0;   // Ns/m — energy absorption
     const double barrier_force_mag = barrier_stiffness * penetration +
-                                     barrier_damping * state_.speed;
+                                     barrier_damping * std::abs(state_.speed);
 
     // Force direction: push car back toward track center
     const Vec2 push_dir = (lateral > 0.0) ? -tp.normal : tp.normal;

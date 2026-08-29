@@ -191,7 +191,7 @@ void DebugConsole::print_physics(const DebugAgent& agent) const {
 }
 
 void DebugConsole::print_ai(const DebugAgent& agent) const {
-  const auto& ai_diag = agent.ai().current_diagnostics();
+  const auto& ai_diag = agent.ai()->current_diagnostics();
   print_line("=== AI Diagnostics ===");
   std::printf("  Active drivers: %d\n", ai_diag.active_driver_count);
   for (const auto& pr : ai_diag.driver_info) {
@@ -209,7 +209,7 @@ void DebugConsole::print_ai(const DebugAgent& agent) const {
 }
 
 void DebugConsole::print_network(const DebugAgent& agent) const {
-  const auto& net = agent.network().current_diagnostics();
+  const auto& net = agent.network()->current_diagnostics();
   print_line("=== Network Diagnostics ===");
   std::printf("  Connected:     %s\n", net.connected ? "yes" : "no");
   std::printf("  Role:          %s\n", net.is_host ? "HOST" : "CLIENT");
@@ -223,7 +223,7 @@ void DebugConsole::print_network(const DebugAgent& agent) const {
 }
 
 void DebugConsole::print_profile(const DebugAgent& agent) const {
-  const auto& prof = agent.profiler().snapshot();
+  const auto& prof = agent.profiler()->snapshot();
   print_line("=== Performance Profile ===");
   std::printf("  FPS:           %.1f\n", prof.fps);
   std::printf("  Frame time:    %.2f ms\n", prof.last_frame_time_ms);

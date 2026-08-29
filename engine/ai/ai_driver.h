@@ -33,12 +33,6 @@ struct AIDriverParams {
   bool enable_defense = false;
 };
 
-struct RacingLineTarget {
-  Vec2 position;
-  Vec2 direction;
-  double target_speed;
-};
-
 class AIDriver : public input::InputManager {
  public:
   explicit AIDriver(const AIDriverParams& params = {});

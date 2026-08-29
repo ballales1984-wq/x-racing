@@ -90,6 +90,31 @@ struct BlueprintElement {
   double box_lane_width = 3.5;
 };
 
+class TrackBuilder {
+ public:
+  TrackBuilder();
+
+  void set_position(const Vec2& pos) { current_pos_ = pos; }
+  void set_heading(double heading) { current_heading_ = heading; }
+  void set_width(double width) { track_width_ = width; }
+
+  Vec2 position() const { return current_pos_; }
+  double heading() const { return current_heading_; }
+  Vec2 tangent() const { return Vec2(std::cos(current_heading_), std::sin(current_heading_)); }
+
+  BlueprintElement add_straight(double length);
+  BlueprintElement add_curve(double radius, double arc_angle, bool left);
+  std::vector<BlueprintElement> add_curve_samples(double radius, double arc_angle, bool left, int steps);
+
+  static Vec2 center_for_curve(const Vec2& pos, double heading, double radius, bool left);
+  static Vec2 end_tangent_for_curve(double heading, double arc_angle, bool left);
+
+ private:
+  Vec2 current_pos_{0.0, 0.0};
+  double current_heading_ = 0.0;
+  double track_width_ = 12.0;
+};
+
 struct BlueprintTrack {
   std::string track_id;
   std::string track_name;
@@ -149,17 +174,24 @@ class BlueprintEditor {
 
   void add_vertex(const Vec2& pos);
   void add_straight(const Vec2& from, const Vec2& to);
+  void add_straight_from_last(double length);
   void add_curve(const Vec2& center, double radius, double arc_angle, bool left);
+  void add_curve_from_last(double radius, double arc_angle, bool left);
   void add_pit_box(const Vec2& pos);
   void set_start_finish(const Vec2& pos);
   void add_barrier(const Vec2& from, const Vec2& to);
   void recompute_track();
 
   void close_loop();
+  void close_loop_with_curve(bool left);
   void delete_selected();
   void clear_track();
 
   std::string element_type_name(ElementType type) const;
+
+  Vec2 get_last_position() const;
+  Vec2 get_last_tangent() const;
+  double get_last_heading() const;
 
   struct EditorConfig {
     int width = kDefaultWidth;
@@ -201,6 +233,9 @@ class BlueprintEditor {
   };
   Tool current_tool_ = Tool::Vertex;
   SurfaceType current_surface_ = SurfaceType::Asphalt;
+  double curve_radius_ = 80.0;
+  double curve_arc_angle_ = kHalfPi;
+  double straight_length_ = 100.0;
 };
 
 }

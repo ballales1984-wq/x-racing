@@ -25,6 +25,7 @@ InputState WindowsInputManager::poll() {
   if (GetAsyncKeyState(kDownshiftKey) & 0x8000) input.downshift = true;
   if (GetAsyncKeyState(kResetKey) & 0x8000) input.reset = true;
   if (GetAsyncKeyState(kBoxKey) & 0x8000) input.enter_exit_box = true;
+  if (GetAsyncKeyState(kReverseKey) & 0x8000) input.reverse = true;
 
   // Normalize near-zero steering to full deflection (digital input cleanup).
   if (std::abs(input.steering) < 0.1 && std::abs(input.steering) > 0.0) {

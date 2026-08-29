@@ -73,7 +73,7 @@ class MultiplayerGameplay {
   simulation::SimulationWorld& world() { return world_; }
   network::Lobby& lobby() { return lobby_; }
   const network::Lobby& lobby() const { return lobby_; }
-  const vehicle::VehicleState& local_state() const;
+  const vehicle::VehicleState* local_state() const;
 
   bool is_host() const { return config_.is_host; }
   int local_car_id() const { return config_.local_car_id; }

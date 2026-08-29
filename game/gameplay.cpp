@@ -183,7 +183,7 @@ void Gameplay::load_best_times() {
     while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
     try {
       return std::stod(content.substr(pos));
-    } catch (...) {
+    } catch (const std::exception&) {
       return 0.0;
     }
   };
@@ -197,7 +197,7 @@ void Gameplay::load_best_times() {
     while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
     try {
       return std::stoi(content.substr(pos));
-    } catch (...) {
+    } catch (const std::exception&) {
       return 0;
     }
   };
@@ -219,7 +219,7 @@ void Gameplay::load_best_times() {
       while (std::getline(iss, token, ',')) {
         try {
           results.lap_times.push_back(std::stod(token));
-        } catch (...) {}
+        } catch (const std::exception&) {}
       }
     }
   }
@@ -365,6 +365,7 @@ void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
     state_.current_lap = result.state.lap;
     state_.current_lap_time = 0.0;
     state_.off_track_warning = false;
+    tel_.mark_lap(result.state.lap);
   }
 
   state_.current_lap_time += dt;
