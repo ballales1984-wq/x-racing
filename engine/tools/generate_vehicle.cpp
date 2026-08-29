@@ -17,7 +17,7 @@ int main() {
     std::cout << "\nAvailable car models: " << registry.size() << std::endl;
     std::cout << "----------------------------------------" << std::endl;
 
-    // Print a summary sheet ("scheda") for each car
+    // Print a summary specification card for each car
     for (const auto& model : registry.all()) {
         std::cout << "\nCar: " << model.name << " (id: " << model.id << ")" << std::endl;
         std::cout << "  Description: " << model.description << std::endl;

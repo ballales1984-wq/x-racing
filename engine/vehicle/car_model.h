@@ -10,7 +10,7 @@
 
 namespace p0::vehicle {
 
-// CarModel: "scheda" (specification sheet) of a single car model.
+// CarModel: "specification card" of a single car model.
 // Binds together identity metadata, physical parameters, derived geometry,
 // and the path to the exported visual mesh asset — forming a single
 // cohesive definition that can be identified, looked up and attached
@@ -25,7 +25,7 @@ struct CarModel {
     VehicleGeometry geometry;  // derived geometry (filled from params)
 };
 
-// CarRegistry: repository of all predefined car models ("schede") available
+// CarRegistry: repository of all predefined car models ("specification cards") available
 // in the simulation.  Models are identified by their unique string id and
 // linked to their visual mesh asset via mesh_path.
 class CarRegistry {
