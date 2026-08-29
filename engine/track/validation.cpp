@@ -31,6 +31,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_all() {
   append(validate_pit_lane());
   append(validate_race());
   append(validate_assignments());
+  append(validate_checkpoints());
   return issues;
 }
 
@@ -241,6 +242,29 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_assignments() 
                         "Start fuel exceeds capacity for car " +
                         std::to_string(a.car_id),
                         "CarAssignments"});
+    }
+  }
+
+  return issues;
+}
+
+std::vector<p0::race::ValidationIssue> ValidationEngine::validate_checkpoints() const {
+  std::vector<p0::race::ValidationIssue> issues;
+
+  if (track_.checkpoints.empty()) return issues;
+
+  if (track_.checkpoints.size() < 2) {
+    issues.push_back({p0::race::ValidationSeverity::WARNING, "CHK_001",
+                      "Less than 2 checkpoints: lap tracking unreliable",
+                      "Checkpoints"});
+  }
+
+  std::unordered_set<int> ids;
+  for (const auto& cp : track_.checkpoints) {
+    if (!ids.insert(cp.id).second) {
+      issues.push_back({p0::race::ValidationSeverity::ERROR, "CHK_002",
+                        "Duplicate checkpoint id: " + std::to_string(cp.id),
+                        "Checkpoints"});
     }
   }
 

@@ -51,10 +51,19 @@ namespace Project0.Unity
     }
 
     [System.Serializable]
+    public class Checkpoint
+    {
+        public int id;
+        public Vector3 position;
+        public float width;
+    }
+
+    [System.Serializable]
     public class TrackData
     {
         public List<TrackSegment> segments = new List<TrackSegment>();
         public List<Waypoint> waypoints = new List<Waypoint>();
+        public List<Checkpoint> checkpoints = new List<Checkpoint>();
         public PitLane pitLane = new PitLane();
         public List<MarshalZone> marshals = new List<MarshalZone>();
     }

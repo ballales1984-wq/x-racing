@@ -26,6 +26,7 @@ class ValidationEngine {
   std::vector<p0::race::ValidationIssue> validate_pit_lane() const;
   std::vector<p0::race::ValidationIssue> validate_race() const;
   std::vector<p0::race::ValidationIssue> validate_assignments() const;
+  std::vector<p0::race::ValidationIssue> validate_checkpoints() const;
 
   static std::string severity_name(p0::race::ValidationSeverity s);
 

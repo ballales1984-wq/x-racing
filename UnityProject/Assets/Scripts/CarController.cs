@@ -43,6 +43,7 @@ namespace Project0.Unity
         private int lastCheckpoint = -1;
         private int checkpointsPassed = 0;
         private bool allCheckpointsPassed = false;
+        private int totalCheckpoints = 0;
 
         private TelemetryFrame[] frames;
         private int currentIndex = 0;
@@ -254,15 +255,17 @@ namespace Project0.Unity
             var checkpoints = GameObject.Find("Checkpoints");
             if (checkpoints == null) return;
 
-            int checkpointIndex = 0;
-            foreach (Transform cpTransform in checkpoints.transform)
+            if (allCheckpointsPassed) return;
+
+            totalCheckpoints = checkpoints.transform.childCount;
+            int nextIndex = lastCheckpoint + 1;
+            if (nextIndex >= totalCheckpoints) return;
+
+            Transform cpTransform = checkpoints.transform.GetChild(nextIndex);
+            float distance = Vector3.Distance(transform.position, cpTransform.position);
+            if (distance < 15f)
             {
-                float distance = Vector3.Distance(transform.position, cpTransform.position);
-                if (distance < 15f)
-                {
-                    OnCheckpointPassed(checkpointIndex, checkpoints.transform.childCount);
-                }
-                checkpointIndex++;
+                OnCheckpointPassed(nextIndex, totalCheckpoints);
             }
         }
 
@@ -335,6 +338,7 @@ namespace Project0.Unity
             lastCheckpoint = -1;
             checkpointsPassed = 0;
             allCheckpointsPassed = false;
+            totalCheckpoints = 0;
             lapStarted = false;
         }
 

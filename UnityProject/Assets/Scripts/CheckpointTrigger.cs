@@ -16,7 +16,7 @@ namespace Project0.Unity
         {
             boxCol = GetComponent<BoxCollider>();
             boxCol.isTrigger = true;
-            boxCol.size = new Vector3(3f, 3f, 3f);
+                boxCol.size = new Vector3(15f, 4f, 5f);
         }
 
         void OnTriggerEnter(Collider other)

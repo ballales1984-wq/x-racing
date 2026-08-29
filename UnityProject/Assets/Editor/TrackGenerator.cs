@@ -473,16 +473,34 @@ private static void CreateStartFinishLine()
             checkpointsObj.transform.SetParent(GameObject.Find("Track")?.transform);
 
             int numCheckpoints = 8;
-            float checkpointSpacing = (float)points.Count / numCheckpoints;
+            var cumulative = new System.Collections.Generic.List<float>(points.Count);
+            cumulative.Add(0f);
+            for (int i = 1; i < points.Count; i++)
+            {
+                cumulative.Add(cumulative[i - 1] + Vector3.Distance(points[i], points[i - 1]));
+            }
+            float totalLength = cumulative[cumulative.Count - 1];
 
             for (int i = 0; i < numCheckpoints; i++)
             {
-                int index = (int)(i * checkpointSpacing);
+                float targetDist = totalLength * i / numCheckpoints;
+                int index = 0;
+                for (int j = 1; j < cumulative.Count; j++)
+                {
+                    if (cumulative[j] > targetDist)
+                    {
+                        index = j - 1;
+                        break;
+                    }
+                }
                 if (index >= points.Count) index = points.Count - 1;
 
                 var cpObj = new GameObject($"Checkpoint_{i}");
                 cpObj.transform.SetParent(checkpointsObj.transform);
                 cpObj.transform.position = points[index];
+
+                Vector3 dir = (index < points.Count - 1 ? points[index + 1] - points[index] : points[index] - points[index - 1]).normalized;
+                cpObj.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
 
                 var trigger = cpObj.AddComponent<CheckpointTrigger>();
                 trigger.checkpointIndex = i;

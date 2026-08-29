@@ -164,6 +164,30 @@ namespace Project0.Unity
                 }
                 prevHeading = h;
             }
+
+            int numCheckpoints = 8;
+            float totalLength = points.Count > 0 ? points[points.Count - 1].distance : 0f;
+            for (int i = 0; i < numCheckpoints; i++)
+            {
+                float targetDist = totalLength * i / numCheckpoints;
+                int index = points.Count - 1;
+                for (int j = 1; j < points.Count; j++)
+                {
+                    if (points[j].distance > targetDist)
+                    {
+                        index = j - 1;
+                        break;
+                    }
+                }
+                var pd = points[index];
+                data.checkpoints.Add(new Checkpoint
+                {
+                    id = i,
+                    position = pd.position,
+                    width = pd.width
+                });
+            }
+
             return data;
         }
 
@@ -696,8 +720,11 @@ namespace Project0.Unity
             }
             else
             {
-                // Clear previous markers (gantry posts) before rebuilding.
                 foreach (Transform child in sfObj.transform) Destroy(child.gameObject);
+                var mf = sfObj.GetComponent<MeshFilter>();
+                if (mf != null) DestroyImmediate(mf);
+                var mr = sfObj.GetComponent<MeshRenderer>();
+                if (mr != null) DestroyImmediate(mr);
             }
             sfObj.transform.SetParent(GameObject.Find("Track")?.transform);
             sfObj.transform.localPosition = Vector3.zero;
@@ -770,16 +797,28 @@ namespace Project0.Unity
             cpObj.transform.SetParent(GameObject.Find("Track")?.transform);
 
             int numCheckpoints = 8;
-            float spacing = (float)points.Count / numCheckpoints;
+            float totalLength = points.Count > 0 ? points[points.Count - 1].distance : 0f;
 
             for (int i = 0; i < numCheckpoints; i++)
             {
-                int index = (int)(i * spacing);
-                if (index >= points.Count) index = points.Count - 1;
+                float targetDist = totalLength * i / numCheckpoints;
+                int index = 0;
+                for (int j = 1; j < points.Count; j++)
+                {
+                    if (points[j].distance > targetDist)
+                    {
+                        index = j - 1;
+                        break;
+                    }
+                }
 
                 var cpTrigger = new GameObject($"Checkpoint_{i}");
                 cpTrigger.transform.SetParent(cpObj.transform);
                 cpTrigger.transform.position = points[index].position;
+
+                var pd = points[index];
+                Quaternion rot = Quaternion.LookRotation(pd.tangent, Vector3.up);
+                cpTrigger.transform.rotation = rot;
 
                 var trigger = cpTrigger.AddComponent<CheckpointTrigger>();
                 trigger.checkpointIndex = i;
