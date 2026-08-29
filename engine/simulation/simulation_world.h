@@ -31,10 +31,12 @@ struct CarInstance {
   VehicleState last_state;
   double distance_along_track = 0.0;
   int lap = 0;
+  int prev_lap = 0;
   bool finished = false;
   double finish_time = 0.0;
   uint32_t input_sequence = 0;
   bool in_pit = false;
+  double lap_start_time = 0.0;  // sim time when current lap began (for lap timing)
 };
 
 struct WorldUpdateResult {

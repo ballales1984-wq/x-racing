@@ -50,6 +50,9 @@ int SimulationWorld::add_car(const vehicle::VehicleParams& params, DriverType dr
   }
   car.simulation->reset(initial);
   car.last_state = initial;
+  car.lap = 0;
+  car.prev_lap = 0;
+  car.lap_start_time = 0.0;
 
   cars_[car_id] = std::move(car);
 
@@ -70,10 +73,12 @@ void SimulationWorld::reset_car(int car_id, const vehicle::VehicleState& initial
     it->second.simulation->reset(initial_state);
     it->second.last_state = initial_state;
     it->second.lap = 0;
+    it->second.prev_lap = 0;
     it->second.distance_along_track = 0.0;
     it->second.finished = false;
     it->second.finish_time = 0.0;
     it->second.in_pit = false;
+    it->second.lap_start_time = 0.0;
   }
 }
 
@@ -104,15 +109,19 @@ void SimulationWorld::check_lap_completions() {
     if (car.finished) continue;
 
     const auto& state = car.simulation->state();
-    if (state.lap > car.lap) {
+    if (state.lap > car.prev_lap) {
       int completed_lap = state.lap - 1;
-      double lap_time = total_race_time_ - car.distance_along_track;
-      car.lap = state.lap;
-      car.distance_along_track = total_race_time_;
+      double lap_time = total_race_time_ - car.lap_start_time;
 
-      if (on_lap_completed_) {
-        on_lap_completed_(car_id, completed_lap, lap_time > 0.0 ? lap_time : 0.0);
+      if (completed_lap >= 1) {
+        if (on_lap_completed_) {
+          on_lap_completed_(car_id, completed_lap, lap_time > 0.0 ? lap_time : 0.0);
+        }
       }
+
+      car.prev_lap = state.lap;
+      car.lap = state.lap;
+      car.lap_start_time = total_race_time_;
     }
   }
 }
