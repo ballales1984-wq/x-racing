@@ -93,12 +93,14 @@ class Track {
   bool has_box_lane_at(double distance) const;
   double box_lane_width_at(double distance) const;
 
-  // Surface / coefficient API
-  SurfaceType surface_type_at(double distance) const;
-  void set_surface_at(double distance, SurfaceType type);
-  static double friction_for_surface(SurfaceType type) {
-    return ::p0::track::friction_for_surface(type);
-  }
+   // Surface / coefficient API
+   SurfaceType surface_type_at(double distance) const;
+   void set_surface_at(double distance, SurfaceType type);
+   static double friction_for_surface(SurfaceType type) {
+     return ::p0::track::friction_for_surface(type);
+   }
+
+   PitLaneDefinition build_pit_lane_definition() const;
 
   private:
    void build_default_track();

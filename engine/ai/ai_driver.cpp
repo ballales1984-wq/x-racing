@@ -204,7 +204,7 @@ void AIDriver::compute_gears(const vehicle::VehicleState& state) {
   last_input_.upshift = false;
   last_input_.downshift = false;
 
-  if (state.rpm > params_.gear_shift_rpm_up && state.gear < 6) {
+  if (state.rpm > params_.gear_shift_rpm_up && state.gear < params_.max_gear) {
     last_input_.upshift = true;
   } else if (state.rpm < params_.gear_shift_rpm_down && state.gear > 1) {
     last_input_.downshift = true;

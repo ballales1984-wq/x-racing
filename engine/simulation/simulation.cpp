@@ -51,7 +51,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
   const double dt = params_.dt / params_.substeps;
 
-  if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size()) + 1) {
+  if (input.upshift && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
     state_.gear++;
   }
   if (input.downshift && state_.gear > 1) {
@@ -677,11 +677,11 @@ void Simulation::apply_off_track_physics() {
   if (!off_track) return;
 
   // Dampen speed quickly (rough terrain rolling resistance)
-  const double terrain_drag = 1.0 - 4.0 * (params_.dt / params_.substeps);
+  const double terrain_drag = std::max(0.0, 1.0 - 4.0 * (params_.dt / params_.substeps));
   state_.speed = std::max(0.0, state_.speed * terrain_drag);
 
-  // Dampen lateral velocity aggressively
-  state_.lateral_velocity *= (1.0 - 8.0 * (params_.dt / params_.substeps));
+  const double lateral_damping = std::max(0.0, 1.0 - 8.0 * (params_.dt / params_.substeps));
+  state_.lateral_velocity *= lateral_damping;
 
   const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
   const Vec2 right_dir(-forward_dir.y(), forward_dir.x());

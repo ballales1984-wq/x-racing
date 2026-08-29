@@ -33,6 +33,8 @@ class Lobby {
   using OnError = std::function<void(const std::string&)>;
 
   explicit Lobby(const LobbyConfig& config = {});
+  Lobby(Lobby&&) = default;
+  Lobby& operator=(Lobby&&) = default;
   ~Lobby();
 
   bool host_game(const std::string& host_name);

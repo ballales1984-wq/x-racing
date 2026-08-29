@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <Eigen/Dense>
 
 // Project 0 — automotive simulation core

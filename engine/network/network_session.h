@@ -9,6 +9,15 @@
 #include <unordered_map>
 #include <functional>
 
+#if defined(_WIN32)
+  #include <winsock2.h>
+  #include <ws2tcpip.h>
+#else
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+#endif
+
 namespace p0::network {
 
 enum class SessionRole : uint8_t {
@@ -56,8 +65,10 @@ class NetworkSession {
   void set_on_lobby_update(OnLobbyUpdate cb) { on_lobby_update_ = cb; }
   void set_on_disconnect(OnDisconnect cb) { on_disconnect_ = cb; }
 
- private:
-  struct Packet {
+  private:
+   bool send_packet(const void* data, int len, const sockaddr_in& addr);
+
+   struct Packet {
     uint8_t data[kMaxPacketSize];
     int size = 0;
     std::string from_address;

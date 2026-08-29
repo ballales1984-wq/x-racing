@@ -21,6 +21,13 @@
 
 namespace p0::network {
 
+bool NetworkSession::send_packet(const void* data, int len, const sockaddr_in& addr) {
+  if (socket_fd_ < 0) return false;
+  int sent = sendto(socket_fd_, reinterpret_cast<const char*>(data), len, 0,
+                    reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+  return sent == len;
+}
+
 NetworkSession::NetworkSession() = default;
 
 NetworkSession::~NetworkSession() {
@@ -86,8 +93,9 @@ bool NetworkSession::initialize_client(const std::string& host_address, int port
   std::strncpy(req.player_name, "Player", kMaxPlayerNameLength - 1);
   req.requested_car_id = -1;
 
-  sendto(socket_fd_, reinterpret_cast<const char*>(&req), sizeof(req), 0,
-         reinterpret_cast<sockaddr*>(&server_addr), sizeof(server_addr));
+  if (!send_packet(&req, sizeof(req), server_addr)) {
+    return false;
+  }
 
   role_ = SessionRole::CLIENT;
   state_ = ConnectionState::CONNECTING;
@@ -125,8 +133,7 @@ void NetworkSession::send_input(const input::InputState& input, int car_id, uint
     addr.sin_port = htons(static_cast<uint16_t>(kServerPort));
   }
 
-  sendto(socket_fd_, reinterpret_cast<const char*>(&packet), sizeof(packet), 0,
-         reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+   send_packet(&packet, sizeof(packet), addr);
 }
 
 void NetworkSession::broadcast_snapshot(const WorldSnapshot& snapshot) {
@@ -144,8 +151,7 @@ void NetworkSession::broadcast_snapshot(const WorldSnapshot& snapshot) {
   for (const auto& [pid, player] : players_) {
     if (pid == 0) continue;
     if (player.state < ConnectionState::CONNECTED) continue;
-    sendto(socket_fd_, reinterpret_cast<const char*>(buffer), static_cast<int>(sizeof(WorldSnapshot) + 1), 0,
-           reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    send_packet(buffer, static_cast<int>(sizeof(WorldSnapshot) + 1), addr);
   }
 }
 
@@ -161,8 +167,7 @@ void NetworkSession::send_snapshot_to_client(int player_id, const WorldSnapshot&
   addr.sin_addr.s_addr = inet_addr("127.0.0.1");
   addr.sin_port = htons(static_cast<uint16_t>(kClientPort));
 
-  sendto(socket_fd_, reinterpret_cast<const char*>(buffer), static_cast<int>(sizeof(WorldSnapshot) + 1), 0,
-         reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+  send_packet(buffer, static_cast<int>(sizeof(WorldSnapshot) + 1), addr);
 }
 
 void NetworkSession::update(double delta_time) {
@@ -212,14 +217,13 @@ void NetworkSession::update(double delta_time) {
           std::memset(accept.session_id, 0, sizeof(accept.session_id));
           accept.track_seed = 12345;
 
-          uint8_t resp[sizeof(JoinAccept) + 1];
-          resp[0] = static_cast<uint8_t>(PacketType::JOIN_ACCEPT);
-          std::memcpy(resp + 1, &accept, sizeof(accept));
+           uint8_t resp[sizeof(JoinAccept) + 1];
+           resp[0] = static_cast<uint8_t>(PacketType::JOIN_ACCEPT);
+           std::memcpy(resp + 1, &accept, sizeof(accept));
 
-          sendto(socket_fd_, reinterpret_cast<const char*>(resp), sizeof(resp), 0,
-                 reinterpret_cast<sockaddr*>(&from), from_len);
+           send_packet(resp, sizeof(resp), from);
 
-          if (on_player_joined_) on_player_joined_(info);
+           if (on_player_joined_) on_player_joined_(info);
           if (on_lobby_update_) {
             std::vector<LobbySlot> slots;
             for (int i = 0; i < kMaxCars; ++i) {
@@ -237,8 +241,7 @@ void NetworkSession::update(double delta_time) {
           JoinReject reject;
           reject.reason = 1;
           uint8_t resp[2] = { static_cast<uint8_t>(PacketType::JOIN_REJECT), reject.reason };
-          sendto(socket_fd_, reinterpret_cast<const char*>(resp), sizeof(resp), 0,
-                 reinterpret_cast<sockaddr*>(&from), from_len);
+          send_packet(resp, sizeof(resp), from);
         }
       }
     } else {

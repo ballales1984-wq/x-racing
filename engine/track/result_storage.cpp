@@ -109,7 +109,12 @@ bool ResultStorage::load_results(const std::string& filepath, ResultsDatabase& d
   };
 
   auto extract_string = [&](std::string::size_type start) -> std::string {
-    start = content.find('"', start) + 1;
+    start = content.find(':', start);
+    if (start == std::string::npos) return "";
+    ++start;
+    while (start < content.size() && (content[start] == ' ' || content[start] == '\t')) ++start;
+    if (start >= content.size() || content[start] != '"') return "";
+    ++start;
     std::string out;
     while (start < content.size()) {
       char c = content[start++];
@@ -130,18 +135,24 @@ bool ResultStorage::load_results(const std::string& filepath, ResultsDatabase& d
   };
 
   auto extract_number = [&](std::string::size_type start) -> double {
-    while (start < content.size() && (content[start] == ' ' || content[start] == ':')) ++start;
+    start = content.find(':', start);
+    if (start == std::string::npos) return 0.0;
+    ++start;
+    while (start < content.size() && (content[start] == ' ' || content[start] == '\t')) ++start;
     std::string num_str;
     while (start < content.size() &&
            (std::isdigit(content[start]) || content[start] == '.' || content[start] == '-' || content[start] == 'e' || content[start] == 'E')) {
       num_str += content[start++];
     }
-    if (num_str == "true" || num_str == "false") return 0.0;
+    if (num_str.empty() || num_str == "true" || num_str == "false") return 0.0;
     return std::stod(num_str);
   };
 
   auto extract_bool = [&](std::string::size_type start) -> bool {
-    while (start < content.size() && (content[start] == ' ' || content[start] == ':')) ++start;
+    start = content.find(':', start);
+    if (start == std::string::npos) return false;
+    ++start;
+    while (start < content.size() && (content[start] == ' ' || content[start] == '\t')) ++start;
     return content.substr(start, 4) == "true";
   };
 
@@ -276,7 +287,9 @@ std::optional<RaceResult> ResultStorage::load_race_result(const std::string& fil
   auto extract_string = [&](const std::string& key) -> std::string {
     size_t pos = content.find("\"" + key + "\"");
     if (pos == std::string::npos) return "";
-    pos = content.find('"', pos + key.size() + 3) + 1;
+    pos = content.find('"', pos + key.size() + 3);
+    if (pos == std::string::npos) return "";
+    ++pos;
     std::string out;
     while (pos < content.size()) {
       char c = content[pos++];

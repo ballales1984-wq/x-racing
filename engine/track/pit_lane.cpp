@@ -138,11 +138,11 @@ int PitLaneSystem::cars_stopped() const {
 }
 
 bool PitLaneSystem::can_enter_pit_lane() const {
-  return cars_in_pit_lane() < def_.speed_zone.effective_limit_m_s();
+  return cars_in_pit_lane() < def_.max_cars;
 }
 
 bool PitLaneSystem::can_stop_at_box() const {
-  return cars_stopped() < def_.speed_zone.effective_limit_m_s();
+  return cars_stopped() < def_.max_stopped;
 }
 
 double PitLaneSystem::average_speed_m_s(double dist, double time) const {

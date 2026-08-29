@@ -1,7 +1,9 @@
 #pragma once
 
 #include "common.h"
+#include "physics/types.h"
 #include "vehicle/vehicle.h"
+#include <algorithm>
 
 namespace p0::physics {
 

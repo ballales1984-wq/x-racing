@@ -4,6 +4,8 @@
 #include "vehicle/vehicle.h"
 #include "track/track.h"
 #include "input/input.h"
+#include "physics/types.h"
+#include "physics/tire_model.h"
 
 // Project 0 — simulation loop
 // Namespace: p0::simulation

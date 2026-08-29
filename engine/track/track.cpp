@@ -287,7 +287,7 @@ void Track::build_custom_track() {
   pit_box_positions_.clear();
   const double L1 = 450.0;
   const double R = 130.0;
-  const double L2 = 400.0;
+  const double L2 = 450.0;
   const int segmentsPerStraight = 120;
   const int segmentsPerCurve = 60;
 
@@ -615,4 +615,79 @@ GridDefinition Track::generate_grid(GridLayout layout, int slot_count) const {
   return def;
 }
 
+PitLaneDefinition Track::build_pit_lane_definition() const {
+  PitLaneDefinition def;
+  if (points_.empty()) return def;
+
+  int first_box = -1;
+  int last_box = -1;
+  for (int i = 0; i < (int)points_.size(); ++i) {
+    if (points_[i].has_box_lane) {
+      if (first_box < 0) first_box = i;
+      last_box = i;
+    }
+  }
+
+  if (first_box < 0 || last_box < 0) return def;
+
+  const auto& entry_tp = points_[first_box];
+  const auto& exit_tp = points_[last_box];
+
+  def.entry.transform.position = entry_tp.position + entry_tp.normal * (entry_tp.width * 0.5 + entry_tp.box_lane_width * 0.5);
+  def.entry.transform.forward = entry_tp.tangent;
+  def.entry.width = entry_tp.box_lane_width;
+
+  def.exit.transform.position = exit_tp.position + exit_tp.normal * (exit_tp.width * 0.5 + exit_tp.box_lane_width * 0.5);
+  def.exit.transform.forward = exit_tp.tangent;
+  def.exit.width = exit_tp.box_lane_width;
+
+  const double step = 5.0;
+  for (double d = entry_tp.distance; d <= exit_tp.distance + kEpsilon; d += step) {
+    double dd = std::fmod(d, total_length_);
+    if (dd < 0.0) dd += total_length_;
+    const auto tp = at(dd);
+    PitLanePathPoint pp;
+    pp.transform.position = tp.position + tp.normal * (tp.width * 0.5 + tp.box_lane_width * 0.5);
+    pp.transform.forward = tp.tangent;
+    pp.width = tp.box_lane_width;
+    def.path.push_back(pp);
+  }
+
+  for (double box_pos : pit_box_positions_) {
+    const auto tp = at(box_pos);
+    PitBox box;
+    box.box_id = (int)def.boxes.size();
+    box.team_id = 0;
+    box.position.position = tp.position + tp.normal * (tp.width * 0.5 + tp.box_lane_width * 0.5 + 2.0);
+    box.position.forward = tp.tangent;
+    box.service_position = box.position;
+    box.entry_direction = tp.tangent;
+    box.exit_direction = tp.tangent;
+    box.width = 4.0;
+    box.depth = 6.0;
+    box.state = p0::race::BoxState::FREE;
+    def.boxes.push_back(box);
+  }
+
+  def.speed_zone.start_line.position = def.entry.transform.position;
+  def.speed_zone.start_line.forward = def.entry.transform.forward;
+  def.speed_zone.end_line.position = def.exit.transform.position;
+  def.speed_zone.end_line.forward = def.exit.transform.forward;
+  def.speed_zone.speed_limit_m_s = 16.67;
+  def.speed_zone.tolerance_m_s = 1.39;
+  def.speed_zone.detection_mode = p0::race::SpeedDetectionMode::AVERAGE_SPEED;
+  def.speed_zone.violation_type = p0::race::ViolationType::PIT_SPEED_EXCEEDED;
+  def.speed_zone.penalty = p0::race::PenaltyType::DRIVE_THROUGH;
+
+  def.merge_zone.start = def.exit.transform;
+  def.merge_zone.end.position = exit_tp.position;
+  def.merge_zone.end.forward = exit_tp.tangent;
+
+  def.speed_limit_m_s = 16.67;
+  def.pit_lane_length_m = exit_tp.distance - entry_tp.distance;
+
+  return def;
 }
+
+}
+

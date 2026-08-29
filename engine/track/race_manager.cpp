@@ -35,24 +35,22 @@ void RaceManager::start_race() {
   session_state_ = p0::race::RaceSessionState::FORMATION;
   current_lap_ = 0;
   race_time_ = 0.0;
+  session_start_time_ = 0.0;
 }
 
 void RaceManager::update(double timestamp,
                          const std::unordered_map<int, Vec2>& car_positions,
                          const std::unordered_map<int, double>& car_speeds,
+                         const std::unordered_map<int, double>& car_distances,
                          const std::unordered_map<int, double>& car_fuel,
                          const std::unordered_map<int, p0::race::TireCompound>& car_tires) {
   if (!initialized_) return;
 
   race_time_ = timestamp;
+  update_lap_counters(car_distances);
   update_session_state(timestamp);
-  update_lap_counters(car_positions);
 
-  std::unordered_map<int, double> positions_m;
-  for (const auto& [id, pos] : car_positions) {
-    positions_m[id] = pos.x();
-  }
-  pit_manager_.update(timestamp, positions_m, car_speeds);
+  pit_manager_.update(timestamp, car_distances, car_speeds);
 
   if (session_state_ == p0::race::RaceSessionState::GREEN_FLAG_RUNNING) {
     check_fuel_strategy(timestamp);
@@ -84,21 +82,20 @@ void RaceManager::update_session_state(double timestamp) {
   }
 }
 
-void RaceManager::update_lap_counters(const std::unordered_map<int, Vec2>& car_positions) {
+void RaceManager::update_lap_counters(const std::unordered_map<int, double>& car_distances) {
   if (track_.checkpoints.empty()) return;
 
-  for (const auto& [car_id, pos] : car_positions) {
+  for (const auto& [car_id, dist] : car_distances) {
     int lap = car_lap_count_[car_id];
-    double prev_pos = car_last_lap_pos_[car_id];
-    double curr_pos = pos.x();
+    double prev_dist = car_last_lap_pos_[car_id];
 
-    if (prev_pos > 0.0 && curr_pos < prev_pos - track_.length_m * 0.5) {
+    if (prev_dist > 0.0 && dist < prev_dist - track_.length_m * 0.5) {
       car_lap_count_[car_id] = lap + 1;
       if (car_id == assignments_[0].car_id) {
         current_lap_ = std::max(current_lap_, car_lap_count_[car_id]);
       }
     }
-    car_last_lap_pos_[car_id] = curr_pos;
+    car_last_lap_pos_[car_id] = dist;
   }
 }
 

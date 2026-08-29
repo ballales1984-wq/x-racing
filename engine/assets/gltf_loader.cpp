@@ -126,14 +126,18 @@ bool GLTFLoader::Load(const std::string& filename, Mesh& out_mesh, std::vector<M
     std::vector<char> bin_data;
 
     if (file_size >= 4 && std::string(file_data.data(), 4) == "glTF") {
+        if (file_size < sizeof(GLBHeader)) return false;
+
         GLBHeader header;
         std::memcpy(&header, file_data.data(), sizeof(GLBHeader));
 
         size_t offset = sizeof(GLBHeader);
-        while (offset < file_size) {
+        while (offset + sizeof(GLBChunkHeader) <= file_size) {
             GLBChunkHeader chunk;
             std::memcpy(&chunk, file_data.data() + offset, sizeof(GLBChunkHeader));
             offset += sizeof(GLBChunkHeader);
+
+            if (offset + static_cast<size_t>(chunk.length) > file_size) break;
 
             if (chunk.type == 0x4E4F534A) {
                 json_data = std::string(file_data.data() + offset, static_cast<size_t>(chunk.length));
@@ -461,14 +465,18 @@ bool GLTFLoader::LoadSkinned(const std::string& filename, GLTFSkinnedMesh& out_m
     std::vector<char> bin_data;
 
     if (file_size >= 4 && std::string(file_data.data(), 4) == "glTF") {
+        if (file_size < sizeof(GLBHeader)) return false;
+
         GLBHeader header;
         std::memcpy(&header, file_data.data(), sizeof(GLBHeader));
 
         size_t offset = sizeof(GLBHeader);
-        while (offset < file_size) {
+        while (offset + sizeof(GLBChunkHeader) <= file_size) {
             GLBChunkHeader chunk;
             std::memcpy(&chunk, file_data.data() + offset, sizeof(GLBChunkHeader));
             offset += sizeof(GLBChunkHeader);
+
+            if (offset + static_cast<size_t>(chunk.length) > file_size) break;
 
             if (chunk.type == 0x4E4F534A) {
                 json_data = std::string(file_data.data() + offset, static_cast<size_t>(chunk.length));

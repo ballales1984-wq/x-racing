@@ -174,6 +174,8 @@ struct PitLaneDefinition {
   MergeZone merge_zone;
   double speed_limit_m_s = 16.67;
   double pit_lane_length_m = 0.0;
+  int max_cars = 4;
+  int max_stopped = 2;
 
   int box_count() const { return static_cast<int>(boxes.size()); }
   bool is_valid() const { return !path.empty() && box_count() > 0; }

@@ -29,6 +29,7 @@ struct AIDriverParams {
   double corner_entry_speed_factor = 0.85;
   double gear_shift_rpm_up = 6800.0;
   double gear_shift_rpm_down = 2500.0;
+  int max_gear = 6;
   bool enable_defense = false;
 };
 

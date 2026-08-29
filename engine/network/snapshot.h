@@ -136,7 +136,8 @@ inline void unpack_snapshot(const CarSnapshot& snap, vehicle::VehicleState& out)
   out.lateral_g = static_cast<double>(snap.lateral_g);
   out.lap = static_cast<int>(snap.lap);
   out.distance_along_track = static_cast<double>(snap.distance_along_track);
-  out.in_box_lane = snap.in_box_lane;
+  out.in_box_lane = (snap.flags & 0x01) != 0;
+  out.box_lane_entry_requested = (snap.flags & 0x02) != 0;
   out.track_temp = static_cast<double>(snap.track_temp);
   out.front_tire_temp = static_cast<double>(snap.front_tire_temp);
   out.rear_tire_temp = static_cast<double>(snap.rear_tire_temp);

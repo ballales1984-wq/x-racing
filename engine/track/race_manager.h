@@ -26,6 +26,7 @@ class RaceManager {
   void update(double timestamp,
               const std::unordered_map<int, Vec2>& car_positions,
               const std::unordered_map<int, double>& car_speeds,
+              const std::unordered_map<int, double>& car_distances,
               const std::unordered_map<int, double>& car_fuel,
               const std::unordered_map<int, p0::race::TireCompound>& car_tires);
 
@@ -55,7 +56,7 @@ class RaceManager {
 
  private:
   void update_session_state(double timestamp);
-  void update_lap_counters(const std::unordered_map<int, Vec2>& car_positions);
+  void update_lap_counters(const std::unordered_map<int, double>& car_distances);
   void check_fuel_strategy(double timestamp);
   void validate_setup();
 

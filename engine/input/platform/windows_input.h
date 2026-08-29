@@ -3,6 +3,7 @@
 #include "../../common.h"
 #include "../input_manager.h"
 #include "../input.h"
+#define NOMINMAX
 #include <windows.h>
 
 // Project 0 — Windows input manager using GetAsyncKeyState
