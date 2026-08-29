@@ -155,7 +155,7 @@ void RaceManager::validate_setup() {
 
 bool RaceManager::is_valid() const {
   for (const auto& issue : validation_issues_) {
-    if (issue.severity == p0::race::ValidationSeverity::ERROR) return false;
+    if (issue.severity == p0::race::ValidationSeverity::Error) return false;
   }
   return true;
 }

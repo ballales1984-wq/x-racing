@@ -173,7 +173,7 @@ struct CarTireState {
 // Validation result
 // ---------------------------------------------------------------------------
 enum class ValidationSeverity : uint8_t {
-  ERROR = 0,
+  Error = 0,
   WARNING,
   INFO
 };

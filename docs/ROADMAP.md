@@ -81,7 +81,7 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Throttle (torque curve → longitudinal force)
 - [x] Brake (deceleration, balance)
 - [x] Steering (bicycle model, Ackermann)
-- [ ] Reverse
+- [x] Reverse
 - [x] Gear / speed (gear → ratio → RPM)
 - [x] Automatic transmission
 
@@ -92,7 +92,7 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Grip (Pacejka lateral/longitudinal)
 - [x] Acceleration (engine map, gear ratios)
 - [x] Braking (balance, lockup)
-- [ ] Weight / mass
+- [x] Weight / mass (CG height, mass distribution, weight transfer)
 - [x] Suspensions (4-corner loads, weight transfer)
 - [x] Collisions (track boundaries, barriers, off-track)
 - [x] Tires (temperature, wear, grip)
@@ -109,7 +109,7 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Vehicle position (respawn, reset)
 - [x] Start line / grid (data model)
 - [x] Checkpoint (data model)
-- [ ] Lap detection (runtime)
+- [x] Lap detection (runtime)
 - [ ] Mesh-based collider
 
 **Completion criterion:** a parametric track can be defined and the car drives it correctly.
@@ -117,7 +117,7 @@ No trees, no graphical details, no sophisticated AI.
 ### 1.4 Camera
 
 - [x] Chase camera (basic)
-- [ ] Configurable distance
+- [x] Configurable distance
 - [ ] Rotation / look-ahead
 - [ ] Smoothing (lerp / spring)
 

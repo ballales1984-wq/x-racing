@@ -85,7 +85,7 @@ TEST(ValidationEngine, ValidGeometryPasses) {
   auto issues = engine.validate_geometry();
   bool has_error = false;
   for (const auto& issue : issues) {
-    if (issue.severity == p0::race::ValidationSeverity::ERROR) has_error = true;
+    if (issue.severity == p0::race::ValidationSeverity::Error) has_error = true;
   }
   EXPECT_FALSE(has_error);
 }
@@ -214,7 +214,7 @@ TEST(ValidationEngine, StartFuelExceedsCapacity) {
 }
 
 TEST(ValidationEngine, SeverityNameMapping) {
-  EXPECT_STREQ(ValidationEngine::severity_name(p0::race::ValidationSeverity::ERROR).c_str(), "ERROR");
+  EXPECT_STREQ(ValidationEngine::severity_name(p0::race::ValidationSeverity::Error).c_str(), "ERROR");
   EXPECT_STREQ(ValidationEngine::severity_name(p0::race::ValidationSeverity::WARNING).c_str(), "WARNING");
   EXPECT_STREQ(ValidationEngine::severity_name(p0::race::ValidationSeverity::INFO).c_str(), "INFO");
 }

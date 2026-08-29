@@ -7,7 +7,7 @@ namespace p0::track {
 
 std::string ValidationEngine::severity_name(p0::race::ValidationSeverity s) {
   switch (s) {
-    case p0::race::ValidationSeverity::ERROR:   return "ERROR";
+    case p0::race::ValidationSeverity::Error:   return "ERROR";
     case p0::race::ValidationSeverity::WARNING: return "WARNING";
     case p0::race::ValidationSeverity::INFO:    return "INFO";
     default:                          return "UNKNOWN";
@@ -39,19 +39,19 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_geometry() con
   std::vector<p0::race::ValidationIssue> issues;
 
   if (track_.waypoints.size() < 4) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "GEO_001",
+    issues.push_back({p0::race::ValidationSeverity::Error, "GEO_001",
                       "Track needs at least 4 waypoints",
                       "TrackGeometry"});
   }
 
   if (track_.length_m < 100.0) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "GEO_002",
+    issues.push_back({p0::race::ValidationSeverity::Error, "GEO_002",
                       "Track length too short (< 100 m)",
                       "TrackGeometry"});
   }
 
   if (track_.racing_line.empty()) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "GEO_003",
+    issues.push_back({p0::race::ValidationSeverity::Error, "GEO_003",
                       "Racing line is empty",
                       "TrackGeometry"});
   }
@@ -70,7 +70,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_direction() co
   std::vector<p0::race::ValidationIssue> issues;
 
   if (track_.direction != "CLOCKWISE" && track_.direction != "COUNTER_CLOCKWISE") {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "DIR_001",
+    issues.push_back({p0::race::ValidationSeverity::Error, "DIR_001",
                       "Track direction must be CLOCKWISE or COUNTER_CLOCKWISE",
                       "TrackDirection"});
   }
@@ -80,7 +80,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_direction() co
     Vec2 sf_fwd = track_.start_finish.transform.forward;
     double dot = w0_fwd.dot(sf_fwd);
     if (dot < 0.0) {
-      issues.push_back({p0::race::ValidationSeverity::ERROR, "DIR_002",
+      issues.push_back({p0::race::ValidationSeverity::Error, "DIR_002",
                         "Start/finish forward direction contradicts first waypoint",
                         "TrackDirection"});
     }
@@ -93,7 +93,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_grid() const {
   std::vector<p0::race::ValidationIssue> issues;
 
   if (race_.max_cars > track_.grid.max_slots) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "GRID_001",
+    issues.push_back({p0::race::ValidationSeverity::Error, "GRID_001",
                       "Race max_cars exceeds grid max_slots: " +
                       std::to_string(race_.max_cars) + " > " +
                       std::to_string(track_.grid.max_slots),
@@ -101,7 +101,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_grid() const {
   }
 
   if (static_cast<int>(track_.grid.slots.size()) < race_.grid_slots) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "GRID_002",
+    issues.push_back({p0::race::ValidationSeverity::Error, "GRID_002",
                       "Defined grid slots (" +
                       std::to_string(track_.grid.slots.size()) +
                       ") less than required (" +
@@ -115,7 +115,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_grid() const {
       const auto& b = track_.grid.slots[j];
       double dist = (a.transform.position - b.transform.position).norm();
       if (dist < 3.5) {
-        issues.push_back({p0::race::ValidationSeverity::ERROR, "GRID_003",
+        issues.push_back({p0::race::ValidationSeverity::Error, "GRID_003",
                           "Grid slots " + std::to_string(a.slot_id) +
                           " and " + std::to_string(b.slot_id) +
                           " overlap (distance: " + std::to_string(dist) + " m)",
@@ -131,19 +131,19 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_pit_lane() con
   std::vector<p0::race::ValidationIssue> issues;
 
   if (track_.pit_lane.path.empty()) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "PIT_001",
+    issues.push_back({p0::race::ValidationSeverity::Error, "PIT_001",
                       "Pit lane path is empty",
                       "PitLane"});
   }
 
   if (track_.pit_lane.boxes.empty()) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "PIT_002",
+    issues.push_back({p0::race::ValidationSeverity::Error, "PIT_002",
                       "No pit boxes defined",
                       "PitLane"});
   }
 
   if (track_.pit_lane.speed_zone.speed_limit_m_s <= 0.0) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "PIT_003",
+    issues.push_back({p0::race::ValidationSeverity::Error, "PIT_003",
                       "Speed limit must be > 0",
                       "PitLane"});
   }
@@ -157,7 +157,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_pit_lane() con
       }
     }
     if (!reachable) {
-      issues.push_back({p0::race::ValidationSeverity::ERROR, "PIT_004",
+      issues.push_back({p0::race::ValidationSeverity::Error, "PIT_004",
                         "Pit box " + std::to_string(box.box_id) +
                         " is not reachable from pit lane path",
                         "PitLane"});
@@ -170,7 +170,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_pit_lane() con
       const auto& b = track_.pit_lane.boxes[j];
       double dist = (a.position.position - b.position.position).norm();
       if (dist < 4.0) {
-        issues.push_back({p0::race::ValidationSeverity::ERROR, "PIT_005",
+        issues.push_back({p0::race::ValidationSeverity::Error, "PIT_005",
                           "Pit boxes overlap (distance: " +
                           std::to_string(dist) + " m)",
                           "PitLane"});
@@ -185,19 +185,19 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_race() const {
   std::vector<p0::race::ValidationIssue> issues;
 
   if (race_.max_cars > race_.grid_slots) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "RACE_001",
+    issues.push_back({p0::race::ValidationSeverity::Error, "RACE_001",
                       "max_cars exceeds grid_slots",
                       "RaceRules"});
   }
 
   if (race_.laps < 1 && race_.race_distance_m <= 0.0) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "RACE_002",
+    issues.push_back({p0::race::ValidationSeverity::Error, "RACE_002",
                       "Race must have at least 1 lap or positive distance",
                       "RaceRules"});
   }
 
   if (race_.pit_min_stops > race_.laps && race_.laps > 0) {
-    issues.push_back({p0::race::ValidationSeverity::ERROR, "RACE_003",
+    issues.push_back({p0::race::ValidationSeverity::Error, "RACE_003",
                       "pit_min_stops exceeds total laps",
                       "RaceRules"});
   }
@@ -220,7 +220,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_assignments() 
 
   for (const auto& a : assignments_) {
     if (used_slots.count(a.grid_slot)) {
-      issues.push_back({p0::race::ValidationSeverity::ERROR, "ASGN_001",
+      issues.push_back({p0::race::ValidationSeverity::Error, "ASGN_001",
                         "Duplicate grid slot " + std::to_string(a.grid_slot) +
                         " for car " + std::to_string(a.car_id),
                         "CarAssignments"});
@@ -229,7 +229,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_assignments() 
 
     if (a.pit_box_id >= 0) {
       if (used_boxes.count(a.pit_box_id)) {
-        issues.push_back({p0::race::ValidationSeverity::ERROR, "ASGN_002",
+        issues.push_back({p0::race::ValidationSeverity::Error, "ASGN_002",
                           "Duplicate pit box " + std::to_string(a.pit_box_id) +
                           " for car " + std::to_string(a.car_id),
                           "CarAssignments"});
@@ -238,7 +238,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_assignments() 
     }
 
     if (a.start_fuel_l > race_.fuel_capacity_l) {
-      issues.push_back({p0::race::ValidationSeverity::ERROR, "ASGN_003",
+      issues.push_back({p0::race::ValidationSeverity::Error, "ASGN_003",
                         "Start fuel exceeds capacity for car " +
                         std::to_string(a.car_id),
                         "CarAssignments"});
@@ -262,7 +262,7 @@ std::vector<p0::race::ValidationIssue> ValidationEngine::validate_checkpoints() 
   std::unordered_set<int> ids;
   for (const auto& cp : track_.checkpoints) {
     if (!ids.insert(cp.id).second) {
-      issues.push_back({p0::race::ValidationSeverity::ERROR, "CHK_002",
+      issues.push_back({p0::race::ValidationSeverity::Error, "CHK_002",
                         "Duplicate checkpoint id: " + std::to_string(cp.id),
                         "Checkpoints"});
     }
