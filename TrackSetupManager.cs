@@ -3,8 +3,8 @@ using Newtonsoft.Json;
 using System.IO;
 
 /// <summary>
-/// Track Setup Manager - Punto di ingresso per controllare/debuggare la pista
-/// Allega questo script a un GameObject vuoto nella scena
+/// Track Setup Manager - Entry point for controlling/debugging the track
+/// Attach this script to an empty GameObject in the scene
 /// </summary>
 public class TrackSetupManager : MonoBehaviour
 {
@@ -51,11 +51,11 @@ public class TrackSetupManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Carica il file JSON della pista
+    /// Loads the track JSON file
     /// </summary>
     private void LoadTrack()
     {
-        // Prova diversi percorsi
+        // Try different paths
         string[] possiblePaths = new string[]
         {
             Path.Combine(Application.streamingAssetsPath, trackJsonFilename),
@@ -94,7 +94,7 @@ public class TrackSetupManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Inizializza i componenti di visualizzazione/validazione
+    /// Initializes visualization/validation components
     /// </summary>
     private void InitializeComponents()
     {
@@ -118,7 +118,7 @@ public class TrackSetupManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Valida la pista (NON modifica i dati)
+    /// Validates the track (does NOT modify data)
     /// </summary>
     public void ValidateTrack()
     {
@@ -133,7 +133,7 @@ public class TrackSetupManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Corregge automaticamente i problemi della pista
+    /// Automatically fixes track issues
     /// </summary>
     public void AutoFixTrack()
     {
@@ -148,7 +148,7 @@ public class TrackSetupManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Salva la pista dopo le modifiche
+    /// Saves the track after modifications
     /// </summary>
     public void SaveTrack()
     {
@@ -333,7 +333,7 @@ public class TrackSetupManager : MonoBehaviour
 }
 
 /// <summary>
-/// Utility per fare debug delle coordinate in runtime
+/// Utility for runtime coordinate debugging
 /// </summary>
 public class TrackDebugGizmos : MonoBehaviour
 {
@@ -343,7 +343,7 @@ public class TrackDebugGizmos : MonoBehaviour
     {
         if (trackData == null) return;
 
-        // Disegna linea del circuito con start/finish in rosso
+        // Draws circuit line with start/finish in red
         for (int i = 0; i < trackData.segments.Count; i++)
         {
             TrackSegment seg = trackData.segments[i];
@@ -358,7 +358,7 @@ public class TrackDebugGizmos : MonoBehaviour
             Gizmos.DrawLine(seg.start_pos, seg.end_pos);
         }
 
-        // Disegna pit lane in giallo
+        // Draws pit lane in yellow
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(trackData.pitLane.entry_pos, trackData.pitLane.exit_pos);
     }
