@@ -403,7 +403,8 @@ void Renderer::toggle_3d_mode() {
 // Rebuilds the track object and updates the simulation reference.
 void Renderer::set_track_type(track::TrackType type) {
   current_track_type_ = type;
-  sim_.set_track(track::Track(type));
+  current_track_ = track::Track(type);
+  sim_.set_track(current_track_);
 }
 
 // Poll the keyboard and populate the per-frame input state.
@@ -551,7 +552,7 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
       Vec3 s1 = project(p1);
       Vec3 s2 = project(p2);
 
-      if (s0.z() > -1.0 || s1.z() > -1.0 || s2.z() > -1.0) {
+      if (s0.z() > -1.0 && s1.z() > -1.0 && s2.z() > -1.0) {
         Vec3 base_color(0.6, 0.6, 0.6);
         if (mesh.colors.size() == mesh.vertices.size() && mesh.colors.size() > static_cast<size_t>(i0)) {
           base_color = (mesh.colors[i0] + mesh.colors[i1] + mesh.colors[i2]) / 3.0;

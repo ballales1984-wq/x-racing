@@ -65,17 +65,18 @@ class Renderer {
   // Build a simple look-at view matrix following the car from behind.
   Mat4 view_matrix() const;
 
-  simulation::Simulation& sim_;
-  RendererConfig config_;
-  HWND window_ = nullptr;
-  HDC mem_dc_ = nullptr;
-  HBITMAP mem_bitmap_ = nullptr;
-  bool running_ = false;
-  double time_ = 0.0;
-  std::vector<p0::assets::Mesh> car_meshes_;
-  bool show_3d_car_ = true;
-  float car_mesh_scale_ = 1.0f;
-  track::TrackType current_track_type_ = track::TrackType::Default;
+   simulation::Simulation& sim_;
+   RendererConfig config_;
+   HWND window_ = nullptr;
+   HDC mem_dc_ = nullptr;
+   HBITMAP mem_bitmap_ = nullptr;
+   bool running_ = false;
+   double time_ = 0.0;
+   std::vector<p0::assets::Mesh> car_meshes_;
+   bool show_3d_car_ = true;
+   float car_mesh_scale_ = 1.0f;
+   track::TrackType current_track_type_ = track::TrackType::Default;
+   track::Track current_track_;
 };
 
 }
