@@ -1,177 +1,177 @@
-# X-Racing — Piano di Sviluppo
+# X-Racing — Development Roadmap
 
-> Motto: *simula → misura → testa → correggi → documenta → ripeti*
+> Motto: *simulate → measure → test → fix → document → repeat*
 >
-> Regola d'oro: **non passare alla fase successiva finché la precedente non è sufficientemente funzionante.**
+> Golden rule: **do not move to the next phase until the previous one is sufficiently working.**
 
 ---
 
-## Stato Attuale
+## Current Status
 
-| Componente | Stato |
+| Component | Status |
 |---|
 | Build system (CMake) | ✅ |
-| Tipi matematici + utility | ✅ |
-| Modello pneumatici (Pacejka) | ✅ |
-| Stato veicolo + parametri | ✅ |
-| Tracciato parametrico | ✅ |
+| Math types + utility | ✅ |
+| Tire model (Pacejka) | ✅ |
+| Vehicle state + parameters | ✅ |
+| Parametric track | ✅ |
 | Input manager (Windows) | ✅ |
-| Simulazione 120 Hz | ✅ |
-| Telemetria + export CSV | ✅ |
-| Meteo (pioggia, temperatura, grip) | ✅ |
-| Gameplay (input, timing giri) | ✅ |
-| Diagrammi tracciato SVG | ✅ |
-| Unit test (35+ GoogleTest) | ✅ |
+| 120 Hz simulation | ✅ |
+| Telemetry + CSV export | ✅ |
+| Weather (rain, temperature, grip) | ✅ |
+| Gameplay (input, lap timing) | ✅ |
+| Track SVG diagrams | ✅ |
+| Unit tests (35+ GoogleTest) | ✅ |
 | Rendering (Unity placeholder) | ✅ |
-| Integrazione editor Unity | ✅ |
+| Unity editor integration | ✅ |
 | Race management (pit, validation, config) | ✅ |
-| AI (traiettoria, avversari) | ⏳ prossimo |
+| AI (racing line, opponents) | ⏳ next |
 
 ---
 
-## Metodologia di Sviluppo
+## Development Methodology
 
-### Ciclo Iterativo
+### Iterative Cycle
 
-1. **Implementa** il componente minimo necessario
-2. **Testa** con unit test + gameplay manuale
-3. **Documenta** comportamento e limiti
-4. **Misura** (telemetria, prestazioni)
-5. **Correggi** bug e casi limite
-6. **Solo allora** passa al componente successivo
+1. **Implement** the minimum necessary component
+2. **Test** with unit tests + manual gameplay
+3. **Document** behavior and limitations
+4. **Measure** (telemetry, performance)
+5. **Fix** bugs and edge cases
+6. **Only then** move to the next component
 
-### Criteri di Completamento
+### Completion Criteria
 
-Ogni milestone ha un criterio di completamento verificabile:
+Every milestone has a verifiable completion criterion:
 
-- **Playable:** si può completare un giro senza crash
-- **Testabile:** tutti i componenti hanno unit test
-- **Misurabile:** telemetria sempre attiva per validazione
+- **Playable:** a lap can be completed without crashes
+- **Testable:** all components have unit tests
+- **Measurable:** telemetry always active for validation
 
-### Priorità di Implementazione
+### Implementation Priority
 
-| Priorità | Componente | Dipendenze |
+| Priority | Component | Dependencies |
 |---|---|---|
-| P0 | Sistema veicolo | fisica, input |
-| P0 | Sistema tracciato | spline, mesh |
-| P1 | Collider + checkpoint | sistema tracciato |
+| P0 | Vehicle system | physics, input |
+| P0 | Track system | spline, mesh |
+| P1 | Collider + checkpoint | track system |
 | P1 | Lap tracker | checkpoint |
-| P1 | Sistema camera | stato veicolo |
+| P1 | Camera system | vehicle state |
 | P2 | Race manager | lap tracker, countdown |
-| P2 | HUD | race manager, stato veicolo |
-| P3 | Racing line AI | spline tracciato |
-| P3 | Driver AI | racing line, veicolo |
-| P3 | Avversari | driver AI, race manager |
-| P4 | Generazione procedurale | sistema tracciato |
-| P4 | Vegetazione / ambiente | generazione procedurale |
-| P5 | Pipeline rendering | Unity / renderer |
-| P5 | Audio | sistema veicolo |
-| P5 | UI / menu | race manager |
+| P2 | HUD | race manager, vehicle state |
+| P3 | Racing line AI | track spline |
+| P3 | Driver AI | racing line, vehicle |
+| P3 | Opponents | driver AI, race manager |
+| P4 | Procedural generation | track system |
+| P4 | Vegetation / environment | procedural generation |
+| P5 | Rendering pipeline | Unity / renderer |
+| P5 | Audio | vehicle system |
+| P5 | UI / menus | race manager |
 
 ---
 
-## Fase 1 — Vertical Slice
+## Phase 1 — Vertical Slice
 
-**Obiettivo:** Avvio → vettura su tracciato → guida → giro completo → arrivo.
+**Goal:** Boot → car on track → drive → full lap → finish line.
 
-Niente alberi, niente dettagli grafici, niente AI sofisticata.
+No trees, no graphical details, no sophisticated AI.
 
-### 1.1 Veicolo
+### 1.1 Vehicle
 
-- [x] Acceleratore (curva coppia → forza longitudinale)
-- [x] Freno (decelerazione, bilanciamento)
-- [x] Sterzo (modello bicicletta, Ackermann)
-- [ ] Retromarcia
-- [x] Cambio / velocità (marcia → rapporto → RPM)
-- [x] Cambio automatico
+- [x] Throttle (torque curve → longitudinal force)
+- [x] Brake (deceleration, balance)
+- [x] Steering (bicycle model, Ackermann)
+- [ ] Reverse
+- [x] Gear / speed (gear → ratio → RPM)
+- [x] Automatic transmission
 
-**Criterio di completamento:** il veicolo accelera, frena, sterza e cambia marcia correttamente.
+**Completion criterion:** the vehicle accelerates, brakes, steers, and changes gears correctly.
 
-### 1.2 Fisica
+### 1.2 Physics
 
-- [x] Aderenza (Pacejka laterale/longitudinale)
-- [x] Accelerazione (mappa motore, rapporti marce)
-- [x] Frenata (bilanciamento, bloccaggio)
-- [ ] Peso / massa
-- [x] Sospensioni (carichi 4 angoli, trasferimento peso)
-- [x] Collisioni (limitazioni tracciato, barriere, off-track)
-- [x] Pneumatici (temperatura, usura, grip)
-- [x] Aerodinamica (deportanza, drag, effetto suolo)
-- [x] Meteo (pioggia, temperatura, grip)
+- [x] Grip (Pacejka lateral/longitudinal)
+- [x] Acceleration (engine map, gear ratios)
+- [x] Braking (balance, lockup)
+- [ ] Weight / mass
+- [x] Suspensions (4-corner loads, weight transfer)
+- [x] Collisions (track boundaries, barriers, off-track)
+- [x] Tires (temperature, wear, grip)
+- [x] Aerodynamics (downforce, drag, ground effect)
+- [x] Weather (rain, temperature, grip)
 
-**Criterio di completamento:** la vettura risponde realisticamente a input di sterzo, acceleratore e freno.
+**Completion criterion:** the car responds realistically to steering, throttle, and brake inputs.
 
-### 1.3 Tracciato
+### 1.3 Track
 
-- [x] Tracciato parametrico chiuso
-- [x] Superfici multiple (asfalto, erba, ghiaia)
-- [x] Box lane
-- [x] Posizione veicolo (respawn, reset)
-- [x] Start line / griglia (data model)
+- [x] Closed parametric track
+- [x] Multiple surfaces (asphalt, grass, gravel)
+- [x] Pit lane
+- [x] Vehicle position (respawn, reset)
+- [x] Start line / grid (data model)
 - [x] Checkpoint (data model)
-- [ ] Rilevamento giri (runtime)
-- [ ] Collider mesh-based
+- [ ] Lap detection (runtime)
+- [ ] Mesh-based collider
 
-**Criterio di completamento:** si può definire un tracciato parametrico e la vettura lo percorre correttamente.
+**Completion criterion:** a parametric track can be defined and the car drives it correctly.
 
 ### 1.4 Camera
 
-- [x] Camera chase (base)
-- [ ] Distanza configurabile
-- [ ] Rotazione / look-ahead
+- [x] Chase camera (basic)
+- [ ] Configurable distance
+- [ ] Rotation / look-ahead
 - [ ] Smoothing (lerp / spring)
 
-**Criterio di completamento:** la camera segue la vettura con visuale accettabile.
+**Completion criterion:** the camera follows the car with an acceptable view.
 
-### 1.5 HUD Minimo
+### 1.5 Minimum HUD
 
-- [x] Velocità (km/h)
-- [x] RPM (bar o numero)
-- [x] Marcia corrente
-- [x] Giro corrente / totale
-- [x] Tempo giro / miglior giro
+- [x] Speed (km/h)
+- [x] RPM (bar or number)
+- [x] Current gear
+- [x] Current lap / total laps
+- [x] Lap time / best lap
 
-**Criterio di completamento:** si può completare un giro completo senza crash, con vettura guidabile e HUD leggibile.
-
----
-
-## Fase 2 — Sistema Tracciato
-
-**Obiettivo:** Costruire un sistema che permetta di creare tracciati parametrici senza lavoro manuale.
-
-- [x] Spline tracciato (definizione percorso centrale)
-- [x] Larghezza variabile (segmento per segmento)
-- [x] Mesh asfalto (generata da spline + larghezza)
-- [ ] Cordoli (elevazione/banking opzionale)
-- [ ] Guardrail (barriere perimetrali)
-- [ ] Area di run-off (zona errore)
-- [x] Sistema checkpoint (data model, volumi trigger in pianificazione)
-- [x] Export dati tracciato (SVG, JSON / binario per gameplay)
-
-**Criterio di completamento:** si può definire un nuovo tracciato modificando solo i parametri spline e generare l'intera geometria automaticamente.
+**Completion criterion:** a full lap can be completed without crashes, with a drivable car and readable HUD.
 
 ---
 
-## Fase 3 — Ambiente Procedurale
+## Phase 2 — Track System
 
-**Obiettivo:** Popolare la scena attorno al tracciato in modo procedurale.
+**Goal:** Build a system that allows creating parametric tracks without manual work.
 
-- [ ] Edge detection tracciato (terrain following)
-- [ ] Zona di generazione (bounding box attorno al tracciato)
-- [ ] Alberi (asset Meshy, LOD, impostor)
-- [ ] Rocce
-- [ ] Erba (instancing, shader vento)
-- [ ] Segnali (marcatori racing line, segnaletica)
-- [ ] Barriere / recinzioni
-- [ ] Cielo / atmosfera
+- [x] Track spline (central path definition)
+- [x] Variable width (per segment)
+- [x] Asphalt mesh (generated from spline + width)
+- [ ] Kerbs (optional elevation/banking)
+- [ ] Guardrails (perimeter barriers)
+- [ ] Run-off area (error zone)
+- [x] Checkpoint system (data model, trigger volumes planned)
+- [x] Track data export (SVG, JSON / binary for gameplay)
 
-**Criterio di completamento:** carichi un tracciato e l'ambiente si genera automaticamente, con sufficiente varietà visiva.
+**Completion criterion:** a new track can be defined by modifying only spline parameters and generating the entire geometry automatically.
 
 ---
 
-## Fase 4 — Corsa
+## Phase 3 — Procedural Environment
 
-**Obiettivo:** Trasformare la guida libera in una corsa vera e propria.
+**Goal:** Populate the scene around the track procedurally.
+
+- [ ] Track edge detection (terrain following)
+- [ ] Generation zone (bounding box around track)
+- [ ] Trees (Meshy assets, LOD, impostors)
+- [ ] Rocks
+- [ ] Grass (instancing, wind shader)
+- [ ] Signs (racing line markers, signage)
+- [ ] Barriers / fences
+- [ ] Sky / atmosphere
+
+**Completion criterion:** load a track and the environment is generated automatically, with sufficient visual variety.
+
+---
+
+## Phase 4 — Race
+
+**Goal:** Transform free driving into a proper race.
 
 - [x] Race config (RaceDefinition, CarAssignment, TeamDefinition)
 - [x] Track data system (TrackData, GridDefinition, Checkpoints, StartFinishLine)
@@ -179,95 +179,95 @@ Niente alberi, niente dettagli grafici, niente AI sofisticata.
 - [x] Pit stop FSM (PitStopFSM, PitStopManager)
 - [x] Race manager (RaceManager orchestrator)
 - [x] Validation engine (validate geometry, direction, grid, pit, race, assignments)
-- [ ] Countdown (3-2-1-VIA)
-- [ ] Griglia di partenza (posizioni, spacing)
-- [ ] Avversari AI base (waypoint following, velocità fissa)
-- [ ] Classifica (posizione, distacco, miglior giro)
-- [ ] Sistema giri (contatore, validazione giri)
-- [ ] Penalità (taglio tracciato, falsa partenza)
-- [ ] Bandiere (gialla, rossa, a scacchi)
-- [ ] Fine corsa (schermata risultati, restart)
+- [ ] Countdown (3-2-1-GO)
+- [ ] Starting grid (positions, spacing)
+- [ ] Basic AI opponents (waypoint following, fixed speed)
+- [ ] Standings (position, gap, best lap)
+- [ ] Lap system (counter, lap validation)
+- [ ] Penalties (track cut, false start)
+- [ ] Flags (yellow, red, checkered)
+- [ ] Race end (results screen, restart)
 
-**Criterio di completamento:** si può correre una gara N-giri contro avversari con countdown, classifica e fine gara.
-
----
-
-## Fase 5 — AI Avanzata
-
-**Obiettivo:** Avversari che guidano in modo realistico e adattivo.
-
-- [ ] Racing line (ottimizzazione linea ideale per il tracciato)
-- [ ] Driver AI (accelerazione, frenata, sterzo basati su racing line)
-- [ ] Sorpasso (decision making, analisi distacchi)
-- [ ] Difesa (posizionamento in curve)
-- [ ] Adattamento traffico
-- [ ] Errori umani (piccole imperfezioni, varianza)
-- [ ] Esperimenti ML (comportamento motore, suono, guida adattiva)
-
-**Criterio di completamento:** gli avversari sono competitivi, commettono errori realistici e offrono difficoltà variabile.
+**Completion criterion:** an N-lap race can be run against opponents with countdown, standings, and race end.
 
 ---
 
-## Fase 6 — Presentazione
+## Phase 5 — Advanced AI
 
-**Obiettivo:** Grafica, audio, UI, ottimizzazione.
+**Goal:** Opponents that drive in a realistic and adaptive way.
 
-- [ ] Asset Meshy (modelli 3D, texture PBR)
-- [ ] Alberi scansionati (fotogrammetria)
-- [ ] Illuminazione (HDR, GI, ora del giorno)
-- [ ] Materiali (asfalto, metallo, gomma)
-- [ ] Particelle (polvere, pioggia, scintille)
-- [ ] Effetti (motion blur, DOF, lens flare)
-- [ ] Motore audio (motore, scarico, ambiente)
-- [ ] UI (menu, HUD avanzato, mappa)
-- [ ] Ottimizzazione (LOD, instancing, draw calls)
+- [ ] Racing line (optimal line optimization for the track)
+- [ ] Driver AI (acceleration, braking, steering based on racing line)
+- [ ] Overtaking (decision making, gap analysis)
+- [ ] Defense (corner positioning)
+- [ ] Traffic adaptation
+- [ ] Human errors (small imperfections, variance)
+- [ ] ML experiments (engine behavior, sound, adaptive driving)
 
-**Criterio di completamento:** il gioco è visivamente competitivo con titoli simili.
+**Completion criterion:** opponents are competitive, make realistic mistakes, and offer variable difficulty.
 
 ---
 
-## Struttura Codice (Pianificata)
+## Phase 6 — Presentation
+
+**Goal:** Graphics, audio, UI, optimization.
+
+- [ ] Meshy assets (3D models, PBR textures)
+- [ ] Scanned trees (photogrammetry)
+- [ ] Lighting (HDR, GI, time of day)
+- [ ] Materials (asphalt, metal, rubber)
+- [ ] Particles (dust, rain, sparks)
+- [ ] Effects (motion blur, DOF, lens flare)
+- [ ] Audio engine (engine, exhaust, environment)
+- [ ] UI (menus, advanced HUD, map)
+- [ ] Optimization (LOD, instancing, draw calls)
+
+**Completion criterion:** the game is visually competitive with similar titles.
+
+---
+
+## Code Structure (Planned)
 
 ```
 x-racing/
 ├── engine/
-│   ├── common.h               - Tipi matematici, costanti, utility
+│   ├── common.h               - Math types, constants, utility
 │   ├── physics/
-│   │   └── types.h           - Modello pneumatici Pacejka, proiezioni vettoriali
+│   │   └── types.h           - Pacejka tire model, vector projections
 │   ├── vehicle/
 │   │   ├── vehicle.h         - VehicleParams + VehicleState
-│   │   ├── vehicle_generator.h/.cpp - Generazione mesh procedurale
-│   │   ├── mesh_exporter.h/.cpp     - Esportazione OBJ
-│   │   └── glb_exporter.h/.cpp      - Esportazione GLB
+│   │   ├── vehicle_generator.h/.cpp - Procedural mesh generation
+│   │   ├── mesh_exporter.h/.cpp     - OBJ export
+│   │   └── glb_exporter.h/.cpp      - GLB export
 │   ├── track/
-│   │   ├── track.h/.cpp      - Tracciato parametrico chiuso
+│   │   ├── track.h/.cpp      - Closed parametric track
 │   ├── input/
 │   │   ├── input.h           - InputState definition
-│   │   ├── input_manager.h   - Interfaccia input astratta
+│   │   ├── input_manager.h   - Abstract input interface
 │   │   └── platform/
-│   │       ├── windows_input.h/.cpp  - Backend Windows
-│   │       ├── auto_input.h/.cpp     - Input automatico per testing
-│   │       └── null_input.h          - Backend dummy per test
+│   │       ├── windows_input.h/.cpp  - Windows backend
+│   │       ├── auto_input.h/.cpp     - Automatic input for testing
+│   │       └── null_input.h          - Dummy backend for tests
 │   ├── simulation/
-│   │   ├── simulation.h/.cpp - Loop fisica 120 Hz
+│   │   ├── simulation.h/.cpp - 120 Hz physics loop
 │   ├── telemetry/
-│   │   ├── telemetry.h/.cpp  - Registrazione frame + export CSV
+│   │   ├── telemetry.h/.cpp  - Frame recording + CSV export
 │   ├── weather/
-│   │   └── weather.h         - Parametri e stato meteo
+│   │   └── weather.h         - Weather parameters and state
 │   └── plugin/
-│       ├── sim_plugin.h/.cpp - Plugin nativo Unity (DLL)
+│       ├── sim_plugin.h/.cpp - Native Unity plugin (DLL)
 ├── game/
-│   ├── gameplay.h/.cpp       - Loop gameplay console
-│   ├── main.cpp              - Entry point gameplay
-│   ├── main_auto.cpp         - Entry point guida automatica
-│   └── gen_telemetry.cpp     - Generatore telemetria per Unity
+│   ├── gameplay.h/.cpp       - Console gameplay loop
+│   ├── main.cpp              - Gameplay entry point
+│   ├── main_auto.cpp         - Automatic driving entry point
+│   └── gen_telemetry.cpp     - Telemetry generator for Unity
 ├── renderer/
-│   └── renderer.h/.cpp       - Renderer Win32 GDI
+│   └── renderer.h/.cpp       - Win32 GDI renderer
 ├── UnityProject/
 │   ├── Assets/
 │   │   ├── Scripts/          - CarController, CarHUD, SimPlugin
 │   │   ├── Editor/           - TrackGenerator, SceneSetup
-│   │   ├── Scenes/           - ok.unity, impostazioni.unity
+│   │   ├── Scenes/           - ok.unity, settings.unity
 │   │   ├── Materials/        - CarMaterial, GroundMaterial
 │   │   ├── Plugins/x86_64/   - sim_plugin.dll
 │   │   └── Settings/         - URP asset, renderer data
@@ -275,78 +275,78 @@ x-racing/
 │   │   └── manifest.json
 │   └── ProjectSettings/
 ├── tests/
-│   ├── simulation_test.cpp   - Test fisica (33+ casi)
-│   ├── physics_test.cpp      - Validazione Pacejka
-│   ├── vehicle_test.cpp      - Test veicolo
-│   ├── track_test.cpp        - Test tracciato
-│   ├── track_diagram_test.cpp - Test esportazione SVG tracciati
-│   ├── telemetry_test.cpp    - Test telemetria
-│   └── gameplay_test.cpp     - Test gameplay
+│   ├── simulation_test.cpp   - Physics tests (33+ cases)
+│   ├── physics_test.cpp      - Pacejka model validation
+│   ├── vehicle_test.cpp      - Vehicle tests
+│   ├── track_test.cpp        - Track generation tests
+│   ├── track_diagram_test.cpp - Track SVG export tests
+│   ├── telemetry_test.cpp    - Telemetry tests
+│   └── gameplay_test.cpp     - Gameplay tests
 ├── experiments/
-│   ├── track_analysis.cpp    - Analisi geometria tracciato
-│   ├── track_svg.cpp         - Esportazione SVG tracciati
-│   ├── ai_experiments.cpp    - [pianificato] Esperimenti ML/AI
-│   └── performance.cpp       - [pianificato] Profiling, benchmark
+│   ├── track_analysis.cpp    - Track geometry analysis
+│   ├── track_svg.cpp         - Track SVG export
+│   ├── ai_experiments.cpp    - [planned] ML/AI experiments
+│   └── performance.cpp       - [planned] Profiling, benchmarks
 ├── tools/
-│   ├── fbx_to_obj/           - Convertitori FBX→OBJ
-│   ├── track_generator/      - Generatore tracciati
-│   └── track_diagram/        - Esportatore diagrammi SVG tracciati
+│   ├── fbx_to_obj/           - FBX→OBJ converters
+│   ├── track_generator/      - Track generators
+│   └── track_diagram/        - Track SVG diagram exporter
 ├── data/
-│   ├── telemetry/            - Output telemetria CSV
-│   └── models/               - Modelli 3D
-├── assets/                   - Asset 3D, texture, audio
-├── vendor/                   - Dipendenze terze parti
-│   ├── Eigen/                - Algebra lineare
-│   └── googletest/           - Framework unit testing
-├── docs/                     - Documentazione
-│   ├── README.md             - Panoramica progetto
-│   └── ROADMAP.md            - Questo file
-├── CMakeLists.txt             - Configurazione CMake root
-├── AGENTS.md                  - Convenzioni progetto
-└── main.cpp                   - Entry point renderer Win32
+│   ├── telemetry/            - Telemetry CSV output
+│   └── models/               - 3D models
+├── assets/                   - 3D assets, textures, audio
+├── vendor/                   - Third-party dependencies
+│   ├── Eigen/                - Linear algebra
+│   └── googletest/           - Unit testing framework
+├── docs/                     - Project documentation
+│   ├── README.md             - Project overview
+│   └── ROADMAP.md            - This file
+├── CMakeLists.txt             - Root CMake configuration
+├── AGENTS.md                  - Project conventions
+└── main.cpp                   - Win32 renderer entry point
 ```
 
 ---
 
-## Note di Sviluppo
+## Development Notes
 
-- Ogni fase produce una **build giocabile**
-- Il codice è separato in moduli indipendenti
-- Ogni modulo ha i propri test
-- La telemetria è sempre attiva per validazione
-- Il rendering è disaccoppiato dalla simulazione
-- Le dipendenze tra moduli sono esplicite e minime
-- La priorità P0 deve essere completata prima di passare a P1
+- Each phase produces a **playable build**
+- Code is separated into independent modules
+- Each module has its own tests
+- Telemetry is always active for validation
+- Rendering is decoupled from simulation
+- Dependencies between modules are explicit and minimal
+- P0 priority must be completed before moving to P1
 
 ---
 
-## Note Tecniche
+## Technical Notes
 
-### Dipendenze Esterne
+### External Dependencies
 
-| Libreria | Versione | Utilizzo |
+| Library | Version | Usage |
 |----------|----------|----------|
-| Eigen | 3.4+ | Algebra lineare (vettori, matrici) |
+| Eigen | 3.4+ | Linear algebra (vectors, matrices) |
 | Google Test | 1.14+ | Unit testing |
-| Unity | 6000.0.82f1 | Rendering produzione |
-| TextMesh Pro | 3.0+ | HUD e testo Unity |
+| Unity | 6000.0.82f1 | Production rendering |
+| TextMesh Pro | 3.0+ | Unity HUD and text |
 | CMake | 3.20+ | Build system |
-| Visual Studio | 2022 | IDE / compilatore |
+| Visual Studio | 2022 | IDE / compiler |
 
-### Convenzioni Codice
+### Code Conventions
 
 - C++20 standard
-- Header: `.h`, implementazione: `.cpp`
-- Test: Google Test framework
-- Dati tracciato: directory `data/`
-- Artefatti build esclusi da version control (`build/`, `build2/`, `build3/`)
+- Headers: `.h`, implementation: `.cpp`
+- Tests: Google Test framework
+- Track data: `data/` directory
+- Build artifacts excluded from version control (`build/`, `build2/`, `build3/`)
 
 ---
 
-## Risorse
+## Resources
 
-- [Pacejka, Hans B. "Tyre Vehicle Dynamics"](https://www.amazon.com/Tyre-Vehicle-Dynamics-Hans-Pacejka/dp/074751520X) — Modello pneumatici Magic Formula
-- [Milliken, William F. "Race Car Vehicle Dynamics"](https://www.amazon.com/Race-Car-Vehicle-Dynamics-Milliken/dp/1560915269) — Dinamica veicolo da corsa
+- [Pacejka, Hans B. "Tyre Vehicle Dynamics"](https://www.amazon.com/Tyre-Vehicle-Dynamics-Hans-Pacejka/dp/074751520X) — Magic Formula tire model
+- [Milliken, William F. "Race Car Vehicle Dynamics"](https://www.amazon.com/Race-Car-Vehicle-Dynamics-Milliken/dp/1560915269) — Race car vehicle dynamics
 - [CMake Documentation](https://cmake.org/documentation/) — Build system
 - [Unity Manual](https://docs.unity3d.com/Manual/) — Unity 6000.x
-- [Eigen Library](https://eigen.tuxfamily.org/) — Algebra lineare
+- [Eigen Library](https://eigen.tuxfamily.org/) — Linear algebra

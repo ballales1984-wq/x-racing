@@ -24,7 +24,7 @@ int main() {
   std::cout << "\nFile Menu:\n";
   std::cout << "  Export SVG / Export JSON\n\n";
 
-  p0::track_blueprint::BlueprintEditor editor("Nuovo Autodromo");
+  p0::track_blueprint::BlueprintEditor editor("New Race Track");
   if (!editor.initialize()) {
     std::cerr << "Failed to initialize blueprint editor\n";
     return 1;

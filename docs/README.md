@@ -1,142 +1,142 @@
 # X-Racing
 
-Simulatore automobilistico di laboratorio. Costruisci, misura, testa, correggi, documenta, ripeti.
+Laboratory racing simulator. Build, measure, test, fix, document, repeat.
 
-## Indice
+## Table of Contents
 
-- [Panoramica](#panoramica)
-- [Stato del Progetto](#stato-del-progetto)
-- [Architettura](#architettura)
-  - [Engine (Libreria Core)](#engine-libreria-core)
-  - [Gameplay (Livello di Gioco)](#gameplay-livello-di-gioco)
+- [Overview](#overview)
+- [Project Status](#project-status)
+- [Architecture](#architecture)
+  - [Engine (Core Library)](#engine-core-library)
+  - [Gameplay (Game Level)](#gameplay-game-level)
   - [Renderer (Win32 GDI)](#renderer-win32-gdi)
   - [Unity Integration](#unity-integration)
-- [Pipeline Fisica](#pipeline-fisica)
-- [Build e Test](#build-e-test)
-- [Controlli](#controlli)
-- [Struttura Dati](#struttura-dati)
-- [Telemetria](#telemetria)
-- [Plugin Unity](#plugin-unity)
-- [Problemi Noti](#problemi-noti)
-- [Principi di Design](#principi-di-design)
+- [Physics Pipeline](#physics-pipeline)
+- [Build and Test](#build-and-test)
+- [Controls](#controls)
+- [Data Structures](#data-structures)
+- [Telemetry](#telemetry)
+- [Unity Plugin](#unity-plugin)
+- [Known Issues](#known-issues)
+- [Design Principles](#design-principles)
 
 ---
 
-## Panoramica
+## Overview
 
-**X-Racing** è un simulatore di guida automobilistico scritto in C++20, progettato come laboratorio di simulazione iterativa. L'obiettivo è costruire un'esperienza di guida realistica attraverso un approccio basato su dati, misurazioni e test continui.
+**X-Racing** is a C++20 racing driving simulator, designed as an iterative simulation lab. The goal is to build a realistic driving experience through a data-driven approach with continuous measurement and testing.
 
-Il progetto separa chiaramente la simulazione fisica dal rendering, permettendo di sviluppare e validare la fisica indipendentemente dalla grafica. Unity 6000.x è utilizzato come renderer di produzione, collegato al motore C++ tramite un plugin nativo DLL.
+The project clearly separates physics simulation from rendering, allowing physics to be developed and validated independently of graphics. Unity 6000.x is used as the production renderer, connected to the C++ engine via a native DLL plugin.
 
-**Caratteristiche principali:**
+**Key features:**
 
-- **Motore fisico 120 Hz** con pipeline di simulazione iterativa
-- **Modello pneumatici Pacejka** Magic Formula con temperatura e usura
-- **Sospensioni 4 angoli** con trasferimento di carico
-- **Aerodinamica completa** (drag, deportanza, effetto suolo)
-- **Meteo dinamico** (pioggia, temperatura, grip)
-- **Tracciato parametrico** chiuso con multiple superfici
-- **Telemetria CSV** per analisi e validazione
-- **33+ unit test** con Google Test
-- **Esportatore SVG tracciati** con diagrammi interattivi
-- **Plugin Unity** per rendering in tempo reale
+- **120 Hz physics engine** with iterative simulation pipeline
+- **Pacejka Magic Formula** tire model with temperature and wear
+- **4-corner suspensions** with load transfer
+- **Full aerodynamics** (drag, downforce, ground effect)
+- **Dynamic weather** (rain, temperature, grip)
+- **Closed parametric track** with multiple surfaces
+- **CSV telemetry** for analysis and validation
+- **33+ unit tests** with Google Test
+- **Track SVG exporter** with interactive diagrams
+- **Unity plugin** for real-time rendering
 
 ---
 
-## Stato del Progetto
+## Project Status
 
-| Milestone | Componente | Stato |
+| Milestone | Component | Status |
 |-----------|-----------|-------|
-| M0 | Ambiente / build system | ✅ |
-| M1 | Tracciato + stato veicolo | ✅ |
-| M2 | Sterzo (modello bicicletta) | ✅ |
-| M3 | Aderenza / cornering (Pacejka) | ✅ |
-| M4 | Pneumatici (temp, usura, grip) | ✅ |
-| M5 | Sospensioni (carichi 4 angoli) | ✅ |
-| M6 | Aerodinamica (deportanza, pitch/roll) | ✅ |
-| M7 | Meteo (pioggia, temperatura, grip) | ✅ |
-| M9 | Gameplay (input, timing giri) | ✅ |
-| M8 | Rendering (Unity) | ✅ Unity 6000.0.82f1, progetto operativo |
+| M0 | Environment / build system | ✅ |
+| M1 | Track + vehicle state | ✅ |
+| M2 | Steering (bicycle model) | ✅ |
+| M3 | Grip / cornering (Pacejka) | ✅ |
+| M4 | Tires (temp, wear, grip) | ✅ |
+| M5 | Suspensions (4-corner loads) | ✅ |
+| M6 | Aerodynamics (downforce, pitch/roll) | ✅ |
+| M7 | Weather (rain, temperature, grip) | ✅ |
+| M9 | Gameplay (input, lap timing) | ✅ |
+| M8 | Rendering (Unity) | ✅ Unity 6000.0.82f1, operational project |
 | M9 | Race management (pit, validation, race config) | ✅ |
-| M10 | AI (traiettoria, avversari) | ⏳ prossimo |
+| M10 | AI (racing line, opponents) | ⏳ next |
 
 ---
 
-## Architettura
+## Architecture
 
 ```
 x-racing/
-├── engine/                    # Libreria core (static + DLL plugin)
-│   ├── common.h              # Tipi matematici, costanti, utility
+├── engine/                    # Core library (static + DLL plugin)
+│   ├── common.h              # Math types, constants, utility
 │   ├── physics/
-│   │   └── types.h           # Modello pneumatici Pacejka, proiezioni vettoriali
+│   │   └── types.h           # Pacejka tire model, vector projections
 │   ├── vehicle/
 │   │   ├── vehicle.h         # VehicleParams + VehicleState
-│   │   ├── vehicle_generator.h/.cpp  # Generazione mesh procedurale
-│   │   ├── mesh_exporter.h/.cpp      # Esportazione OBJ
-│   │   └── glb_exporter.h/.cpp       # Esportazione GLB
+│   │   ├── vehicle_generator.h/.cpp  # Procedural mesh generation
+│   │   ├── mesh_exporter.h/.cpp      - OBJ export
+│   │   └── glb_exporter.h/.cpp       - GLB export
 │   ├── track/
-│   │   ├── track.h/.cpp      # Tracciato parametrico chiuso
-│   │   ├── track_data.h      # Dati tracciato (grid, checkpoint, pit)
-│   │   ├── race_config.h     # Configurazione gara (tipo, penalità, compound)
-│   │   ├── pit_lane.h/.cpp   # Sistema pit lane runtime
-│   │   ├── pit_stop_fsm.h/.cpp # FSM pit stop per veicolo
-│   │   ├── race_manager.h/.cpp # Orchestratore gara
-│   │   └── validation.h/.cpp  # Validazione tracciato e gara
+│   │   ├── track.h/.cpp      # Closed parametric track
+│   │   ├── track_data.h      # Track data (grid, checkpoint, pit)
+│   │   ├── race_config.h     # Race configuration (type, penalties, compound)
+│   │   ├── pit_lane.h/.cpp   # Runtime pit lane system
+│   │   ├── pit_stop_fsm.h/.cpp # Vehicle pit stop FSM
+│   │   ├── race_manager.h/.cpp # Race orchestrator
+│   │   └── validation.h/.cpp  # Track and race validation
 │   ├── input/
-│   │   ├── input.h           # Definizione InputState
-│   │   ├── input_manager.h   # Interfaccia input astratta
+│   │   ├── input.h           # InputState definition
+│   │   ├── input_manager.h   # Abstract input interface
 │   │   └── platform/
-│   │       ├── windows_input.h/.cpp  # Backend Windows
-│   │       ├── auto_input.h/.cpp     # Input automatico per testing
-│   │       └── null_input.h          # Backend dummy per test
+│   │       ├── windows_input.h/.cpp  # Windows backend
+│   │       ├── auto_input.h/.cpp     # Automatic input for testing
+│   │       └── null_input.h          # Dummy backend for tests
 │   ├── simulation/
-│   │   ├── simulation.h/.cpp # Loop fisica 120 Hz
+│   │   ├── simulation.h/.cpp # 120 Hz physics loop
 │   ├── telemetry/
-│   │   ├── telemetry.h/.cpp  # Registrazione frame + export CSV
+│   │   ├── telemetry.h/.cpp  # Frame recording + CSV export
 │   ├── weather/
-│   │   ├── weather.h         # Parametri e stato meteo
+│   │   ├── weather.h         # Weather parameters and state
 │   └── plugin/
-│       ├── sim_plugin.h/.cpp # Plugin nativo Unity (DLL)
-├── game/                      # Livello di gioco
-│   ├── gameplay.h/.cpp       # Loop gameplay console
-│   ├── main.cpp              # Entry point gameplay
-│   ├── main_auto.cpp         # Entry point guida automatica
-│   └── gen_telemetry.cpp     # Generatore telemetria per Unity
-├── renderer/                  # Renderer Win32 GDI
-│   ├── renderer.h/.cpp       # Visualizzazione wireframe 2D/3D
-├── tests/                     # Unit test Google Test
-│   ├── simulation_test.cpp   # 33+ test casi fisica
-│   ├── physics_test.cpp      # Validazione modello Pacejka
-│   ├── vehicle_test.cpp      # Test parametri veicolo
-│   ├── track_test.cpp        # Test generazione tracciato
-│   ├── track_diagram_test.cpp # Test esportazione SVG tracciati
-│   ├── telemetry_test.cpp    # Test registrazione telemetria
-│   └── gameplay_test.cpp     # Test loop gameplay
-├── experiments/               # Strumenti di analisi e profiling
-│   ├── track_analysis.cpp    # Analisi geometria tracciato
-│   ├── ai_experiments.cpp    # [pianificato] Esperimenti ML/AI
-│   └── performance.cpp       # [pianificato] Profiling, benchmark
-├── UnityProject/              # Progetto Unity 2022.3.x
+│       ├── sim_plugin.h/.cpp # Native Unity plugin (DLL)
+├── game/                      # Game level
+│   ├── gameplay.h/.cpp       # Console gameplay loop
+│   ├── main.cpp              # Interactive gameplay entry point
+│   ├── main_auto.cpp         # Automatic driving entry point
+│   └── gen_telemetry.cpp     # Telemetry generator for Unity
+├── renderer/                  # Win32 GDI renderer
+│   ├── renderer.h/.cpp       # 2D/3D wireframe visualization
+├── tests/                     # Google Test unit tests
+│   ├── simulation_test.cpp   # 33+ physics test cases
+│   ├── physics_test.cpp      # Pacejka model validation
+│   ├── vehicle_test.cpp      # Vehicle parameter tests
+│   ├── track_test.cpp        # Track generation tests
+│   ├── track_diagram_test.cpp # Track SVG export tests
+│   ├── telemetry_test.cpp    # Telemetry recording tests
+│   └── gameplay_test.cpp     # Gameplay loop tests
+├── experiments/               # Analysis and profiling tools
+│   ├── track_analysis.cpp    # Track geometry analysis
+│   ├── ai_experiments.cpp    - [planned] ML/AI experiments
+│   └── performance.cpp       - [planned] Profiling, benchmarks
+├── UnityProject/              # Unity 2022.3.x project
 │   ├── Assets/
-│   │   ├── Models/            # Modelli 3D veicolo (FBX)
+│   │   ├── Models/            # 3D vehicle models (FBX)
 │   │   ├── Scripts/
-│   │   │   ├── CarController.cs   # Controller veicolo + camera follow
-│   │   │   ├── CarHUD.cs          # HUD velocità/RPM/ marcia/giro
-│   │   │   ├── HUDSetup.cs        # Utility auto-setup HUD
-│   │   │   └── SimPlugin.cs       # Bridge P/Invoke a sim_plugin.dll
+│   │   │   ├── CarController.cs   # Vehicle controller + camera follow
+│   │   │   ├── CarHUD.cs          # HUD speed/RPM/gear/lap
+│   │   │   ├── HUDSetup.cs        # Auto-setup HUD utility
+│   │   │   └── SimPlugin.cs       # P/Invoke bridge to sim_plugin.dll
 │   │   ├── Editor/
-│   │   │   ├── SceneSetup.cs      # Menu Project0 > Setup Scene
-│   │   │   ├── TrackGenerator.cs  # Menu Project0 > Generate Track
+│   │   │   ├── SceneSetup.cs      # Project0 > Setup Scene menu
+│   │   │   ├── TrackGenerator.cs  # Project0 > Generate Track menu
 │   │   │   └── GenerateTelemetry.cs
 │   │   ├── Scenes/
-│   │   │   ├── ok.unity           # Scena gameplay principale
-│   │   │   └── impostazioni.unity # Scena impostazioni/config
+│   │   │   ├── ok.unity           # Main gameplay scene
+│   │   │   └── impostazioni.unity # Settings/config scene
 │   │   ├── Materials/
 │   │   │   ├── CarMaterial.mat
 │   │   │   └── GroundMaterial.mat
 │   │   ├── Plugins/x86_64/
-│   │   │   └── sim_plugin.dll     # Plugin nativo C++
+│   │   │   └── sim_plugin.dll     # Native C++ plugin
 │   │   └── Settings/
 │   │       ├── UniversalRenderPipelineAsset.asset
 │   │       └── ForwardRendererData.asset
@@ -144,338 +144,338 @@ x-racing/
 │   │   └── manifest.json
 │   └── ProjectSettings/
 │       └── ProjectVersion.txt
-├── tools/                     # Strumenti di sviluppo
-│   ├── fbx_to_obj/           # Convertitori FBX→OBJ
-│   ├── track_generator/      # Generatore tracciati
-│   └── track_diagram/        # Esportatore diagrammi SVG tracciati
-├── data/                      # Dati runtime
-│   ├── telemetry/            # Output telemetria CSV
-│   └── models/               # Modelli 3D
-├── assets/                    # Asset 3D, texture, audio
-│   └── models/               # Modelli 3D (OBJ, FBX)
-├── vendor/                    # Dipendenze terze parti
-│   ├── Eigen/                # Algebra lineare
-│   └── googletest/           # Framework unit testing
-├── docs/                      # Documentazione progetto
-│   ├── README.md             # Questo file
-│   └── ROADMAP.md            # Piano di sviluppo
-├── CMakeLists.txt             # Configurazione CMake root
-├── AGENTS.md                  # Convenzioni progetto
-└── main.cpp                   # Entry point renderer Win32
+├── tools/                     # Development tools
+│   ├── fbx_to_obj/           # FBX→OBJ converters
+│   ├── track_generator/      # Track generators
+│   └── track_diagram/        # Track SVG diagram exporter
+├── data/                      # Runtime data
+│   ├── telemetry/            # Telemetry CSV output
+│   └── models/               # 3D models
+├── assets/                    # 3D assets, textures, audio
+│   └── models/               # 3D models (OBJ, FBX)
+├── vendor/                    # Third-party dependencies
+│   ├── Eigen/                # Linear algebra
+│   └── googletest/           # Unit testing framework
+├── docs/                      # Project documentation
+│   ├── README.md             # This file
+│   └── ROADMAP.md            # Development plan
+├── CMakeLists.txt             # Root CMake configuration
+├── AGENTS.md                  # Project conventions
+└── main.cpp                   # Win32 renderer entry point
 ```
 
 ---
 
-## Engine (Libreria Core)
+## Engine (Core Library)
 
-### Modulo `common.h`
+### `common.h` Module
 
-Tipi matematici e utility fondamentali:
+Fundamental math types and utilities:
 
-- **Tipi vettoriali:** `Vec2`, `Vec3`, `Vec4` (wrapper Eigen)
-- **Tipi matriciali:** `Mat2`, `Mat3`, `Mat4`
-- **Costanti:** `kPi`, `kHalfPi`, `kGravity` (9.81 m/s²), `kEpsilon`
-- **Utility:** `clamp()`, `normalize_angle()`, `lerp()`, `smoothstep()`
+- **Vector types:** `Vec2`, `Vec3`, `Vec4` (Eigen wrappers)
+- **Matrix types:** `Mat2`, `Mat3`, `Mat4`
+- **Constants:** `kPi`, `kHalfPi`, `kGravity` (9.81 m/s²), `kEpsilon`
+- **Utilities:** `clamp()`, `normalize_angle()`, `lerp()`, `smoothstep()`
 
-### Modulo `physics/`
+### `physics/` Module
 
-Implementazione del modello pneumatici Pacejka Magic Formula:
+Pacejka Magic Formula tire model implementation:
 
-- **`types.h`:** Funzioni di proiezione/rifiuto vettoriale, `cross2()`, helper forze centripete/centrifughe
-- **Formula di Pacejka:** Coefficienti B, C, D, E per calcolo forza laterale
-- **Ellisse di aderenza combinata:** Combina forza laterale e longitudinale
+- **`types.h`:** Vector projection/rejection functions, `cross2()`, centripetal/centrifugal force helpers
+- **Pacejka Formula:** B, C, D, E coefficients for lateral force calculation
+- **Combined grip ellipse:** Combines lateral and longitudinal force
 
-### Modulo `vehicle/`
+### `vehicle/` Module
 
-Definizione veicolo e generazione mesh:
+Vehicle definition and mesh generation:
 
-- **`vehicle.h`:** 
-  - `VehicleParams` — massa, passo, aerodinamica, sospensioni, pneumatici, motore
-  - `VehicleState` — posizione, velocità, RPM, marcia, angoli slittamento, temp/consumo gomme, aerodinamica, giro, box lane
-- **`vehicle_generator.h/.cpp`:** Generazione mesh procedurale da parametri veicolo
-- **`mesh_exporter.h/.cpp`:** Esportazione formato OBJ
-- **`glb_exporter.h/.cpp`:** Esportazione formato GLB (glTF 2.0)
+- **`vehicle.h`:**
+  - `VehicleParams` — mass, wheelbase, aerodynamics, suspensions, tires, engine
+  - `VehicleState` — position, speed, RPM, gear, slip angles, tire temp/wear, aerodynamics, lap, pit lane
+- **`vehicle_generator.h/.cpp`:** Procedural mesh generation from vehicle parameters
+- **`mesh_exporter.h/.cpp`:** OBJ format export
+- **`glb_exporter.h/.cpp`:** GLB format export (glTF 2.0)
 
-### Modulo `track/`
+### `track/` Module
 
-Tracciato parametrico chiuso:
+Closed parametric track:
 
 - **`track.h/.cpp`:**
-  - `TrackPoint` — punto del tracciato con curvatura, pendenza, superficie
-  - `TrackParams` — parametri di configurazione
+  - `TrackPoint` — track point with curvature, slope, surface
+  - `TrackParams` — configuration parameters
   - `SurfaceType` — enum: Asphalt, WetAsphalt, Kerb, Grass, Gravel, Sand, Ice
-  - Due layout predefiniti: `Default` (ovale con box lane) e `PitCircuit` (circuito stradale con box)
-  - Interpolazione per distanza, ricerca binaria, lunghezza d'arco cumulativa
+  - Two predefined layouts: `Default` (oval with pit lane) and `PitCircuit` (road circuit with pits)
+  - Interpolation by distance, binary search, cumulative arc length
 
-### Modulo `input/`
+### `input/` Module
 
-Astrazione input utente:
+User input abstraction:
 
-- **`input.h`:** `InputState` — throttle, brake, sterzo, upshift, downshift, reset, enter_exit_box
-- **`input_manager.h`:** Interfaccia astratta `InputManager` con `poll()` e `is_key_down()`
-- **`platform/windows_input.h/.cpp`:** Implementazione Win32 tramite `GetAsyncKeyState`
-- **`platform/auto_input.h/.cpp`:** Input programmato per guida automatica
-- **`platform/null_input.h`:** Input nullo per test
+- **`input.h`:** `InputState` — throttle, brake, steering, upshift, downshift, reset, enter_exit_box
+- **`input_manager.h`:** Abstract `InputManager` interface with `poll()` and `is_key_down()`
+- **`platform/windows_input.h/.cpp`:** Win32 implementation via `GetAsyncKeyState`
+- **`platform/auto_input.h/.cpp`:** Programmed input for automatic driving
+- **`platform/null_input.h`:** Null input for tests
 
-### Modulo `simulation/`
+### `simulation/` Module
 
-Loop di simulazione fisica a 120 Hz:
+120 Hz physics simulation loop:
 
-- **`simulation.h/.cpp`:** Classe `Simulation` con metodo `step()`
-  - 4 sotto-passi per frame (30 Hz × 4 = 120 Hz)
-  - Ogni sotto-passo applica: engine → aero → weather → tire temp → suspension → tire forces → braking → steering → centripetal → integrate
-  - Gestione off-track, limiti velocità box lane, respawn
+- **`simulation.h/.cpp`:** `Simulation` class with `step()` method
+  - 4 sub-steps per frame (30 Hz × 4 = 120 Hz)
+  - Each sub-step applies: engine → aero → weather → tire temp → suspension → tire forces → braking → steering → centripetal → integrate
+  - Off-track management, pit lane speed limits, respawn
 
-### Modulo `telemetry/`
+### `telemetry/` Module
 
-Registrazione e export dati:
+Data recording and export:
 
-- **`telemetry.h/.cpp`:** 
-  - `TelemetryFrame` — frame dati singolo
-  - `Telemetry` — registrazione a 60 Hz, export CSV
+- **`telemetry.h/.cpp`:**
+  - `TelemetryFrame` — single data frame
+  - `Telemetry` — 60 Hz recording, CSV export
 
-### Modulo `weather/`
+### `weather/` Module
 
-Modello meteo dinamico:
+Dynamic weather model:
 
-- **`weather.h`:** 
-  - `WeatherState` — stato corrente (intensità pioggia, vento, temperatura)
-  - `WeatherParams` — parametri configurabili
-  - Effetto pioggia: raffreddamento pneumatici, riduzione grip
-  - Dinamica temperatura pista
+- **`weather.h`:**
+  - `WeatherState` — current state (rain intensity, wind, temperature)
+  - `WeatherParams` — configurable parameters
+  - Rain effect: tire cooling, grip reduction
+  - Track temperature dynamics
 
-### Modulo `plugin/`
+### `plugin/` Module
 
-Plugin nativo Unity:
+Native Unity plugin:
 
-- **`sim_plugin.h/.cpp`:** 
-  - ABI C compatibile (`SimPlugin_Initialize`, `SimPlugin_Update`, `SimPlugin_GetVehicleState`)
-  - Esportato come `sim_plugin.dll`
+- **`sim_plugin.h/.cpp`:**
+  - C ABI compatible (`SimPlugin_Initialize`, `SimPlugin_Update`, `SimPlugin_GetVehicleState`)
+  - Exported as `sim_plugin.dll`
 
 ---
 
-## Gameplay (Livello di Gioco)
+## Gameplay (Game Level)
 
-### Modulo `game/`
+### `game/` Module
 
-- **`gameplay.h/.cpp`:** Classe `Gameplay` — polling input, step simulazione, timing giri, rendering HUD console, registrazione telemetria
-- **`main.cpp`:** Entry point gameplay interattivo (input tastiera Windows)
-- **`main_auto.cpp`:** Entry point guida automatica (input programmato, log su file)
-- **`gen_telemetry.cpp`:** Generatore telemetria (pilota automatico, export CSV per Unity)
+- **`gameplay.h/.cpp`:** `Gameplay` class — input polling, simulation step, lap timing, console HUD rendering, telemetry recording
+- **`main.cpp`:** Interactive gameplay entry point (Windows keyboard input)
+- **`main_auto.cpp`:** Automatic driving entry point (programmed input, log to file)
+- **`gen_telemetry.cpp`:** Telemetry generator (auto-pilot, CSV export for Unity)
 
 ---
 
 ## Renderer (Win32 GDI)
 
-- **`renderer.h/.cpp`:** Classe `Renderer` — finestra Win32, back buffer, disegno tracciato (linee), box lane (rosso), vettura (rettangolo 2D o wireframe 3D da OBJ), overlay HUD. Gestione input tastiera. Esposto tramite `main.cpp` principale.
+- **`renderer.h/.cpp`:** `Renderer` class — Win32 window, back buffer, track drawing (lines), pit lane (red), vehicle (2D rectangle or 3D wireframe from OBJ), HUD overlay. Keyboard input handling. Exposed via main `main.cpp`.
 
 ---
 
 ## Unity Integration
 
-Unity 6000.0.82f1 con Universal Render Pipeline (URP) e TextMesh Pro.
+Unity 6000.0.82f1 with Universal Render Pipeline (URP) and TextMesh Pro.
 
-### Dipendenze Unity
+### Unity Dependencies
 
-| Script | Funzione |
+| Script | Function |
 |--------|----------|
-| `CarController.cs` | Controller veicolo + camera follow |
-| `CarHUD.cs` | HUD velocità / RPM / marcia / giro |
-| `HUDSetup.cs` | Utility auto-setup HUD |
-| `SimPlugin.cs` | Bridge P/Invoke a `sim_plugin.dll` |
-| `CheckpointTrigger.cs` | Trigger checkpoint Unity |
+| `CarController.cs` | Vehicle controller + camera follow |
+| `CarHUD.cs` | HUD speed / RPM / gear / lap |
+| `HUDSetup.cs` | Auto-setup HUD utility |
+| `SimPlugin.cs` | P/Invoke bridge to `sim_plugin.dll` |
+| `CheckpointTrigger.cs` | Unity checkpoint trigger |
 
-### Menu Editor
+### Editor Menu
 
-- **Project0 → Setup Scene** — crea canvas HUD e bind `CarController`
-- **Project0 → Generate Track** — genera mesh tracciato parametrico, bordi e collider
+- **Project0 → Setup Scene** — creates HUD canvas and binds `CarController`
+- **Project0 → Generate Track** — generates parametric track mesh, borders and colliders
 
 ---
 
-## Pipeline Fisica
+## Physics Pipeline
 
-Ogni sotto-passo di simulazione applica questi stadi in ordine:
+Each simulation sub-step applies these stages in order:
 
-| # | Funzione | Descrizione |
+| # | Function | Description |
 |---|----------|-------------|
-| 1 | `update_engine_forces()` | Curva coppia → forza longitudinale |
-| 2 | `update_aerodynamics()` | Drag, deportanza, effetto suolo |
-| 3 | `update_weather()` | Raffreddamento pioggia, temperatura pista |
-| 4 | `update_tire_temperature()` | Modello termico + usura |
-| 5 | `update_suspension()` | Trasferimento carico 4 angoli |
-| 6 | `update_tire_forces()` | Aderenza laterale Pacejka |
-| 7 | `update_braking()` | Decelerazione freni |
-| 8 | `update_steering()` | Modello bicicletta, angoli slittamento |
-| 9 | `update_centripetal_forces()` | Forze centripete/centrifughe da curvatura |
-| 10 | `integrate()` | Integrazione semi-implicita di Eulero |
+| 1 | `update_engine_forces()` | Torque curve → longitudinal force |
+| 2 | `update_aerodynamics()` | Drag, downforce, ground effect |
+| 3 | `update_weather()` | Rain cooling, track temperature |
+| 4 | `update_tire_temperature()` | Thermal model + wear |
+| 5 | `update_suspension()` | 4-corner load transfer |
+| 6 | `update_tire_forces()` | Lateral Pacejka grip |
+| 7 | `update_braking()` | Brake deceleration |
+| 8 | `update_steering()` | Bicycle model, slip angles |
+| 9 | `update_centripetal_forces()` | Centripetal/centrifugal forces from track curvature |
+| 10 | `integrate()` | Semi-implicit Euler integration |
 
-**Frequenza:** 120 Hz (4 sotto-passi per frame a 30 Hz)
+**Frequency:** 120 Hz (4 sub-steps per frame at 30 Hz)
 
-### Dettaglio Sotto-Passi
+### Sub-step Details
 
 #### 1. Engine Forces
-- Curva coppia motore vs RPM
-- Calcolo rapporto marcia → RPM → coppia ruota
-- Perdite trasmissione
-- Frenomotore
-- Cambio automatico
+- Engine torque curve vs RPM
+- Gear ratio calculation → RPM → wheel torque
+- Transmission losses
+- Engine braking
+- Automatic transmission
 
 #### 2. Aerodynamics
-- Drag aerodinamico (CdA)
-- Lift (sollevamento)
-- Downforce deportanza
-- Effetto suolo (ground effect)
-- Contributo alettoni
-- Bilanciamento anteriore/posteriore
-- Drag indotto da deportanza
+- Aerodynamic drag (CdA)
+- Lift
+- Downforce
+- Ground effect
+- Wing contribution
+- Front/rear balance
+- Drag induced by downforce
 
 #### 3. Weather
-- Raffreddamento pneumatici per pioggia
-- Dinamica temperatura pista
-- Fattore grip da meteo
-- Effetto vento (placeholder)
+- Rain tire cooling
+- Track temperature dynamics
+- Weather grip factor
+- Wind effect (placeholder)
 
 #### 4. Tire Temperature
-- Modello termico (riscaldamento per slittamento)
-- Raffreddamento ambientale
-- Accumulo usura
-- Finestra operativa temperatura
+- Thermal model (heating from slip)
+- Ambient cooling
+- Wear accumulation
+- Operating temperature window
 
 #### 5. Suspension
-- Trasferimento carico longitudinale (accelerazione/frenata)
-- Trasferimento carico laterale (sterzo)
-- Barra antirollio
-- Rollio/cambio beccheggio telaio
+- Longitudinal load transfer (acceleration/braking)
+- Lateral load transfer (steering)
+- Anti-roll bar
+- Body roll/pitch
 
 #### 6. Tire Forces
-- Modello bicicletta per angoli slittamento
-- Formula di Pacejka (forza laterale)
-- Ellisse aderenza combinata
-- Carichi pneumatici
-- Spinta camber
-- Momento di yaw
+- Bicycle model for slip angles
+- Pacejka formula (lateral force)
+- Combined grip ellipse
+- Tire loads
+- Camber thrust
+- Yaw moment
 
 #### 7. Braking
-- Decelerazione freni
-- Bilanciamento freni
-- Bloccaggio pneumatici
+- Brake deceleration
+- Brake balance
+- Tire lockup
 
 #### 8. Steering
-- Input sterzo → angolo ruote anteriori
-- Comportamento emerge da modello pneumatici
+- Steering input → front wheel angle
+- Behavior emerges from tire model
 
 #### 9. Centripetal Forces
-- Forze centripete/centrifughe da curvatura tracciato
+- Centripetal/centrifugal forces from track curvature
 
 #### 10. Integrate
-- Integrazione semi-implicita di Eulero
-- Integrazione heading-first
-- Integrazione spazio-velocità
-- Conteggio giri
+- Semi-implicit Euler integration
+- Heading-first integration
+- Space-velocity integration
+- Lap counting
 
 ---
 
-## Build e Test
+## Build and Test
 
-### Prerequisiti
+### Prerequisites
 
-- Visual Studio 2022 con workload C++
+- Visual Studio 2022 with C++ workload
 - CMake 3.20+
 - PowerShell 7+
-- (Opzionale) Unity 6000.0.82f1
+- (Optional) Unity 6000.0.82f1
 
-### Comandi Build
+### Build Commands
 
 ```powershell
-# Configurazione
+# Configure
 cmake -G "Visual Studio 17 2022" -A x64 -B build -DPROJECT0_BUILD_TESTS=ON -DPROJECT0_BUILD_GAMEPLAY=ON
 
-# Build Release
+# Release build
 cmake --build build --config Release --parallel
 
-# Build con renderer Win32
+# Build with Win32 renderer
 cmake -B build -G "Visual Studio 17 2022" -A x64 -DPROJECT0_BUILD_RENDERER=ON
 ```
 
-### Target CMake
+### CMake Targets
 
-| Target | Tipo | Descrizione |
+| Target | Type | Description |
 |--------|------|-------------|
-| `project0_engine` | Static Lib | Libreria core simulazione |
-| `sim_plugin` | Shared DLL | Plugin nativo Unity |
-| `generate_vehicle` | EXE | Generatore mesh veicolo |
-| `project0_gameplay_exe` | EXE | Entry point gameplay |
-| `auto_drive` | EXE | Guida automatica |
-| `gen_telemetry` | EXE | Generatore telemetria |
-| `project0_tests` | EXE | Unit test (33+ casi) |
-| `track_analysis` | EXE | Analisi geometria tracciato |
-| `track_svg` | EXE | Esportazione diagramma SVG tracciato |
-| `track_diagram` | EXE | Esportatore SVG tracciato (CLI) |
-| `project0_renderer` | Static Lib | Renderer Win32 GDI |
+| `project0_engine` | Static Lib | Core simulation library |
+| `sim_plugin` | Shared DLL | Native Unity plugin |
+| `generate_vehicle` | EXE | Vehicle mesh generator |
+| `project0_gameplay_exe` | EXE | Gameplay entry point |
+| `auto_drive` | EXE | Automatic driving |
+| `gen_telemetry` | EXE | Telemetry generator |
+| `project0_tests` | EXE | Unit tests (33+ cases) |
+| `track_analysis` | EXE | Track geometry analysis |
+| `track_svg` | EXE | Track SVG export |
+| `track_diagram` | EXE | Track SVG diagram exporter (CLI) |
+| `project0_renderer` | Static Lib | Win32 GDI renderer |
 
-### Esecuzione
+### Running
 
 ```powershell
-# Test unitari
+# Unit tests
 .\build\tests\Release\project0_tests.exe
 
-# Gameplay interattivo
+# Interactive gameplay
 .\build\game\Release\project0_gameplay_exe.exe
 
-# Guida automatica
+# Automatic driving
 .\build\game\Release\auto_drive.exe
 
-# Generatore telemetria
+# Telemetry generator
 .\build\game\Release\gen_telemetry.exe
 
-# Analisi tracciato
+# Track analysis
 .\build\experiments\Release\track_analysis.exe
 
-# Esportazione SVG tracciato
+# Track SVG export
 .\build\experiments\Release\track_svg.exe -o track.svg -t pit
 
-# Diagramma tracciato (CLI)
+# Track diagram (CLI)
 .\build\tools\Release\track_diagram.exe -o diagram.svg -t default --no-chart
 
-# Test con CTest
+# Test with CTest
 ctest --output-on-failure -C Release
 ```
 
 ---
 
-## Controlli
+## Controls
 
-| Tasto | Azione |
-|-------|--------|
-| W / ↑ | Acceleratore |
-| S / ↓ | Freno |
-| A / ← | Sterzo sinistra |
-| D / → | Sterzo destra |
-| Shift | Marcia su |
-| Ctrl | Marcia giù |
-| R | Reset posizione |
-| ESC | Esci |
+| Key | Action |
+|-----|--------|
+| W / ↑ | Throttle |
+| S / ↓ | Brake |
+| A / ← | Steer left |
+| D / → | Steer right |
+| Shift | Shift up |
+| Ctrl | Shift down |
+| R | Reset position |
+| ESC | Exit |
 
 ---
 
-## Struttura Dati
+## Data Structures
 
 ### VehicleParams
 
 ```cpp
 struct VehicleParams {
-    // Massa e dimensioni
-    float mass;              // kg (es. 1500)
-    float wheelbase;         // m (es. 2.7)
-    float track_width;       // m (es. 1.8)
+    // Mass and dimensions
+    float mass;              // kg (e.g. 1500)
+    float wheelbase;         // m (e.g. 2.7)
+    float track_width;       // m (e.g. 1.8)
     
-    // Aerodinamica
+    // Aerodynamics
     float frontal_area;      // m²
     float drag_coefficient;  // Cd
     float lift_coefficient;  // Cl
     float downforce_coefficient;
     
-    // Motore
+    // Engine
     float max_power;         // hp
     float max_torque;        // Nm
     float max_rpm;
@@ -484,20 +484,20 @@ struct VehicleParams {
     float final_drive;
     float drivetrain_loss;   // 0.0-1.0
     
-    // Sospensioni
+    // Suspensions
     float spring_rate;       // N/m
     float damping_rate;      // Ns/m
     float anti_roll_bar;      // Nm/deg
     
-    // Pneumatici
+    // Tires
     float tire_radius;       // m
     float tire_width;        // m
     PacejkaCoefficients pacejka;
     float thermal_conductivity;
     float wear_rate;
     
-    // Freni
-    float brake_bias;        // 0.0-1.0 (anteriore)
+    // Brakes
+    float brake_bias;        // 0.0-1.0 (front)
     float max_brake_force;   // N
 };
 ```
@@ -506,34 +506,34 @@ struct VehicleParams {
 
 ```cpp
 struct VehicleState {
-    // Posizione
+    // Position
     Vec3 position;
-    float heading;           // radianti
+    float heading;           // radians
     float speed;             // m/s
     
-    // Motore
+    // Engine
     float rpm;
     int gear;
     
-    // Pneumatici
-    float slip_angle[4];     // radianti
+    // Tires
+    float slip_angle[4];     // radians
     float tire_temp[4];      // Kelvin
     float tire_wear[4];      // 0.0-1.0
     
-    // Aerodinamica
+    // Aerodynamics
     float downforce;
     float drag;
     
-    // Corsa
+    // Race
     int lap;
     float lap_time;
     float best_lap_time;
     
-    // Box lane
-    bool in_box_lane;
-    float box_lane_speed_limit;
+    // Pit lane
+    bool in_pit_lane;
+    float pit_lane_speed_limit;
     
-    // Prestazioni
+    // Performance
     float lateral_g;
     float longitudinal_g;
 };
@@ -547,20 +547,20 @@ struct TrackParams {
     int num_points;
     float track_width;       // m
     float kerb_width;        // m
-    float banking;           // radianti
+    float banking;           // radians
     
-    // Layout predefiniti
+    // Predefined layouts
     enum Layout { Default, PitCircuit };
 };
 ```
 
 ---
 
-## Telemetria
+## Telemetry
 
-Il sistema di telemetria registra dati a 60 Hz per ogni frame di simulazione.
+The telemetry system records data at 60 Hz for each simulation frame.
 
-### Formato CSV
+### CSV Format
 
 ```
 frame,time,speed,rpm,gear,lap,lap_time,
@@ -573,39 +573,39 @@ slip_angle_fl,slip_angle_fr,slip_angle_rl,slip_angle_rr,
 downforce,drag,track_temp,rain_intensity
 ```
 
-### Utilizzo
+### Usage
 
 ```cpp
-// Creazione telemetria
+// Create telemetry
 Telemetry telemetry("output.csv");
 
-// Registrazione ogni frame
+// Record each frame
 telemetry.record(frame_number, simulation_state, input_state, weather_state);
 
-// Export alla fine
+// Export at end
 telemetry.save_csv();
 ```
 
 ---
 
-## Plugin Unity
+## Unity Plugin
 
-Il plugin Unity permette a Unity di interrogare lo stato del veicolo dal simulatore C++.
+The Unity plugin allows Unity to query the vehicle state from the C++ simulator.
 
-### Interfaccia C ABI
+### C ABI Interface
 
 ```c
-// Inizializzazione
+// Initialization
 void SimPlugin_Initialize(const VehicleParams* params);
 
-// Aggiornamento
+// Update
 void SimPlugin_Update(float dt, const InputState* input);
 
-// Lettura stato veicolo
+// Read vehicle state
 void SimPlugin_GetVehicleState(VehicleState* state);
 ```
 
-### Bridge Unity (SimPlugin.cs)
+### Unity Bridge (SimPlugin.cs)
 
 ```csharp
 [DllImport("sim_plugin.dll")]
@@ -620,35 +620,35 @@ public static extern void SimPlugin_GetVehicleState(out VehicleState state);
 
 ---
 
-## Problemi Noti
+## Known Issues
 
-- Unity 600.x `Bee.DotNet.dll` bloccato da policy AppLocker/WDAC (`0x800711C7`):
-  - Esegui PowerShell: `Get-ChildItem -Recurse "D:\Unity\Editors\6000.0.82f1\Editor\Data\Tools" -File | Unblock-File`
-  - Aggiungi `D:\Unity` a Windows Defender Exclusion list se la policy persiste
-- Dopo il primo avvio, se mancano oggetti tracciato/HUD, riesegui i menu Project0
-- `LegacyRuntime.ttf` è usato per il testo HUD integrato in Unity 2022+
-- Effetto vento in `update_weather()` è un placeholder (`wind_speed = 0.0`); non ancora implementato
-- La mesh del veicolo nel renderer Win32 GDI è un rettangolo 2D; la generazione procedurale è disponibile ma non integrata nel gameplay
-- Il tool `track_diagram` genera SVG; richiede un browser per la visualizzazione
-
----
-
-## Principi di Design
-
-1. **Simula → misura → testa → correggi → documenta → ripeti**
-2. Separazione tra simulazione e rendering
-3. Testa ogni componente
-4. Usa dati e benchmark
-5. Preferisci un modello semplice verificabile a uno complesso incompreso
-6. Non sacrificare la giocabilità per il realismo
-7. Non sacrificare la correttezza per gli effetti visivi
+- Unity 600.x `Bee.DotNet.dll` blocked by AppLocker/WDAC policy (`0x800711C7`):
+  - Run PowerShell: `Get-ChildItem -Recurse "D:\Unity\Editors\6000.0.82f1\Editor\Data\Tools" -File | Unblock-File`
+  - Add `D:\Unity` to Windows Defender Exclusion list if policy persists
+- After first launch, if track/HUD objects are missing, re-run the Project0 menus
+- `LegacyRuntime.ttf` is used for HUD text embedded in Unity 2022+
+- Wind effect in `update_weather()` is a placeholder (`wind_speed = 0.0`); not yet implemented
+- The vehicle mesh in the Win32 GDI renderer is a 2D rectangle; procedural generation is available but not integrated into gameplay
+- The `track_diagram` tool generates SVG; requires a browser for viewing
 
 ---
 
-## Riferimenti
+## Design Principles
 
-- [Pacejka, Hans B. "Tyre Vehicle Dynamics"](https://www.amazon.com/Tyre-Vehicle-Dynamics-Hans-Pacejka/dp/074751520X) — Modello pneumatici Magic Formula
-- [Milliken, William F. "Race Car Vehicle Dynamics"](https://www.amazon.com/Race-Car-Vehicle-Dynamics-Milliken/dp/1560915269) — Dinamica veicolo da corsa
+1. **Simulate → measure → test → fix → document → repeat**
+2. Separation between simulation and rendering
+3. Test every component
+4. Use data and benchmarks
+5. Prefer a simple verifiable model over a complex incomprehensible one
+6. Do not sacrifice playability for realism
+7. Do not sacrifice correctness for visual effects
+
+---
+
+## References
+
+- [Pacejka, Hans B. "Tyre Vehicle Dynamics"](https://www.amazon.com/Tyre-Vehicle-Dynamics-Hans-Pacejka/dp/074751520X) — Magic Formula tire model
+- [Milliken, William F. "Race Car Vehicle Dynamics"](https://www.amazon.com/Race-Car-Vehicle-Dynamics-Milliken/dp/1560915269) — Race car vehicle dynamics
 - [CMake Documentation](https://cmake.org/documentation/) — Build system
 - [Unity Manual](https://docs.unity3d.com/Manual/) — Unity 6000.x
-- [Eigen Library](https://eigen.tuxfamily.org/) — Algebra lineare
+- [Eigen Library](https://eigen.tuxfamily.org/) — Linear algebra
