@@ -86,7 +86,7 @@ void Gameplay::handle_menu_input(const input::InputState& input) {
   }
 
   if (input.reset) {
-    countdown_start_time = static_cast<double>(std::chrono::high_resolution_clock::now().time_since_epoch().count()) / 1e9;
+    countdown_start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     countdown_last_number = -1;
     countdown_finished = false;
     ::p0::gameplay::state = GameState::COUNTDOWN;
@@ -95,7 +95,7 @@ void Gameplay::handle_menu_input(const input::InputState& input) {
 
 void Gameplay::handle_countdown() {
   auto now = std::chrono::high_resolution_clock::now();
-  double elapsed = static_cast<double>(now.time_since_epoch().count()) / 1e9 - countdown_start_time;
+  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count() - countdown_start_time;
   int number = static_cast<int>(countdown_duration - elapsed) + 1;
   if (number > 3) number = 3;
   if (number < 1 && !countdown_finished) {
@@ -170,6 +170,74 @@ void Gameplay::save_best_times() {
 void Gameplay::load_best_times() {
   std::ifstream ifs(save_path());
   if (!ifs) return;
+
+  std::string content((std::istreambuf_iterator<char>(ifs)),
+                       std::istreambuf_iterator<char>());
+
+  auto find_double = [&](const std::string& key) -> double {
+    size_t pos = content.find("\"" + key + "\"");
+    if (pos == std::string::npos) return 0.0;
+    pos = content.find(':', pos);
+    if (pos == std::string::npos) return 0.0;
+    ++pos;
+    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
+    try {
+      return std::stod(content.substr(pos));
+    } catch (...) {
+      return 0.0;
+    }
+  };
+
+  auto find_int = [&](const std::string& key) -> int {
+    size_t pos = content.find("\"" + key + "\"");
+    if (pos == std::string::npos) return 0;
+    pos = content.find(':', pos);
+    if (pos == std::string::npos) return 0;
+    ++pos;
+    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
+    try {
+      return std::stoi(content.substr(pos));
+    } catch (...) {
+      return 0;
+    }
+  };
+
+  results.best_lap_time = find_double("best_lap_time");
+  results.total_time = find_double("total_time");
+  results.completed_laps = find_int("completed_laps");
+  results.completed = results.completed_laps > 0;
+
+  // Parse lap_times array
+  size_t lt_pos = content.find("\"lap_times\"");
+  if (lt_pos != std::string::npos) {
+    size_t bracket = content.find('[', lt_pos);
+    if (bracket != std::string::npos) {
+      size_t end = content.find(']', bracket);
+      std::string arr = content.substr(bracket + 1, end - bracket - 1);
+      std::istringstream iss(arr);
+      std::string token;
+      while (std::getline(iss, token, ',')) {
+        try {
+          results.lap_times.push_back(std::stod(token));
+        } catch (...) {}
+      }
+    }
+  }
+
+  // Parse lap_valid array
+  size_t lv_pos = content.find("\"lap_valid\"");
+  if (lv_pos != std::string::npos) {
+    size_t bracket = content.find('[', lv_pos);
+    if (bracket != std::string::npos) {
+      size_t end = content.find(']', bracket);
+      std::string arr = content.substr(bracket + 1, end - bracket - 1);
+      std::istringstream iss(arr);
+      std::string token;
+      while (std::getline(iss, token, ',')) {
+        results.lap_valid.push_back(token.find("true") != std::string::npos);
+      }
+    }
+  }
 }
 
 void Gameplay::show_results() {
@@ -206,7 +274,7 @@ void Gameplay::show_results() {
     }
     if (input.reset) {
       reset_race();
-      countdown_start_time = static_cast<double>(std::chrono::high_resolution_clock::now().time_since_epoch().count()) / 1e9;
+      countdown_start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
       countdown_last_number = -1;
       countdown_finished = false;
       ::p0::gameplay::state = GameState::COUNTDOWN;
@@ -246,7 +314,7 @@ void Gameplay::render_menu() {
 void Gameplay::render_countdown() {
   enable_ansi_console();
   auto now = std::chrono::high_resolution_clock::now();
-  double elapsed = static_cast<double>(now.time_since_epoch().count()) / 1e9 - countdown_start_time;
+  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count() - countdown_start_time;
   int number = static_cast<int>(countdown_duration - elapsed) + 1;
   if (number > 3) number = 3;
   if (number < 0) number = 0;
@@ -284,7 +352,7 @@ void Gameplay::update_lap_timing(const simulation::SimulationResult& result) {
   last_sim_time_ = result.time;
 
   if (result.state.lap > state_.current_lap) {
-    if (state_.current_lap > 0) {
+    if (state_.current_lap >= 0) {
       LapTime lt;
       lt.lap_time = state_.current_lap_time;
       lt.valid = !state_.off_track_warning;

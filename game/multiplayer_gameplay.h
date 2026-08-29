@@ -24,10 +24,10 @@ struct MultiplayerConfig {
   bool is_host = true;
   std::string host_address = "127.0.0.1";
   int local_car_id = 0;
-  int max_players = kMaxPlayers;
+  int max_players = p0::network::kMaxPlayers;
   int lap_count = 3;
   bool fill_with_ai = true;
-  AIDifficulty ai_difficulty = p0::ai::AIDifficulty::MEDIUM;
+  p0::ai::AIDifficulty ai_difficulty = p0::ai::AIDifficulty::MEDIUM;
 };
 
 enum class MultiplayerState {
@@ -88,9 +88,9 @@ class MultiplayerGameplay {
   MultiplayerState state_ = MultiplayerState::MENU;
   MultiplayerResults results_;
   simulation::SimulationWorld world_;
-  lobby::Lobby lobby_;
+  network::Lobby lobby_;
   std::unique_ptr<input::InputManager> local_input_;
-  std::unique_ptr<telemetry::TelemetryRecorder> telemetry_;
+  std::unique_ptr<telemetry::Telemetry> telemetry_;
 
   double countdown_start_time_ = 0.0;
   double countdown_duration_ = 3.0;
@@ -106,6 +106,7 @@ class MultiplayerGameplay {
   void update_results(double delta_time);
   void check_local_finish();
   void build_telemetry();
+  void set_state(MultiplayerState new_state);
 };
 
 }

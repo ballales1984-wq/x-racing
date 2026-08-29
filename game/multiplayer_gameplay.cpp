@@ -3,6 +3,7 @@
 #include "track/track.h"
 #include "input/platform/windows_input.h"
 #include <algorithm>
+#include <cmath>
 
 namespace p0::gameplay {
 
@@ -22,14 +23,13 @@ bool MultiplayerGameplay::initialize(const MultiplayerConfig& config) {
   lobby_config.fill_with_ai = config_.fill_with_ai;
   lobby_config.default_ai_difficulty = config_.ai_difficulty;
 
-  lobby_ = network::Lobby(lobby_config);
+  lobby_ = std::move(network::Lobby(lobby_config));
 
   vehicle::CarModel model = vehicle::CarRegistry::instance().all().empty()
                                 ? vehicle::CarModel{}
                                 : vehicle::CarRegistry::instance().all()[0];
-  track::Track track;
-  track.initialize(track::TrackType::Default);
-  world_.initialize(track);
+  track::Track track(track::TrackType::Default);
+  world_.initialize(track, config_.lap_count);
 
   local_input_ = std::make_unique<input::WindowsInputManager>();
 
@@ -87,7 +87,9 @@ void MultiplayerGameplay::leave_race() {
 void MultiplayerGameplay::start_countdown() {
   if (state_ != MultiplayerState::LOBBY) return;
 
-  vehicle::CarModel model = vehicle::CarRegistry::instance().default_model();
+  vehicle::CarModel model = vehicle::CarRegistry::instance().all().empty()
+                                ? vehicle::CarModel{}
+                                : vehicle::CarRegistry::instance().all()[0];
 
   if (config_.is_host) {
     std::unordered_map<int, vehicle::VehicleState> initial_states;
@@ -148,7 +150,7 @@ void MultiplayerGameplay::check_local_finish() {
   const auto& state = car->simulation->state();
   if (state.lap >= config_.lap_count && state.lap > 0) {
     results_.completed = true;
-    results_.total_time = world_.get_state(config_.local_car_id).distance_along_track;
+    results_.total_time = world_.get_finish_time(config_.local_car_id);
     results_.completed_laps = state.lap;
     set_state(MultiplayerState::RESULTS);
 
@@ -200,15 +202,8 @@ void MultiplayerGameplay::set_state(MultiplayerState new_state) {
 }
 
 void MultiplayerGameplay::build_telemetry() {
-  telemetry_ = std::make_unique<telemetry::TelemetryRecorder>();
-  if (!telemetry_->initialize("multiplayer")) return;
-
-  for (const auto& [car_id, car] : world_.cars()) {
-    telemetry::TelemetryChannel channel;
-    channel.car_id = car_id;
-    channel.driver_name = car.name;
-    telemetry_->add_channel(channel);
-  }
+  telemetry_ = std::make_unique<telemetry::Telemetry>();
+  telemetry_->clear();
 }
 
 }
