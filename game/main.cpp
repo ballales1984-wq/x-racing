@@ -2,14 +2,10 @@
 #include "engine/input/platform/windows_input.h"
 #include <iostream>
 
-// Project 0 — interactive gameplay entry point
-// Builds a default track, simulation and telemetry recorder, then runs
-// the real-time gameplay loop with Windows keyboard input.
 int main() {
   std::cout << "Project 0 - Gameplay\n";
   std::cout << "Initializing simulation...\n";
 
-  // Create the default track, simulation and telemetry recorder.
   p0::track::Track track;
   p0::simulation::Simulation sim;
   p0::telemetry::Telemetry tel;

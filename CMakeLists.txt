@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if(MSVC)
+  add_compile_options(/EHsc)
+endif()
+
 option(PROJECT0_BUILD_TESTS "Build tests" ON)
 option(PROJECT0_BUILD_RENDERER "Build renderer" OFF)
 option(PROJECT0_BUILD_EXPERIMENTS "Build experiments" ON)

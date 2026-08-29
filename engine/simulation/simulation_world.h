@@ -54,6 +54,16 @@ class SimulationWorld {
   using OnRaceFinished = std::function<void(int car_id, double time, int laps)>;
   using OnLapCompleted = std::function<void(int car_id, int lap, double lap_time)>;
 
+  using RaceUpdateCb = std::function<void(double, const std::unordered_map<int, Vec2>&,
+                                          const std::unordered_map<int, double>&,
+                                          const std::unordered_map<int, double>&,
+                                          const std::unordered_map<int, race::TireCompound>&)>;
+
+  SimulationWorld(const SimulationWorld&) = delete;
+  SimulationWorld& operator=(const SimulationWorld&) = delete;
+  SimulationWorld(SimulationWorld&&) = default;
+  SimulationWorld& operator=(SimulationWorld&&) = default;
+
   SimulationWorld();
   ~SimulationWorld();
 
@@ -69,11 +79,7 @@ class SimulationWorld {
   void set_ai_input(int car_id, const input::InputState& ai_input);
 
   WorldUpdateResult update(double delta_time, double timestamp);
-  WorldUpdateResult update_with_race_manager(double delta_time, double timestamp,
-                                              std::function<void(double, const std::unordered_map<int, Vec2>&,
-                                                                const std::unordered_map<int, double>&,
-                                                                const std::unordered_map<int, double>&,
-                                                                const std::unordered_map<int, race::TireCompound>&)> race_update_cb);
+  WorldUpdateResult update_with_race_manager(double delta_time, double timestamp, RaceUpdateCb race_update_cb);
 
   const CarInstance* get_car(int car_id) const;
   CarInstance* get_car(int car_id);
@@ -88,6 +94,9 @@ class SimulationWorld {
   void set_track(const track::Track& track);
   const track::Track& track() const;
 
+  void set_total_laps(int laps) { total_laps_ = laps; }
+  int total_laps() const { return total_laps_; }
+
   void set_on_race_finished(OnRaceFinished cb) { on_race_finished_ = cb; }
   void set_on_lap_completed(OnLapCompleted cb) { on_lap_completed_ = cb; }
 
@@ -98,6 +107,7 @@ class SimulationWorld {
   int next_car_id_ = 0;
   double total_race_time_ = 0.0;
   bool race_started_ = false;
+  int total_laps_ = 0;
 
   OnRaceFinished on_race_finished_;
   OnLapCompleted on_lap_completed_;

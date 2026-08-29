@@ -110,7 +110,7 @@ void SimulationWorld::check_lap_completions() {
 
     const auto& state = car.simulation->state();
     if (state.lap > car.prev_lap) {
-      int completed_lap = state.lap - 1;
+      int completed_lap = state.lap;
       double lap_time = total_race_time_ - car.lap_start_time;
 
       if (completed_lap >= 1) {
@@ -131,7 +131,7 @@ void SimulationWorld::check_race_finish() {
     if (car.finished) continue;
 
     const auto& state = car.simulation->state();
-    if (state.lap > 0) {
+    if (total_laps_ > 0 && state.lap >= total_laps_) {
       car.finished = true;
       car.finish_time = total_race_time_;
 

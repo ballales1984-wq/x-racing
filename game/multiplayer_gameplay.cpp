@@ -29,7 +29,7 @@ bool MultiplayerGameplay::initialize(const MultiplayerConfig& config) {
                                 ? vehicle::CarModel{}
                                 : vehicle::CarRegistry::instance().all()[0];
   track::Track track(track::TrackType::Default);
-  world_.initialize(track, config_.lap_count);
+  world_.initialize(track);
 
   local_input_ = std::make_unique<input::WindowsInputManager>();
 
@@ -150,7 +150,7 @@ void MultiplayerGameplay::check_local_finish() {
   const auto& state = car->simulation->state();
   if (state.lap >= config_.lap_count && state.lap > 0) {
     results_.completed = true;
-    results_.total_time = world_.get_finish_time(config_.local_car_id);
+    results_.total_time = car->finish_time;
     results_.completed_laps = state.lap;
     set_state(MultiplayerState::RESULTS);
 

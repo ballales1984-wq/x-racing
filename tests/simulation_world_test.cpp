@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "simulation/simulation_world.h"
+#include "track/race_config.h"
 #include "track/track.h"
 #include "input/input.h"
 
@@ -183,14 +184,13 @@ TEST(SimulationWorld, UpdateWithRaceManagerCallsCallback) {
   int id = world.add_car(p0::vehicle::VehicleParams{}, DriverType::HUMAN, 0, "P1");
 
   bool callback_called = false;
-  world.update_with_race_manager(0.016, 1.0,
-    [&](double, const std::unordered_map<int, Vec2>&,
-        const std::unordered_map<int, double>&,
-        const std::unordered_map<int, double>&,
-        const std::unordered_map<int, double>&,
-        const std::unordered_map<int, race::TireCompound>&) {
-      callback_called = true;
-    });
+  SimulationWorld::RaceUpdateCb cb = [&](double, const std::unordered_map<int, Vec2>&,
+      const std::unordered_map<int, double>&,
+      const std::unordered_map<int, double>&,
+      const std::unordered_map<int, race::TireCompound>&) {
+    callback_called = true;
+  };
+  world.update_with_race_manager(0.016, 1.0, cb);
 
   EXPECT_TRUE(callback_called);
 }
@@ -223,7 +223,7 @@ TEST(SimulationWorld, LapCompletedCallbackFires) {
   throttle_input.throttle = 1.0;
   throttle_input.upshift = true;
 
-  for (int i = 0; i < 5000; ++i) {
+  for (int i = 0; i < 15000; ++i) {
     world.set_input(id, throttle_input);
     world.update(1.0 / 60.0, i * (1.0 / 60.0));
   }

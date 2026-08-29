@@ -14,13 +14,11 @@
 // Namespace: p0::gameplay
 namespace p0::gameplay {
 
-// One recorded lap time and whether it counts as valid.
 struct LapTime {
   double lap_time = 0.0;
   bool valid = true;
 };
 
-// Mutable state of a gameplay session.
 struct GameplayState {
   bool running = true;
   bool reset_requested = false;
@@ -29,7 +27,7 @@ struct GameplayState {
   double current_lap_time = 0.0;
   std::vector<LapTime> lap_times;
   bool off_track_warning = false;
-  int off_track_frames = 0;       // consecutive frames spent off-track
+  int off_track_frames = 0;
 };
 
 class Gameplay {
@@ -43,10 +41,8 @@ class Gameplay {
   const GameplayState& state() const { return state_; }
   void set_off_track_warning(bool warning) { state_.off_track_warning = warning; }
 
-  // Test helpers
   void update_lap_timing(const simulation::SimulationResult& result);
 
-  // Game flow
   void handle_menu_input(const input::InputState& input);
   void handle_countdown();
   void handle_racing(const simulation::SimulationResult& result);
@@ -56,9 +52,7 @@ class Gameplay {
   void reset_race();
 
  private:
-  // Poll the input manager for the latest driver input.
   input::InputState poll_input();
-  // Render the current state to the console HUD.
   void render_console(const simulation::SimulationResult& result);
   void render_menu();
   void render_countdown();
