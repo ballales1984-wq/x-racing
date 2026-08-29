@@ -23,6 +23,18 @@ namespace Project0.Unity.Setup
                 Object.DestroyImmediate(car);
             }
 
+            var oldCamera = GameObject.Find("Main Camera");
+            if (oldCamera != null)
+            {
+                Object.DestroyImmediate(oldCamera);
+            }
+
+            var oldHUD = GameObject.Find("HUD");
+            if (oldHUD != null)
+            {
+                Object.DestroyImmediate(oldHUD);
+            }
+
             string[] fbxPaths = new string[]
             {
                 "Assets/Models/car.fbx"

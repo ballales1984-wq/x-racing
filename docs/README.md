@@ -130,8 +130,8 @@ x-racing/
 │   │   │   ├── TrackGenerator.cs  # Project0 > Generate Track menu
 │   │   │   └── GenerateTelemetry.cs
 │   │   ├── Scenes/
-│   │   │   ├── ok.unity           # Main gameplay scene
-│   │   │   └── impostazioni.unity # Settings/config scene
+│   │   │   └── MainScene.unity     # Empty placeholder (use now.unity for development)
+│   │   ├── now.unity               # Current development scene (build target)
 │   │   ├── Materials/
 │   │   │   ├── CarMaterial.mat
 │   │   │   └── GroundMaterial.mat

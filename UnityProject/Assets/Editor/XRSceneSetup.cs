@@ -17,6 +17,27 @@ namespace Project0.Unity.Setup
                 return;
             }
 
+            var oldCar = GameObject.Find("Car");
+            if (oldCar != null) Object.DestroyImmediate(oldCar);
+
+            var oldCam = GameObject.Find("Main Camera");
+            if (oldCam != null) Object.DestroyImmediate(oldCam);
+
+            var oldLight = GameObject.Find("Directional Light");
+            if (oldLight != null) Object.DestroyImmediate(oldLight);
+
+            var oldHUD = GameObject.Find("HUD");
+            if (oldHUD != null) Object.DestroyImmediate(oldHUD);
+
+            var oldUI = GameObject.Find("XRUIManager");
+            if (oldUI != null) Object.DestroyImmediate(oldUI);
+
+            var oldBootstrap = GameObject.Find("XRGameBootstrap");
+            if (oldBootstrap != null) Object.DestroyImmediate(oldBootstrap);
+
+            var oldTrackGen = GameObject.Find("XRTrackGenerator");
+            if (oldTrackGen != null) Object.DestroyImmediate(oldTrackGen);
+
             CreateOrFind("Main Camera", (cam) =>
             {
                 cam.tag = "MainCamera";

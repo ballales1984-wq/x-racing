@@ -505,7 +505,7 @@ namespace Project0.Unity
         void CreateBoxLane(GameObject parent, List<TrackPointData> points)
         {
             var go = GameObject.Find("BoxLane");
-            if (go != null) Destroy(go);
+            if (go != null) DestroyImmediate(go);
             go = new GameObject("BoxLane");
             go.transform.SetParent(parent.transform);
 
@@ -615,7 +615,7 @@ namespace Project0.Unity
             if (boxPositions.Length == 0) return;
 
             var go = GameObject.Find("PitBoxes");
-            if (go != null) Destroy(go);
+            if (go != null) DestroyImmediate(go);
             go = new GameObject("PitBoxes");
             go.transform.SetParent(parent.transform);
 
@@ -720,7 +720,7 @@ namespace Project0.Unity
             }
             else
             {
-                foreach (Transform child in sfObj.transform) Destroy(child.gameObject);
+                foreach (Transform child in sfObj.transform) DestroyImmediate(child.gameObject);
                 var mf = sfObj.GetComponent<MeshFilter>();
                 if (mf != null) DestroyImmediate(mf);
                 var mr = sfObj.GetComponent<MeshRenderer>();

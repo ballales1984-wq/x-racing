@@ -118,8 +118,8 @@ No trees, no graphical details, no sophisticated AI.
 
 - [x] Chase camera (basic)
 - [x] Configurable distance
-- [ ] Rotation / look-ahead
-- [ ] Smoothing (lerp / spring)
+- [x] Rotation / look-ahead
+- [x] Smoothing (lerp / spring)
 
 **Completion criterion:** the camera follows the car with an acceptable view.
 
@@ -267,7 +267,7 @@ x-racing/
 │   ├── Assets/
 │   │   ├── Scripts/          - CarController, CarHUD, SimPlugin
 │   │   ├── Editor/           - TrackGenerator, SceneSetup
-│   │   ├── Scenes/           - ok.unity, settings.unity
+│   │   ├── Scenes/           - MainScene.unity (placeholder), now.unity (active)
 │   │   ├── Materials/        - CarMaterial, GroundMaterial
 │   │   ├── Plugins/x86_64/   - sim_plugin.dll
 │   │   └── Settings/         - URP asset, renderer data
