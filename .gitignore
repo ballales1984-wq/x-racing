@@ -10,6 +10,7 @@ build_new/
 build_ninja/
 buildx/
 build_old/
+build_phase1/
 
 # IDE
 .vscode/
@@ -80,7 +81,7 @@ CMakePresets.json
 CMakeUserPresets.json
 
 # Large binary assets (keep source FBX only)
-assets/models/*.obj
+data/models/*.obj
 UnityProject/Assets/Models/
 UnityProject/Assets/*.fbx
 UnityProject/Assets/*.fbx.meta
