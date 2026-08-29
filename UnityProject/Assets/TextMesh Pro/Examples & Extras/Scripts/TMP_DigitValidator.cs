@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using TMPro;
+using UnityEngine;
 using System;
 
 
@@ -25,3 +26,4 @@ namespace TMPro
         }
     }
 }
+

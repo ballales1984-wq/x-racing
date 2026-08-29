@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using TMPro;
+using UnityEngine;
 using System.Collections;
 using UnityEngine.TextCore.LowLevel;
 
@@ -90,3 +91,4 @@ namespace TMPro.Examples
 
     }
 }
+

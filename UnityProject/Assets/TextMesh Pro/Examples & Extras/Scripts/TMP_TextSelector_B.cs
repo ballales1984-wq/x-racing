@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using TMPro;
+using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using System.Collections;
@@ -545,3 +546,4 @@ namespace TMPro.Examples
         }
     }
 }
+

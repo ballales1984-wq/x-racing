@@ -11,7 +11,7 @@ namespace Project0.Unity
         private TrackValidator validator;
 
         /// <summary>
-        /// Corregge automaticamente i problemi della pista
+        /// Automatically fixes track issues
         /// </summary>
         public void AutoFixTrack(TrackData data)
         {
@@ -26,7 +26,7 @@ namespace Project0.Unity
         }
 
         /// <summary>
-        /// Fissa i gap tra segmenti allineando gli endpoint
+        /// Fixes gaps between segments by aligning endpoints
         /// </summary>
         private void FixSegmentGaps()
         {
@@ -41,14 +41,14 @@ namespace Project0.Unity
 
                 if (gap > 0.1f)
                 {
-                    // Sposta lo start del prossimo segmento all'end del corrente
+                    // Move the start of the next segment to the end of the current one
                     Debug.Log($"  Fixing gap {gap:F2}m between segment {i} and {i + 1}");
 
-                    // Mantieni la direzione della curva, solo trasla
+                    // Keep the curve direction, just translate
                     Vector3 offset = current.end_pos - next.start_pos;
                     next.start_pos = current.end_pos;
 
-                    // Se è una curva, trasla anche il center
+                    // If it is a curve, also translate the center
                     if (next.type == "curve" && next.center != Vector2.zero)
                     {
                         next.center = new Vector2(
@@ -63,7 +63,7 @@ namespace Project0.Unity
         }
 
         /// <summary>
-        /// Chiude il circuito facendo corrispondere l'ultimo segment con il primo
+        /// Closes the loop by matching the last segment with the first
         /// </summary>
         private void CloseTrackLoop()
         {
@@ -80,11 +80,11 @@ namespace Project0.Unity
             {
                 Debug.Log($"  Closing gap of {gap:F2}m");
 
-                // Opzione 1: Trasla l'ultimo segment
+                // Option 1: Translate the last segment
                 Vector3 offset = firstSegment.start_pos - lastSegment.end_pos;
                 lastSegment.end_pos = firstSegment.start_pos;
 
-                // Se è una curva, trasla anche il center
+                // If it is a curve, also translate the center
                 if (lastSegment.type == "curve" && lastSegment.center != Vector2.zero)
                 {
                     lastSegment.center = new Vector2(
@@ -102,7 +102,7 @@ namespace Project0.Unity
         }
 
         /// <summary>
-        /// Riallinea i waypoint assicurando siano vicini ai segmenti
+        /// Re-aligns waypoints ensuring they are close to segments
         /// </summary>
         private void AlignWaypoints()
         {
@@ -110,8 +110,8 @@ namespace Project0.Unity
 
             if (trackData.waypoints.Count == 0) return;
 
-            // Waypoint non memorizza un segment_id nel modello corrente: verifichiamo
-            // che ogni waypoint sia entro una soglia ragionevole dal segmento piu vicino.
+            // Waypoint does not store a segment_id in the current model: we verify
+            // that each waypoint is within a reasonable threshold from the nearest segment.
             const float toleranceMeters = 50f;
 
             foreach (Waypoint wp in trackData.waypoints)
@@ -129,7 +129,7 @@ namespace Project0.Unity
         }
 
         /// <summary>
-        /// Trova il segmento più vicino a una posizione
+        /// Finds the closest segment to a position
         /// </summary>
         private int FindClosestSegment(Vector3 position)
         {
@@ -162,7 +162,7 @@ namespace Project0.Unity
         }
 
         /// <summary>
-        /// Esegui validazione dopo le correzioni
+        /// Runs validation after fixes
         /// </summary>
         private void ValidateAndReport()
         {
