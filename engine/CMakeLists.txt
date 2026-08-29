@@ -6,6 +6,11 @@ add_library(project0_engine STATIC
   track/race_manager.cpp
   track/race_results.cpp
   track/result_storage.cpp
+  tracking/clock.cpp
+  tracking/simulated_gps.cpp
+  tracking/real_gps.cpp
+  tracking/track_mapper.cpp
+  tracking/tracking_system.cpp
   simulation/simulation.cpp
   simulation/simulation_world.cpp
   telemetry/telemetry.cpp

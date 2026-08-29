@@ -23,6 +23,7 @@ set(TEST_SOURCES
   race_manager_test.cpp
   simulation_world_test.cpp
   result_storage_test.cpp
+  tracking_test.cpp
   ../game/gameplay.cpp
   ../tools/track_diagram/track_diagram.cpp
 )
