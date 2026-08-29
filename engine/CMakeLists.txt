@@ -91,6 +91,8 @@ if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../UnityProject/Assets/Plugins"
   endif()
 endif()
 
+add_subdirectory(debug)
+
 # Vehicle generator tool
 add_executable(generate_vehicle
   tools/generate_vehicle.cpp
