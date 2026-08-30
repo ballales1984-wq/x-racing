@@ -25,7 +25,7 @@
 | Rendering (Unity placeholder) | ✅ |
 | Unity editor integration | ✅ |
 | Race management (pit, validation, config) | ✅ |
-| AI (racing line, opponents) | ⏳ next |
+| AI (racing line, opponents, overtaking, defense, traffic, errors) | ✅ |
 
 ---
 
@@ -179,14 +179,14 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Pit stop FSM (PitStopFSM, PitStopManager)
 - [x] Race manager (RaceManager orchestrator)
 - [x] Validation engine (validate geometry, direction, grid, pit, race, assignments)
-- [ ] Countdown (3-2-1-GO)
-- [ ] Starting grid (positions, spacing)
-- [ ] Basic AI opponents (waypoint following, fixed speed)
-- [ ] Standings (position, gap, best lap)
-- [ ] Lap system (counter, lap validation)
-- [ ] Penalties (track cut, false start)
-- [ ] Flags (yellow, red, checkered)
-- [ ] Race end (results screen, restart)
+- [x] Countdown (3-2-1-GO)
+- [x] Starting grid (positions, spacing)
+- [x] Basic AI opponents (waypoint following, fixed speed)
+- [x] Standings (position, gap, best lap)
+- [x] Lap system (counter, lap validation)
+- [x] Penalties (track cut, false start)
+- [x] Flags (yellow, red, checkered)
+- [x] Race end (results screen, restart)
 
 **Completion criterion:** an N-lap race can be run against opponents with countdown, standings, and race end.
 
@@ -199,10 +199,10 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Racing line (optimal line optimization for the track)
 - [x] Driver AI (acceleration, braking, steering based on racing line)
 - [x] Opponents system (manager, multiple AI cars)
-- [ ] Overtaking (decision making, gap analysis)
-- [ ] Defense (corner positioning)
-- [ ] Traffic adaptation
-- [ ] Human errors (small imperfections, variance)
+- [x] Overtaking (decision making, gap analysis)
+- [x] Defense (corner positioning)
+- [x] Traffic adaptation
+- [x] Human errors (small imperfections, variance)
 - [ ] ML experiments (engine behavior, sound, adaptive driving)
 
 **Completion criterion:** opponents are competitive, make realistic mistakes, and offer variable difficulty.
