@@ -28,7 +28,13 @@ struct LapEvent {
 // Decouples lap logic from raw distance inputs by consuming TrackPosition.
 class LapSystem {
  public:
+  LapSystem() = default;
   explicit LapSystem(double track_length, int total_laps = 0);
+  LapSystem(const LapSystem&) = default;
+  LapSystem(LapSystem&&) = default;
+  LapSystem& operator=(const LapSystem&) = default;
+  LapSystem& operator=(LapSystem&&) = default;
+  ~LapSystem() = default;
 
   void update(const TrackPosition& pos, double timestamp);
   void reset();

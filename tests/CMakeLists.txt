@@ -24,7 +24,9 @@ set(TEST_SOURCES
   simulation_world_test.cpp
   result_storage_test.cpp
   tracking_test.cpp
-  ../game/gameplay.cpp
+   ai_test.cpp
+   standings_test.cpp
+   ../game/gameplay.cpp
   ../tools/track_diagram/track_diagram.cpp
 )
 

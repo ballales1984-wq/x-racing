@@ -18,6 +18,7 @@ namespace p0::track {
 // moves backwards, which the naive "distance >= track length" check cannot do.
 class LapDetector {
  public:
+  LapDetector() = default;
   explicit LapDetector(double track_length, int total_laps = 0)
       : track_length_(track_length > kEpsilon ? track_length : kEpsilon),
         total_laps_(total_laps) {}

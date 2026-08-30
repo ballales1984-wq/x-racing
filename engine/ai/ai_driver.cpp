@@ -4,7 +4,7 @@
 
 namespace p0::ai {
 
-static AIDriverParams difficulty_preset(AIDifficulty diff) {
+AIDriverParams AIDriver::difficulty_preset(AIDifficulty diff) {
   AIDriverParams p;
   switch (diff) {
     case AIDifficulty::EASY:
@@ -20,6 +20,8 @@ static AIDriverParams difficulty_preset(AIDifficulty diff) {
       p.gear_shift_rpm_up = 6500.0;
       p.gear_shift_rpm_down = 2200.0;
       p.enable_defense = false;
+      p.overtake_aggression = 0.3;
+      p.defense_willingness = 0.2;
       break;
     case AIDifficulty::MEDIUM:
       p.difficulty = AIDifficulty::MEDIUM;
@@ -33,7 +35,9 @@ static AIDriverParams difficulty_preset(AIDifficulty diff) {
       p.corner_entry_speed_factor = 0.82;
       p.gear_shift_rpm_up = 6800.0;
       p.gear_shift_rpm_down = 2500.0;
-      p.enable_defense = false;
+      p.enable_defense = true;
+      p.overtake_aggression = 0.5;
+      p.defense_willingness = 0.5;
       break;
     case AIDifficulty::HARD:
       p.difficulty = AIDifficulty::HARD;
@@ -48,6 +52,8 @@ static AIDriverParams difficulty_preset(AIDifficulty diff) {
       p.gear_shift_rpm_up = 7000.0;
       p.gear_shift_rpm_down = 2800.0;
       p.enable_defense = true;
+      p.overtake_aggression = 0.8;
+      p.defense_willingness = 0.8;
       break;
   }
   return p;
@@ -62,12 +68,21 @@ void AIDriver::set_track(const track::Track& track) {
   has_target_ = false;
 }
 
+void AIDriver::set_racing_line(const std::vector<track::RacingLineSample>& samples) {
+  racing_line_ = samples;
+  use_racing_line_ = !samples.empty();
+}
+
 void AIDriver::set_difficulty(AIDifficulty difficulty) {
   params_ = difficulty_preset(difficulty);
 }
 
 void AIDriver::set_target_speed_factor(double factor) {
   params_.corner_entry_speed_factor = std::clamp(factor, 0.5, 1.0);
+}
+
+void AIDriver::set_nearby_cars(const std::vector<vehicle::VehicleState>& cars) {
+  nearby_cars_ = cars;
 }
 
 void AIDriver::update(const vehicle::VehicleState& state, double delta_time) {
@@ -79,8 +94,35 @@ void AIDriver::update(const vehicle::VehicleState& state, double delta_time) {
   compute_gears(state);
 }
 
+const track::RacingLineSample* AIDriver::lookup_racing_line(const Vec2& position) const {
+  if (!use_racing_line_ || racing_line_.empty()) return nullptr;
+
+  const track::RacingLineSample* best = nullptr;
+  double best_dist = 1e9;
+
+  for (const auto& sample : racing_line_) {
+    double d = (sample.transform.position - position).norm();
+    if (d < best_dist) {
+      best_dist = d;
+      best = &sample;
+    }
+  }
+
+  return best;
+}
+
 void AIDriver::compute_target(const vehicle::VehicleState& state) {
   if (!track_) return;
+
+  if (use_racing_line_) {
+    const track::RacingLineSample* rl = lookup_racing_line(state.position);
+    if (rl) {
+      current_target_ = rl->transform.position;
+      current_target_speed_ = rl->speed_m_s * params_.corner_entry_speed_factor;
+      has_target_ = true;
+      return;
+    }
+  }
 
   double look_ahead = params_.look_ahead_distance + state.speed * 1.5;
   double dist = 0.0;
@@ -121,6 +163,16 @@ void AIDriver::compute_target(const vehicle::VehicleState& state) {
     Vec2 normal = Vec2(-best_dir.y(), best_dir.x());
     best_pos += normal * error;
   }
+
+  double track_curvature = 0.0;
+  if (track_) {
+    double d = std::fmod(state.distance_along_track, track_len);
+    if (d < 0.0) d += track_len;
+    track_curvature = track_->at(d).curvature;
+  }
+
+  best_pos = adjust_for_overtaking(best_pos, state, track_curvature);
+  best_pos = adjust_for_defense(best_pos, state, track_curvature);
 
   current_target_ = best_pos;
   current_target_speed_ = best_speed;
@@ -250,6 +302,70 @@ input::InputState AIDriver::poll() {
 
 bool AIDriver::is_key_down(int key_code) {
   return false;
+}
+
+Vec2 AIDriver::adjust_for_overtaking(const Vec2& target, const vehicle::VehicleState& state, double curvature) {
+  if (!params_.enable_defense || nearby_cars_.empty() || !track_) return target;
+
+  double abs_c = std::abs(curvature);
+  if (abs_c < 0.01) return target;
+
+  Vec2 best_adjust = target;
+  double best_gain = 0.0;
+
+  double d = std::fmod(state.distance_along_track, track_->length());
+  if (d < 0.0) d += track_->length();
+  Vec2 track_normal = track_->at(d).normal;
+
+  for (const auto& car : nearby_cars_) {
+    double dist = (car.position - state.position).norm();
+    if (dist > 20.0 || dist < 2.0) continue;
+
+    double behind = (state.position - car.position).dot(Vec2(std::cos(state.heading), std::sin(state.heading)));
+    if (behind < 0.0) continue;
+
+    double gain = (1.0 - dist / 20.0) * params_.overtake_aggression;
+    if (gain > best_gain) {
+      best_gain = gain;
+      double sign = curvature > 0.0 ? -1.0 : 1.0;
+      double offset = sign * gain * 2.0;
+      best_adjust = target + track_normal * offset;
+    }
+  }
+
+  return best_adjust;
+}
+
+Vec2 AIDriver::adjust_for_defense(const Vec2& target, const vehicle::VehicleState& state, double curvature) {
+  if (!params_.enable_defense || nearby_cars_.empty() || !track_) return target;
+
+  double abs_c = std::abs(curvature);
+  if (abs_c < 0.01) return target;
+
+  Vec2 best_adjust = target;
+  double best_gain = 0.0;
+
+  double d = std::fmod(state.distance_along_track, track_->length());
+  if (d < 0.0) d += track_->length();
+  Vec2 track_normal = track_->at(d).normal;
+
+  for (const auto& car : nearby_cars_) {
+    double dist = (car.position - state.position).norm();
+    if (dist > 15.0 || dist < 2.0) continue;
+
+    double ahead = (car.position - state.position).dot(Vec2(std::cos(state.heading), std::sin(state.heading)));
+    if (ahead < 0.0) continue;
+
+    double gain = (1.0 - dist / 15.0) * params_.defense_willingness;
+    if (gain > best_gain) {
+      best_gain = gain;
+      double sign = curvature > 0.0 ? 1.0 : -1.0;
+      double offset = sign * gain * 2.5;
+      best_adjust = target + track_normal * offset;
+    }
+  }
+
+  return best_adjust;
 }
 
 }

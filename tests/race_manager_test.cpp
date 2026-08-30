@@ -70,7 +70,7 @@ TEST(RaceManager, EmptyAssignmentsFailsInit) {
   EXPECT_FALSE(ok);
 }
 
-TEST(RaceManager, StartRaceSetsFormation) {
+TEST(RaceManager, StartRaceEntersGrid) {
   TrackData track = make_valid_track();
   p0::race::RaceDefinition race = make_valid_race();
 
@@ -83,6 +83,30 @@ TEST(RaceManager, StartRaceSetsFormation) {
   mgr.initialize(assignments, {});
   mgr.start_race();
 
+  EXPECT_EQ(mgr.session_state(), p0::race::RaceSessionState::GRID);
+}
+
+TEST(RaceManager, CountdownTransitionsToFormation) {
+  TrackData track = make_valid_track();
+  p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 3.0;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+  mgr.start_countdown();
+
+  EXPECT_EQ(mgr.session_state(), p0::race::RaceSessionState::GRID);
+
+  mgr.update(1.0, {}, {}, {}, {}, {});
+  EXPECT_EQ(mgr.session_state(), p0::race::RaceSessionState::GRID);
+
+  mgr.update(4.0, {}, {}, {}, {}, {});
   EXPECT_EQ(mgr.session_state(), p0::race::RaceSessionState::FORMATION);
 }
 
@@ -90,6 +114,7 @@ TEST(RaceManager, SessionStateAdvancesToGreenFlag) {
   TrackData track = make_valid_track();
   p0::race::RaceDefinition race = make_valid_race();
   race.formation_lap = 1;
+  race.countdown_duration_s = 0.0;
 
   std::vector<p0::race::CarAssignment> assignments;
   p0::race::CarAssignment a;
@@ -99,6 +124,8 @@ TEST(RaceManager, SessionStateAdvancesToGreenFlag) {
   RaceManager mgr(track, race);
   mgr.initialize(assignments, {});
   mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
   mgr.update(200.0, {}, {}, {}, {}, {});
   mgr.update(200.0, {}, {}, {}, {}, {});
 
@@ -113,32 +140,46 @@ TEST(RaceManager, CheckeredFlagWhenLapsComplete) {
   p0::race::RaceDefinition race = make_valid_race();
   race.laps = 2;
   race.formation_lap = 0;
+  race.countdown_duration_s = 0.0;
 
   std::vector<p0::race::CarAssignment> assignments;
   p0::race::CarAssignment a;
   a.car_id = 1;
   assignments.push_back(a);
 
-  // Provide car_distances so lap counter can detect wrap-around
   std::unordered_map<int, double> distances;
 
   RaceManager mgr(track, race);
   mgr.initialize(assignments, {});
   mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
 
-  // Lap 1 complete: position wraps from 900 to 100
-  distances[1] = 100.0;
+  // Lap 1: progress from 0 to 1000, then wrap to 0
+  distances[1] = 0.0;
   mgr.update(1.0, {}, {}, distances, {}, {});
-  distances[1] = 900.0;
+  distances[1] = 200.0;
   mgr.update(2.0, {}, {}, distances, {}, {});
-  // Lap 2 complete: wraps from 900 back to 100
-  distances[1] = 100.0;
+  distances[1] = 400.0;
   mgr.update(3.0, {}, {}, distances, {}, {});
-  distances[1] = 900.0;
+  distances[1] = 600.0;
   mgr.update(4.0, {}, {}, distances, {}, {});
-  // Lap 2 complete: wraps again
-  distances[1] = 100.0;
+  distances[1] = 800.0;
   mgr.update(5.0, {}, {}, distances, {}, {});
+  distances[1] = 0.0;
+  mgr.update(6.0, {}, {}, distances, {}, {});
+
+  // Lap 2: progress from 0 to 1000, then wrap to 0
+  distances[1] = 200.0;
+  mgr.update(7.0, {}, {}, distances, {}, {});
+  distances[1] = 400.0;
+  mgr.update(8.0, {}, {}, distances, {}, {});
+  distances[1] = 600.0;
+  mgr.update(9.0, {}, {}, distances, {}, {});
+  distances[1] = 800.0;
+  mgr.update(10.0, {}, {}, distances, {}, {});
+  distances[1] = 0.0;
+  mgr.update(11.0, {}, {}, distances, {}, {});
 
   EXPECT_EQ(mgr.session_state(), p0::race::RaceSessionState::CHECKERED_FLAG);
 }
@@ -148,6 +189,7 @@ TEST(RaceManager, LapCounterDetectsLapCompletion) {
   track.checkpoints.push_back(Checkpoint{0, {}, 20.0, false, 0});
 
   p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 0.0;
 
   std::vector<p0::race::CarAssignment> assignments;
   p0::race::CarAssignment a;
@@ -159,6 +201,8 @@ TEST(RaceManager, LapCounterDetectsLapCompletion) {
   RaceManager mgr(track, race);
   mgr.initialize(assignments, {});
   mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
 
   distances[1] = 800.0;
   mgr.update(1.0, {}, {}, distances, {}, {});
@@ -192,6 +236,8 @@ TEST(RaceManager, RequestPitStopWhenRunningSucceeds) {
   p0::race::RaceDefinition race = make_valid_race();
   race.grid_slots = 1;
   race.max_cars = 1;
+  race.countdown_duration_s = 0.0;
+  race.formation_lap = 0;
 
   std::vector<p0::race::CarAssignment> assignments;
   p0::race::CarAssignment a;
@@ -202,6 +248,8 @@ TEST(RaceManager, RequestPitStopWhenRunningSucceeds) {
   RaceManager mgr(track, race);
   mgr.initialize(assignments, {});
   mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
   mgr.update(200.0, {}, {}, {}, {}, {});
   mgr.update(200.0, {}, {}, {}, {}, {});
 
@@ -248,4 +296,159 @@ TEST(RaceManager, DebugReportContainsSessionInfo) {
   std::string report = mgr.debug_report();
   EXPECT_NE(report.find("Session:"), std::string::npos);
   EXPECT_NE(report.find("Lap:"), std::string::npos);
+}
+
+TEST(RaceManager, CountdownEmitsEvents) {
+  TrackData track = make_valid_track();
+  p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 3.0;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+  mgr.start_countdown();
+
+  mgr.update(1.0, {}, {}, {}, {}, {});
+  mgr.update(4.0, {}, {}, {}, {}, {});
+
+  auto events = mgr.drain_events();
+  bool has_tick = false;
+  bool has_go = false;
+  for (const auto& evt : events) {
+    if (evt.type == p0::race::RaceEventType::COUNTDOWN_TICK) has_tick = true;
+    if (evt.type == p0::race::RaceEventType::COUNTDOWN_GO) has_go = true;
+  }
+  EXPECT_TRUE(has_tick);
+  EXPECT_TRUE(has_go);
+}
+
+TEST(RaceManager, FlagStateTransitions) {
+  TrackData track = make_valid_track();
+  p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 0.0;
+  race.formation_lap = 0;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+
+  EXPECT_EQ(mgr.flag_state(), p0::race::FlagState::GREEN);
+
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
+  mgr.update(200.0, {}, {}, {}, {}, {});
+
+  EXPECT_EQ(mgr.flag_state(), p0::race::FlagState::GREEN);
+}
+
+TEST(RaceManager, PostRaceStateAfterAllFinish) {
+  TrackData track = make_valid_track();
+  track.checkpoints.push_back(Checkpoint{0, {}, 20.0, false, 0});
+
+  p0::race::RaceDefinition race = make_valid_race();
+  race.laps = 1;
+  race.formation_lap = 0;
+  race.countdown_duration_s = 0.0;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  std::unordered_map<int, double> distances;
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
+
+  // Complete 1 lap with smooth progression
+  distances[1] = 0.0;
+  mgr.update(1.0, {}, {}, distances, {}, {});
+  for (int i = 1; i <= 5; ++i) {
+    distances[1] = i * 200.0;
+    mgr.update(1.0 + i * 10.0, {}, {}, distances, {}, {});
+  }
+  // Wrap around to complete lap
+  distances[1] = 0.0;
+  mgr.update(100.0, {}, {}, distances, {}, {});
+
+  // After completing all laps, should be CHECKERED_FLAG or POST_RACE
+  auto state = mgr.session_state();
+  EXPECT_TRUE(state == p0::race::RaceSessionState::CHECKERED_FLAG ||
+              state == p0::race::RaceSessionState::POST_RACE);
+}
+
+TEST(RaceManager, PenaltyIssuedForTrackLimits) {
+  TrackData track = make_valid_track();
+  p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 0.0;
+  race.formation_lap = 0;
+  race.track_limits_strikes = 1;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  std::unordered_map<int, double> distances;
+  std::unordered_map<int, Vec2> positions;
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
+  mgr.update(200.0, {}, {}, {}, {}, {});
+  mgr.update(210.0, {}, {}, {}, {}, {});
+
+  // Verify we're in GREEN_FLAG_RUNNING state
+  ASSERT_EQ(mgr.session_state(), p0::race::RaceSessionState::GREEN_FLAG_RUNNING);
+
+  // Car goes off-track (y > width/2 = 7.5)
+  positions[1] = p0::Vec2(0.0, 20.0);
+  distances[1] = 100.0;
+  // Need to stay off-track for off_track_warning_time_s (0.5s)
+  mgr.update(3.0, positions, {}, distances, {}, {});
+  mgr.update(4.0, positions, {}, distances, {}, {});
+
+  // Check that penalty was issued (may need more time to register)
+  auto penalties = mgr.car_active_penalties(1);
+  EXPECT_GE(penalties.size(), 1u);
+}
+
+TEST(RaceManager, StandingsAvailableDuringRace) {
+  TrackData track = make_valid_track();
+  p0::race::RaceDefinition race = make_valid_race();
+  race.countdown_duration_s = 0.0;
+  race.formation_lap = 0;
+
+  std::vector<p0::race::CarAssignment> assignments;
+  p0::race::CarAssignment a;
+  a.car_id = 1;
+  assignments.push_back(a);
+
+  RaceManager mgr(track, race);
+  mgr.initialize(assignments, {});
+  mgr.start_race();
+  mgr.start_countdown();
+  mgr.update(1.0, {}, {}, {}, {}, {});
+
+  // Start formation and green flag
+  mgr.update(200.0, {}, {}, {}, {}, {});
+  mgr.update(210.0, {}, {}, {}, {}, {});
+
+  auto standings = mgr.current_standings();
+  EXPECT_GE(standings.size(), 1u);
 }

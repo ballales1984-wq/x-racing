@@ -196,8 +196,9 @@ No trees, no graphical details, no sophisticated AI.
 
 **Goal:** Opponents that drive in a realistic and adaptive way.
 
-- [ ] Racing line (optimal line optimization for the track)
-- [ ] Driver AI (acceleration, braking, steering based on racing line)
+- [x] Racing line (optimal line optimization for the track)
+- [x] Driver AI (acceleration, braking, steering based on racing line)
+- [x] Opponents system (manager, multiple AI cars)
 - [ ] Overtaking (decision making, gap analysis)
 - [ ] Defense (corner positioning)
 - [ ] Traffic adaptation

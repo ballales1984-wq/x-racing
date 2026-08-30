@@ -145,6 +145,46 @@ enum class RaceSessionState : uint8_t {
 };
 
 // ---------------------------------------------------------------------------
+// Flag state
+// ---------------------------------------------------------------------------
+enum class FlagState : uint8_t {
+  GREEN = 0,
+  YELLOW,
+  RED,
+  CHECKERED
+};
+
+// ---------------------------------------------------------------------------
+// Race events
+// ---------------------------------------------------------------------------
+enum class RaceEventType : uint8_t {
+  NONE = 0,
+  COUNTDOWN_TICK,
+  COUNTDOWN_GO,
+  FORMATION_LAP_START,
+  GREEN_FLAG_WAVED,
+  LAP_STARTED,
+  LAP_FINISHED,
+  LAP_INVALIDATED,
+  SECTOR_PASSED,
+  PENALTY_ISSUED,
+  PENALTY_SERVED,
+  TRACK_LIMITS_DETECTED,
+  JUMP_START_DETECTED,
+  FLAG_CHANGED,
+  CAR_FINISHED,
+  CAR_DNF,
+  RACE_ENDED
+};
+
+struct RaceEvent {
+  RaceEventType type = RaceEventType::NONE;
+  int car_id = 0;
+  double timestamp = 0.0;
+  std::string message;
+};
+
+// ---------------------------------------------------------------------------
 // Service type flags
 // ---------------------------------------------------------------------------
 struct ServiceFlags {
@@ -198,6 +238,7 @@ struct RaceDefinition {
   int laps = 15;
   double race_distance_m = 0.0;          // 0 = use laps
   int formation_lap = 1;
+  double countdown_duration_s = 3.0;
 
   // --- Pit policy ---
   ServiceFlags services;
@@ -211,6 +252,11 @@ struct RaceDefinition {
   PenaltyType violation_penalty = PenaltyType::DRIVE_THROUGH;
   double pit_min_time_s = 2.5;
   double pit_max_time_s = 120.0;
+
+  // --- Track limits ---
+  int track_limits_strikes = 3;
+  double off_track_warning_time_s = 0.5;
+  double off_track_penalty_time_s = 5.0;
 
   // --- Service parameters ---
   double refuel_rate_l_s = 2.0;

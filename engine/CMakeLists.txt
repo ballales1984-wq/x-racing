@@ -5,8 +5,9 @@ add_library(project0_engine STATIC
   track/validation.cpp
   track/race_manager.cpp
   track/race_results.cpp
-  track/result_storage.cpp
-  tracking/clock.cpp
+   track/result_storage.cpp
+   track/standings.cpp
+   tracking/clock.cpp
   tracking/simulated_gps.cpp
   tracking/real_gps.cpp
   tracking/replay_gps.cpp
@@ -35,6 +36,8 @@ add_library(project0_engine STATIC
   network/network_session.cpp
   network/lobby.cpp
   ai/ai_driver.cpp
+  ai/racing_line.cpp
+  ai/opponent.cpp
 )
 
 target_include_directories(project0_engine PUBLIC
