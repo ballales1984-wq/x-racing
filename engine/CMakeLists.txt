@@ -44,6 +44,7 @@ add_library(project0_engine STATIC
    environment/environment_generator.cpp
    ui/hud.cpp
    ui/track_map.cpp
+   ui/menu_system.cpp
 )
 
 target_include_directories(project0_engine PUBLIC
