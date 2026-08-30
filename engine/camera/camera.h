@@ -73,6 +73,24 @@ class ChaseCamera {
     return view;
   }
 
+  // Build a perspective projection matrix matching project().
+  Mat4 projection_matrix(int width, int height) const {
+    const double fov = 60.0 * kDegToRad;
+    const double aspect = static_cast<double>(width) / static_cast<double>(height);
+    const double near_plane = 0.1;
+    const double far_plane = 200.0;
+    const double f = 1.0 / std::tan(fov / 2.0);
+
+    Mat4 proj = Mat4::Identity();
+    proj(0, 0) = f / aspect;
+    proj(1, 1) = f;
+    proj(2, 2) = (far_plane + near_plane) / (near_plane - far_plane);
+    proj(2, 3) = (2.0 * far_plane * near_plane) / (near_plane - far_plane);
+    proj(3, 2) = -1.0;
+    proj(3, 3) = 0.0;
+    return proj;
+  }
+
   // Project a world point to screen pixels using a perspective projection.
   // Returns (-9999, -9999, 0) for points behind the camera.
   Vec3 project(const Vec3& world_pos, int width, int height) const {
@@ -112,3 +130,4 @@ class ChaseCamera {
 };
 
 }  // namespace p0::camera
+

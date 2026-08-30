@@ -3,6 +3,7 @@
 #include "race_config.h"
 #include "track_data.h"
 #include "pit_lane.h"
+#include "pit_service_unit.h"
 #include <string>
 #include <vector>
 
@@ -13,7 +14,7 @@ namespace p0::track {
 // ---------------------------------------------------------------------------
 class PitStopFSM {
  public:
-  explicit PitStopFSM(int car_id, const PitLaneSystem& pit_system);
+  PitStopFSM(int car_id, const PitLaneSystem& pit_system, PitServiceUnitManager* psu_manager);
 
   void request_stop(p0::race::TireCompound new_tire, bool refuel, bool tires, bool repair);
   void update(double timestamp, double car_track_pos_m, double car_speed_m_s);
@@ -30,13 +31,18 @@ class PitStopFSM {
   std::string state_name() const;
   std::string debug_string() const;
 
+  void set_psu_manager(PitServiceUnitManager* psu_manager) { psu_manager_ = psu_manager; }
+
  private:
   void transition_to(p0::race::PitStopState new_state, double timestamp);
   void check_box_alignment(double timestamp, double car_track_pos_m);
   void check_release_conditions(double timestamp);
+  bool activate_box_psus(int box_id, int car_id, double timestamp);
+  void deactivate_box_psus(int box_id, double timestamp);
 
   int car_id_;
   PitLaneSystem const* pit_system_;
+  PitServiceUnitManager* psu_manager_ = nullptr;
   p0::race::PitStopState state_ = p0::race::PitStopState::NONE;
   CarPitState car_state_;
   double state_entry_time_ = 0.0;
@@ -55,6 +61,9 @@ class PitStopFSM {
 class PitStopManager {
  public:
   explicit PitStopManager(const PitLaneDefinition& pit_def);
+
+  void set_psu_manager(PitServiceUnitManager* psu_manager) { psu_manager_ = psu_manager; }
+  PitServiceUnitManager* psu_manager() const { return psu_manager_; }
 
   void register_car(int car_id);
   void unregister_car(int car_id);
@@ -83,6 +92,7 @@ class PitStopManager {
   PitLaneSystem pit_system_;
   std::unordered_map<int, PitStopFSM> fsm_map_;
   std::vector<SpeedViolation> violations_;
+  PitServiceUnitManager* psu_manager_ = nullptr;
 };
 
 }

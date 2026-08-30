@@ -2,6 +2,7 @@ add_library(project0_engine STATIC
   track/track.cpp
   track/pit_lane.cpp
   track/pit_stop_fsm.cpp
+  track/pit_service_unit.cpp
   track/validation.cpp
   track/race_manager.cpp
   track/race_results.cpp
@@ -35,9 +36,11 @@ add_library(project0_engine STATIC
   input/platform/auto_input.cpp
   network/network_session.cpp
   network/lobby.cpp
-  ai/ai_driver.cpp
-  ai/racing_line.cpp
-  ai/opponent.cpp
+   ai/ai_driver.cpp
+   ai/racing_line.cpp
+   ai/opponent.cpp
+   audio/audio_engine.cpp
+   audio/sound.cpp
 )
 
 target_include_directories(project0_engine PUBLIC

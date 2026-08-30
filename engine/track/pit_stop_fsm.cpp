@@ -1,10 +1,11 @@
 #include "pit_stop_fsm.h"
+#include "pit_service_unit.h"
 #include <algorithm>
 
 namespace p0::track {
 
-PitStopFSM::PitStopFSM(int car_id, const PitLaneSystem& pit_system)
-    : car_id_(car_id), pit_system_(&pit_system), state_(p0::race::PitStopState::NONE) {}
+PitStopFSM::PitStopFSM(int car_id, const PitLaneSystem& pit_system, PitServiceUnitManager* psu_manager)
+    : car_id_(car_id), pit_system_(&pit_system), psu_manager_(psu_manager), state_(p0::race::PitStopState::NONE) {}
 
 void PitStopFSM::request_stop(p0::race::TireCompound new_tire, bool refuel, bool tires, bool repair) {
   if (state_ == p0::race::PitStopState::NONE) {
@@ -16,6 +17,11 @@ void PitStopFSM::request_stop(p0::race::TireCompound new_tire, bool refuel, bool
     request_tires_ = tires;
     request_repair_ = repair;
     service_requested_ = true;
+
+    if (car_state_.assigned_box_id >= 0 && psu_manager_) {
+      service_duration_ = psu_manager_->estimated_service_time(
+          car_state_.assigned_box_id, refuel, tires, repair);
+    }
   }
 }
 
@@ -70,6 +76,9 @@ void PitStopFSM::update(double timestamp, double car_track_pos_m, double car_spe
     case p0::race::PitStopState::SERVICING: {
       if (timestamp - service_started_ >= service_duration_) {
         car_state_.last_service.total_service_time_s = service_duration_;
+        if (car_state_.assigned_box_id >= 0) {
+          deactivate_box_psus(car_state_.assigned_box_id, timestamp);
+        }
         transition_to(p0::race::PitStopState::RELEASE_AUTHORIZED, timestamp);
       }
       break;
@@ -171,9 +180,22 @@ void PitStopFSM::check_release_conditions(double timestamp) {
   if (service_requested_ && service_duration_ > 0.0) {
     transition_to(p0::race::PitStopState::SERVICING, timestamp);
     service_started_ = timestamp;
+    if (car_state_.assigned_box_id >= 0) {
+      activate_box_psus(car_state_.assigned_box_id, car_id_, timestamp);
+    }
   } else {
     transition_to(p0::race::PitStopState::RELEASE_AUTHORIZED, timestamp);
   }
+}
+
+bool PitStopFSM::activate_box_psus(int box_id, int car_id, double timestamp) {
+  if (!psu_manager_) return false;
+  return psu_manager_->activate_units_for_service(box_id, car_id, timestamp);
+}
+
+void PitStopFSM::deactivate_box_psus(int box_id, double timestamp) {
+  if (!psu_manager_) return;
+  psu_manager_->deactivate_units(box_id, timestamp);
 }
 
 // ---------------------------------------------------------------------------
@@ -183,7 +205,7 @@ PitStopManager::PitStopManager(const PitLaneDefinition& pit_def)
     : pit_system_(pit_def) {}
 
 void PitStopManager::register_car(int car_id) {
-  fsm_map_.emplace(car_id, PitStopFSM(car_id, pit_system_));
+  fsm_map_.emplace(car_id, PitStopFSM(car_id, pit_system_, psu_manager_));
 }
 
 void PitStopManager::unregister_car(int car_id) {

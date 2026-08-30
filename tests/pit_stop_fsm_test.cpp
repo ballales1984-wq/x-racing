@@ -9,7 +9,7 @@ TEST(PitStopFSM, InitialStateIsNone) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(1, system);
+  PitStopFSM fsm(1, system, nullptr);
 
   EXPECT_EQ(fsm.state(), p0::race::PitStopState::NONE);
   EXPECT_FALSE(fsm.is_active());
@@ -21,7 +21,7 @@ TEST(PitStopFSM, RequestStopTransitionsToRequested) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(1, system);
+  PitStopFSM fsm(1, system, nullptr);
 
   fsm.request_stop(p0::race::TireCompound::SOFT, true, true, false);
   EXPECT_EQ(fsm.state(), p0::race::PitStopState::REQUESTED);
@@ -34,7 +34,7 @@ TEST(PitStopFSM, RequestStopOnlyFromNone) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(1, system);
+  PitStopFSM fsm(1, system, nullptr);
 
   fsm.request_stop(p0::race::TireCompound::SOFT, true, true, false);
   fsm.request_stop(p0::race::TireCompound::HARD, false, false, true);
@@ -46,7 +46,7 @@ TEST(PitStopFSM, AbandonTransitionsToAbandoned) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(1, system);
+  PitStopFSM fsm(1, system, nullptr);
 
   fsm.request_stop(p0::race::TireCompound::SOFT, true, true, false);
   fsm.abandon();
@@ -60,7 +60,7 @@ TEST(PitStopFSM, AbandonOnlyFromNone) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem ps(def);
-  PitStopFSM fsm(1, ps);
+  PitStopFSM fsm(1, ps, nullptr);
 
   fsm.abandon();
   EXPECT_EQ(fsm.state(), p0::race::PitStopState::ABANDONED);
@@ -75,7 +75,7 @@ TEST(PitStopFSM, CompleteAfterTrackReentry) {
   def.speed_zone.speed_limit_m_s = 16.67;
   def.exit.transform.position = p0::Vec2(100.0, 0.0);
   PitLaneSystem ps(def);
-  PitStopFSM fsm(1, ps);
+  PitStopFSM fsm(1, ps, nullptr);
 
   fsm.request_stop(p0::race::TireCompound::SOFT, false, true, false);
   fsm.mutable_car_state().assigned_box_id = 0;
@@ -131,7 +131,7 @@ TEST(PitStopFSM, StateNameMapping) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(1, system);
+  PitStopFSM fsm(1, system, nullptr);
 
   EXPECT_STREQ(fsm.state_name().c_str(), "NONE");
 
@@ -144,7 +144,7 @@ TEST(PitStopFSM, DebugStringContainsCarId) {
   def.path.push_back(PitLanePathPoint{});
   def.boxes.push_back(PitBox{0, 0, {}, {}, {}, {}, 4.0, 6.0});
   PitLaneSystem system(def);
-  PitStopFSM fsm(42, system);
+  PitStopFSM fsm(42, system, nullptr);
 
   fsm.request_stop(p0::race::TireCompound::MEDIUM, false, false, false);
   std::string dbg = fsm.debug_string();
