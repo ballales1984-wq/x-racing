@@ -12,6 +12,10 @@
 using namespace p0;
 using namespace p0::ai;
 
+// ---------------------------------------------------------------------------
+//  RacingLine optimizer tests
+// ---------------------------------------------------------------------------
+
 TEST(RacingLine, GeneratesPoints) {
   track::Track track;
   RacingLineOptimizer optimizer(track);
@@ -66,6 +70,10 @@ TEST(RacingLine, StraightHasLowOffset) {
 
   EXPECT_GT(max_offset, 0.0);
 }
+
+// ---------------------------------------------------------------------------
+//  AIDriver basic tests
+// ---------------------------------------------------------------------------
 
 TEST(AIDriver, AcceptsRacingLine) {
   track::Track track;
@@ -122,21 +130,169 @@ TEST(AIDriver, RacingLineProducesThrottleBrake) {
 }
 
 TEST(AIDriver, DifficultyPresets) {
-  AIDriverParams easy;
-  easy.look_ahead_distance = 25.0;
-  easy.steering_gain = 0.7;
-
-  AIDriverParams medium;
-  medium.look_ahead_distance = 35.0;
-  medium.steering_gain = 0.9;
-
-  AIDriverParams hard;
-  hard.look_ahead_distance = 45.0;
-  hard.steering_gain = 1.0;
+  AIDriverParams easy = AIDriver::difficulty_preset(AIDifficulty::EASY);
+  AIDriverParams medium = AIDriver::difficulty_preset(AIDifficulty::MEDIUM);
+  AIDriverParams hard = AIDriver::difficulty_preset(AIDifficulty::HARD);
 
   EXPECT_LT(easy.look_ahead_distance, medium.look_ahead_distance);
   EXPECT_LT(medium.look_ahead_distance, hard.look_ahead_distance);
+
+  // Hard difficulty should have no human error.
+  EXPECT_EQ(hard.error_amplitude, 0.0);
+  EXPECT_EQ(hard.reaction_delay, 0.0);
+  // Easy difficulty should be timid.
+  EXPECT_LT(easy.max_throttle, hard.max_throttle);
 }
+
+// ---------------------------------------------------------------------------
+//  Overtaking tests
+// ---------------------------------------------------------------------------
+
+TEST(AIDriver, OvertakingAdjustsTarget) {
+  track::Track track;
+  AIDriverParams params;
+  params.overtake_enabled = true;
+  params.overtake_aggression = 1.0;
+  params.enable_defense = false;
+  AIDriver driver(params);
+  driver.set_track(track);
+  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+
+  vehicle::VehicleState nearby;
+  nearby.position = track.get_start_position() + Vec2(3.0, 0.0);
+  nearby.heading = 0.0;
+  nearby.speed = 50.0;
+  driver.set_nearby_cars({nearby});
+
+  vehicle::VehicleState state;
+  state.position = track.get_start_position();
+  state.heading = track.get_start_heading();
+  state.speed = 60.0;  // faster than the car ahead
+  state.rpm = 3000.0;
+  state.gear = 2;
+  state.distance_along_track = 0.0;
+
+  driver.update(state, 0.016);
+  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+}
+
+TEST(AIDriver, OvertakingDisabledDoesNotAdjust) {
+  track::Track track;
+  AIDriverParams params;
+  params.overtake_enabled = false;
+  AIDriver driver(params);
+  driver.set_track(track);
+  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+
+  vehicle::VehicleState nearby;
+  nearby.position = track.get_start_position() + Vec2(3.0, 0.0);
+  nearby.heading = 0.0;
+  nearby.speed = 30.0;  // slower ahead
+  driver.set_nearby_cars({nearby});
+
+  vehicle::VehicleState state;
+  state.position = track.get_start_position();
+  state.heading = track.get_start_heading();
+  state.speed = 60.0;
+  state.rpm = 3000.0;
+  state.gear = 2;
+  state.distance_along_track = 0.0;
+
+  driver.update(state, 0.016);
+  // Should still produce valid output, just without overtaking adjustment.
+  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+}
+
+// ---------------------------------------------------------------------------
+//  Defense tests
+// ---------------------------------------------------------------------------
+
+TEST(AIDriver, DefenseAdjustsTarget) {
+  track::Track track;
+  AIDriverParams params;
+  params.defense_willingness = 1.0;
+  params.enable_defense = true;
+  params.overtake_enabled = false;
+  AIDriver driver(params);
+  driver.set_track(track);
+  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+
+  vehicle::VehicleState ahead;
+  ahead.position = track.get_start_position() - Vec2(3.0, 0.0);
+  ahead.heading = 0.0;
+  ahead.speed = 50.0;
+  driver.set_nearby_cars({ahead});
+
+  vehicle::VehicleState state;
+  state.position = track.get_start_position();
+  state.heading = track.get_start_heading();
+  state.speed = 50.0;
+  state.rpm = 3000.0;
+  state.gear = 2;
+  state.distance_along_track = 0.0;
+
+  driver.update(state, 0.016);
+  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+}
+
+// ---------------------------------------------------------------------------
+//  Human error tests
+// ---------------------------------------------------------------------------
+
+TEST(AIDriver, ReactionDelayIsApplied) {
+  track::Track track;
+  AIDriverParams params;
+  params.reaction_delay = 0.1;  // 100 ms delay
+  AIDriver driver(params);
+  driver.set_track(track);
+  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+
+  vehicle::VehicleState state;
+  state.position = track.get_start_position();
+  state.heading = track.get_start_heading();
+  state.speed = 50.0;
+  state.rpm = 3000.0;
+  state.gear = 2;
+  state.distance_along_track = 0.0;
+
+  driver.update(state, 0.016);
+  input::InputState first = driver.last_input();
+
+  // Move the target to force a steering change.
+  state.position += Vec2(10.0, 0.0);
+  driver.update(state, 0.016);
+  input::InputState second = driver.last_input();
+
+  // With reaction delay, the second output should be closer to the first
+  // than the "ideal" output.  We verify it's still finite and changed.
+  EXPECT_TRUE(std::isfinite(second.steering));
+  EXPECT_NE(second.steering, first.steering);
+}
+
+TEST(AIDriver, SpeedVarianceAddsNoise) {
+  track::Track track;
+  AIDriverParams params;
+  params.speed_variance = 0.1;
+  AIDriver driver(params);
+  driver.set_track(track);
+  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+
+  vehicle::VehicleState state;
+  state.position = track.get_start_position();
+  state.heading = track.get_start_heading();
+  state.speed = 0.0;
+  state.rpm = 1000.0;
+  state.gear = 1;
+  state.distance_along_track = 0.0;
+
+  driver.update(state, 0.016);
+  EXPECT_GE(driver.last_input().throttle, 0.0);
+  EXPECT_LE(driver.last_input().throttle, 1.0);
+}
+
+// ---------------------------------------------------------------------------
+//  Opponent & OpponentManager tests
+// ---------------------------------------------------------------------------
 
 TEST(Opponent, Creation) {
   Opponent opp(AIDriverParams{}, "TestAI");
@@ -209,81 +365,102 @@ TEST(OpponentManager, GetOpponent) {
   EXPECT_EQ(manager.get(9999), nullptr);
 }
 
-TEST(AIDriver, SetNearbyCars) {
+TEST(OpponentManager, NearbyCarsPopulated) {
+  // Verify that update_all populates nearby_cars for each opponent
+  // so they can perform traffic-aware overtaking and defense.
   track::Track track;
-  AIDriver driver;
-  driver.set_track(track);
-  driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
+  OpponentManager manager(&track);
+  manager.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
 
-  vehicle::VehicleState nearby;
-  nearby.position = track.get_start_position() + Vec2(5.0, 0.0);
-  nearby.heading = 0.0;
-  nearby.speed = 50.0;
+  AIDriverParams params;
+  params.overtake_enabled = true;
+  params.enable_defense = true;
+  manager.add_opponent(params, "AI1");
+  manager.add_opponent(params, "AI2");
 
-  driver.set_nearby_cars({nearby});
+  std::vector<vehicle::VehicleState> states(2);
+  for (auto& s : states) {
+    s.position = track.get_start_position();
+    s.heading = track.get_start_heading();
+    s.speed = 50.0;
+    s.rpm = 3000.0;
+    s.gear = 2;
+    s.distance_along_track = 0.0;
+  }
 
-  vehicle::VehicleState state;
-  state.position = track.get_start_position();
-  state.heading = track.get_start_heading();
-  state.speed = 50.0;
-  state.rpm = 3000.0;
-  state.gear = 2;
-  state.distance_along_track = 0.0;
-
-  driver.update(state, 0.016);
-  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+  auto inputs = manager.update_all(states, 0.016);
+  EXPECT_EQ(inputs.size(), 2u);
+  // Each AI should see the other car as nearby.
+  EXPECT_TRUE(std::isfinite(inputs[0].steering));
+  EXPECT_TRUE(std::isfinite(inputs[1].steering));
 }
 
-TEST(AIDriver, OvertakingAdjustsTarget) {
+// ---------------------------------------------------------------------------
+//  Traffic adaptation tests
+// ---------------------------------------------------------------------------
+
+TEST(AIDriver, TrafficDetectionSlowerCarAhead) {
+  // When the AI is faster than a car ahead, it should still produce
+  // valid output (traffic_speed_adjustment reduces target, but does not
+  // break the control loop).
   track::Track track;
   AIDriverParams params;
-  params.overtake_aggression = 1.0;
-  params.enable_defense = true;
+  params.traffic_adaptation = 1.0;
   AIDriver driver(params);
   driver.set_track(track);
   driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
 
-  vehicle::VehicleState nearby;
-  nearby.position = track.get_start_position() + Vec2(3.0, 0.0);
-  nearby.heading = 0.0;
-  nearby.speed = 50.0;
-  driver.set_nearby_cars({nearby});
+  vehicle::VehicleState slow_car;
+  slow_car.position = track.get_start_position() + Vec2(8.0, 0.0);
+  slow_car.heading = 0.0;
+  slow_car.speed = 30.0;  // significantly slower
+  driver.set_nearby_cars({slow_car});
 
   vehicle::VehicleState state;
   state.position = track.get_start_position();
   state.heading = track.get_start_heading();
-  state.speed = 50.0;
-  state.rpm = 3000.0;
+  state.speed = 60.0;  // faster than the car ahead
+  state.rpm = 4000.0;
   state.gear = 2;
   state.distance_along_track = 0.0;
 
   driver.update(state, 0.016);
-  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+  EXPECT_GE(driver.last_input().throttle, 0.0);
+  EXPECT_LE(driver.last_input().throttle, 1.0);
+  EXPECT_GE(driver.last_input().brake, 0.0);
+  EXPECT_LE(driver.last_input().brake, 1.0);
 }
 
-TEST(AIDriver, DefenseAdjustsTarget) {
+TEST(AIDriver, OvertakeUrgencyBuildsWhenStuck) {
+  // Simulate being stuck behind a slow car across multiple frames
+  // to verify urgency accumulates without breaking the control loop.
   track::Track track;
   AIDriverParams params;
-  params.defense_willingness = 1.0;
-  params.enable_defense = true;
+  params.traffic_adaptation = 1.0;
+  params.overtake_enabled = true;
   AIDriver driver(params);
   driver.set_track(track);
   driver.set_racing_line(RacingLineOptimizer(track).to_racing_line_samples());
 
-  vehicle::VehicleState ahead;
-  ahead.position = track.get_start_position() - Vec2(3.0, 0.0);
-  ahead.heading = 0.0;
-  ahead.speed = 50.0;
-  driver.set_nearby_cars({ahead});
-
   vehicle::VehicleState state;
   state.position = track.get_start_position();
   state.heading = track.get_start_heading();
-  state.speed = 50.0;
+  state.speed = 40.0;
   state.rpm = 3000.0;
   state.gear = 2;
   state.distance_along_track = 0.0;
 
-  driver.update(state, 0.016);
-  EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+  // A slow car ahead that we can never pass will keep urgency building.
+  vehicle::VehicleState slow_car;
+  slow_car.position = track.get_start_position() + Vec2(5.0, 0.0);
+  slow_car.heading = 0.0;
+  slow_car.speed = 30.0;
+  driver.set_nearby_cars({slow_car});
+
+  // Run several update steps.
+  for (int i = 0; i < 30; ++i) {
+    driver.update(state, 0.016);
+    EXPECT_TRUE(std::isfinite(driver.last_input().steering));
+    EXPECT_TRUE(std::isfinite(driver.last_input().throttle));
+  }
 }

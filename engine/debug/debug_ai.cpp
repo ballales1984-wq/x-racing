@@ -44,6 +44,12 @@ void DebugAI::record_input(int car_id, const input::InputState& input,
   snap.gear_shift_rpm_down = params.gear_shift_rpm_down;
   snap.max_gear = params.max_gear;
   snap.enable_defense = params.enable_defense;
+  snap.overtake_enabled = params.overtake_enabled;
+  snap.overtake_aggression = params.overtake_aggression;
+  snap.traffic_adaptation = params.traffic_adaptation;
+  snap.speed_variance = params.speed_variance;
+  snap.steering_jitter = params.steering_jitter;
+  snap.defense_willingness = params.defense_willingness;
   snap.difficulty = static_cast<int>(params.difficulty);
 
   diagnostics_.driver_info[car_id] = snap;

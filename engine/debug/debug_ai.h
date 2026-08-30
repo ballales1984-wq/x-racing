@@ -30,6 +30,12 @@ struct AIDriverSnapshot {
   double gear_shift_rpm_down = 2500.0;
   int max_gear = 6;
   bool enable_defense = false;
+  bool overtake_enabled = true;
+  double overtake_aggression = 0.5;
+  double traffic_adaptation = 0.7;
+  double speed_variance = 0.0;
+  double steering_jitter = 0.0;
+  double defense_willingness = 0.5;
   double lap_time = 0.0;
   double sector_time = 0.0;
   int difficulty = 1;

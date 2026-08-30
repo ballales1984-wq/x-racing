@@ -87,6 +87,17 @@ std::vector<input::InputState> OpponentManager::update_all(
   inputs.reserve(opponents_.size());
 
   for (size_t i = 0; i < opponents_.size() && i < states.size(); ++i) {
+    // Build the "nearby cars" list: every car except the current opponent.
+    // This gives each AI the traffic information needed for overtaking,
+    // defense, and collision avoidance.
+    std::vector<vehicle::VehicleState> nearby;
+    nearby.reserve(states.size() - 1);
+    for (size_t j = 0; j < states.size(); ++j) {
+      if (j != i) {
+        nearby.push_back(states[j]);
+      }
+    }
+    opponents_[i].driver().set_nearby_cars(nearby);
     inputs.push_back(opponents_[i].update(states[i], delta_time));
   }
 
