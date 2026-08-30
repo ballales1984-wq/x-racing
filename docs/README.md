@@ -56,7 +56,7 @@ The project clearly separates physics simulation from rendering, allowing physic
 | M6 | Aerodynamics (downforce, pitch/roll) | ✅ |
 | M7 | Weather (rain, temperature, grip) | ✅ |
 | M9 | Gameplay (input, lap timing) | ✅ |
-| M8 | Rendering (Unity) | ✅ Unity 6000.0.82f1, operational project |
+| M8 | Rendering (Unity) | ✅ Unity 6000.5.9f1, operational project |
 | M9 | Race management (pit, validation, race config) | ✅ |
 | M10 | AI (racing line, opponents) | ⏳ next |
 
@@ -273,7 +273,7 @@ Native Unity plugin:
 
 ## Unity Integration
 
-Unity 6000.0.82f1 with Universal Render Pipeline (URP) and TextMesh Pro.
+Unity 6000.5.9f1 with Universal Render Pipeline (URP) and TextMesh Pro.
 
 ### Unity Dependencies
 
@@ -382,7 +382,7 @@ Each simulation sub-step applies these stages in order:
 - Visual Studio 2022 with C++ workload
 - CMake 3.20+
 - PowerShell 7+
-- (Optional) Unity 6000.0.82f1
+- (Optional) Unity 6000.5.9f1
 
 ### Build Commands
 
@@ -623,7 +623,7 @@ public static extern void SimPlugin_GetVehicleState(out VehicleState state);
 ## Known Issues
 
 - Unity 600.x `Bee.DotNet.dll` blocked by AppLocker/WDAC policy (`0x800711C7`):
-  - Run PowerShell: `Get-ChildItem -Recurse "D:\Unity\Editors\6000.0.82f1\Editor\Data\Tools" -File | Unblock-File`
+  - Run PowerShell: `Get-ChildItem -Recurse "D:\Unity\Editors\6000.5.9f1\Editor\Data\Tools" -File | Unblock-File`
   - Add `D:\Unity` to Windows Defender Exclusion list if policy persists
 - After first launch, if track/HUD objects are missing, re-run the Project0 menus
 - `LegacyRuntime.ttf` is used for HUD text embedded in Unity 2022+

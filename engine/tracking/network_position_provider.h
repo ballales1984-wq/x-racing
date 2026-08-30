@@ -13,7 +13,7 @@ namespace p0::tracking {
 class NetworkPositionProvider : public IPositionProvider {
  public:
   struct Params {
-    double update_rate_hz = 10.0;
+    double update_rate_hz;
   };
 
   explicit NetworkPositionProvider(Params params = {});

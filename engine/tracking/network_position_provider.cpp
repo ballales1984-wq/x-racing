@@ -3,7 +3,11 @@
 namespace p0::tracking {
 
 NetworkPositionProvider::NetworkPositionProvider(Params params)
-    : params_(params) {}
+    : params_(params) {
+  if (params_.update_rate_hz <= 0.0) {
+    params_.update_rate_hz = 10.0;
+  }
+}
 
 bool NetworkPositionProvider::start() {
   running_ = true;

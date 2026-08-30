@@ -25,6 +25,8 @@
 #include <thread>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 
 namespace p0::tracking {
 
@@ -230,6 +232,182 @@ TEST(Tracking, TrackedTelemetryRecords) {
   EXPECT_EQ(telemetry.frames()[0].speed, 50.0);
   EXPECT_EQ(telemetry.frames()[0].latitude, 45.1);
   EXPECT_EQ(telemetry.frames()[0].gps_accuracy, 1.5);
+}
+
+TEST(Tracking, TrackedTelemetryMultipleFrames) {
+  TrackedTelemetry telemetry("test_multi_telemetry.csv");
+
+  TrackPosition pos{};
+  pos.s = 100.0;
+  pos.lateral = 0.5;
+  pos.heading = 0.3;
+  pos.on_track = true;
+
+  PositionSample gps{};
+  gps.timestamp = 5.0;
+  gps.latitude = 45.0;
+  gps.longitude = 11.0;
+  gps.speed = 30.0;
+  gps.heading = 0.3;
+  gps.horizontal_accuracy = 2.0;
+
+  LapSystem lap_system(1000.0, 3);
+  lap_system.update(pos, 0.0);
+
+  telemetry.record(pos, gps, 0.8, 80.0, 0.2, lap_system);
+
+  gps.timestamp = 6.0;
+  gps.latitude = 45.001;
+  gps.longitude = 11.001;
+  gps.speed = 35.0;
+  telemetry.record(pos, gps, 0.75, 82.0, 0.15, lap_system);
+
+  ASSERT_EQ(telemetry.frames().size(), 2u);
+  EXPECT_EQ(telemetry.frames()[0].timestamp, 5.0);
+  EXPECT_EQ(telemetry.frames()[0].grip, 0.8);
+  EXPECT_EQ(telemetry.frames()[0].surface_temp, 80.0);
+  EXPECT_EQ(telemetry.frames()[0].rubber, 0.2);
+  EXPECT_EQ(telemetry.frames()[1].timestamp, 6.0);
+  EXPECT_EQ(telemetry.frames()[1].grip, 0.75);
+  EXPECT_EQ(telemetry.frames()[1].surface_temp, 82.0);
+  EXPECT_EQ(telemetry.frames()[1].rubber, 0.15);
+}
+
+TEST(Tracking, TrackedTelemetrySaveCsv) {
+  TrackedTelemetry telemetry("test_save_csv_telemetry.csv");
+
+  TrackPosition pos{};
+  pos.s = 50.0;
+  pos.lateral = 1.0;
+  pos.heading = 0.2;
+  pos.on_track = true;
+
+  PositionSample gps{};
+  gps.timestamp = 1.0;
+  gps.latitude = 45.0;
+  gps.longitude = 11.0;
+  gps.altitude = 10.0;
+  gps.speed = 25.0;
+  gps.heading = 0.2;
+  gps.horizontal_accuracy = 1.0;
+
+  LapSystem lap_system(1000.0, 3);
+  lap_system.update(pos, 0.0);
+
+  telemetry.record(pos, gps, 0.95, 70.0, 0.3, lap_system);
+  telemetry.save_csv();
+
+  std::ifstream ifs("test_save_csv_telemetry.csv");
+  ASSERT_TRUE(ifs.is_open());
+
+  std::string header;
+  std::getline(ifs, header);
+  EXPECT_NE(header.find("timestamp"), std::string::npos);
+  EXPECT_NE(header.find("s"), std::string::npos);
+  EXPECT_NE(header.find("lateral"), std::string::npos);
+  EXPECT_NE(header.find("speed"), std::string::npos);
+  EXPECT_NE(header.find("latitude"), std::string::npos);
+  EXPECT_NE(header.find("longitude"), std::string::npos);
+  EXPECT_NE(header.find("altitude"), std::string::npos);
+  EXPECT_NE(header.find("grip"), std::string::npos);
+  EXPECT_NE(header.find("surface_temp"), std::string::npos);
+  EXPECT_NE(header.find("rubber"), std::string::npos);
+  EXPECT_NE(header.find("lap_time"), std::string::npos);
+
+  std::string line;
+  std::getline(ifs, line);
+  std::istringstream iss(line);
+  std::string token;
+  std::getline(iss, token, ',');
+  EXPECT_NEAR(std::stod(token), 1.0, 0.001);
+}
+
+TEST(Tracking, TrackedTelemetryClear) {
+  TrackedTelemetry telemetry("test_clear_telemetry.csv");
+
+  TrackPosition pos{};
+  pos.on_track = true;
+
+  PositionSample gps{};
+  gps.timestamp = 1.0;
+  gps.latitude = 45.0;
+  gps.longitude = 11.0;
+
+  LapSystem lap_system(1000.0, 3);
+  lap_system.update(pos, 0.0);
+
+  telemetry.record(pos, gps, 0.8, 75.0, 0.1, lap_system);
+  ASSERT_EQ(telemetry.frames().size(), 1u);
+
+  telemetry.clear();
+  EXPECT_TRUE(telemetry.frames().empty());
+}
+
+TEST(Tracking, TrackedTelemetryDefaultConstructor) {
+  TrackedTelemetry telemetry;
+  EXPECT_TRUE(telemetry.frames().empty());
+
+  // Record with default path should still work
+  TrackPosition pos{};
+  pos.on_track = true;
+  pos.s = 10.0;
+  pos.lateral = 0.0;
+  pos.heading = 0.0;
+
+  PositionSample gps{};
+  gps.timestamp = 0.0;
+  gps.latitude = 0.0;
+  gps.longitude = 0.0;
+  gps.speed = 0.0;
+  gps.heading = 0.0;
+  gps.horizontal_accuracy = 0.0;
+
+  LapSystem lap_system(1000.0, 3);
+  lap_system.update(pos, 0.0);
+
+  telemetry.record(pos, gps, 1.0, 20.0, 0.0, lap_system);
+  ASSERT_EQ(telemetry.frames().size(), 1u);
+  EXPECT_EQ(telemetry.frames()[0].grip, 1.0);
+  EXPECT_EQ(telemetry.frames()[0].surface_temp, 20.0);
+  EXPECT_EQ(telemetry.frames()[0].rubber, 0.0);
+}
+
+TEST(Tracking, TrackedTelemetryLapNumberPropagation) {
+  TrackedTelemetry telemetry("test_lap_telemetry.csv");
+
+  TrackPosition pos{};
+  pos.s = 500.0;
+  pos.on_track = true;
+
+  PositionSample gps{};
+  gps.timestamp = 10.0;
+  gps.latitude = 45.0;
+  gps.longitude = 11.0;
+  gps.speed = 40.0;
+  gps.heading = 0.0;
+
+  LapSystem lap_system(1000.0, 3);
+  lap_system.update(pos, 0.0);
+  EXPECT_EQ(lap_system.completed_laps(), 0);
+
+  telemetry.record(pos, gps, 0.9, 85.0, 0.1, lap_system);
+  EXPECT_EQ(telemetry.frames()[0].lap_number, 0);
+  EXPECT_DOUBLE_EQ(telemetry.frames()[0].lap_time, lap_system.current_lap_time());
+}
+
+TEST(Tracking, TrackedTelemetrySaveCsvEmpty) {
+  TrackedTelemetry telemetry("test_empty_csv_telemetry.csv");
+  telemetry.save_csv();
+
+  std::ifstream ifs("test_empty_csv_telemetry.csv");
+  ASSERT_TRUE(ifs.is_open());
+
+  std::string header;
+  std::getline(ifs, header);
+  EXPECT_NE(header.find("timestamp"), std::string::npos);
+
+  std::string line;
+  EXPECT_FALSE(std::getline(ifs, line));
 }
 
 TEST(Tracking, SurfaceCellDefaults) {

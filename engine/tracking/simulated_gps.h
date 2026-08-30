@@ -13,11 +13,11 @@ namespace p0::tracking {
 class SimulatedGPS : public IPositionProvider {
  public:
   struct Params {
-    double update_rate_hz = 10.0;
-    double noise_m = 0.0;         // 1-sigma Gaussian noise applied to position
-    double latency_s = 0.0;       // output delay relative to source time
-    bool apply_heading_noise = false;
-    double heading_noise_rad = 0.0;
+    double update_rate_hz;
+    double noise_m;
+    double latency_s;
+    bool apply_heading_noise;
+    double heading_noise_rad;
   };
 
   explicit SimulatedGPS(

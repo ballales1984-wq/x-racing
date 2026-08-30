@@ -10,7 +10,10 @@ SimulatedGPS::SimulatedGPS(
     Params params)
     : trajectory_(std::move(trajectory)),
       params_(params) {
-  dt_per_sample_ = 1.0 / params.update_rate_hz;
+  if (params_.update_rate_hz <= 0.0) {
+    params_.update_rate_hz = 10.0;
+  }
+  dt_per_sample_ = 1.0 / params_.update_rate_hz;
 }
 
 bool SimulatedGPS::start() {

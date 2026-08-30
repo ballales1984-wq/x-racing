@@ -1,0 +1,9 @@
+{
+  "best_lap_time": 30.000000,
+  "total_time": 30.000000,
+  "completed_laps": 1,
+  "track": "Default Circuit",
+  "lap_count": 1,
+  "lap_times": [30.000000],
+  "lap_valid": [true]
+}

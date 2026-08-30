@@ -328,7 +328,7 @@ x-racing/
 |----------|----------|----------|
 | Eigen | 3.4+ | Linear algebra (vectors, matrices) |
 | Google Test | 1.14+ | Unit testing |
-| Unity | 6000.0.82f1 | Production rendering |
+| Unity | 6000.5.9f1 | Production rendering |
 | TextMesh Pro | 3.0+ | Unity HUD and text |
 | CMake | 3.20+ | Build system |
 | Visual Studio | 2022 | IDE / compiler |

@@ -14,8 +14,8 @@ namespace p0::tracking {
 class TrackMapper {
  public:
   struct LocalOrigin {
-    double latitude = 0.0;
-    double longitude = 0.0;
+    double latitude;
+    double longitude;
   };
 
   explicit TrackMapper(const p0::track::Track& track, LocalOrigin origin = {});
