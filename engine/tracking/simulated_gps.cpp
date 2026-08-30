@@ -10,11 +10,7 @@ SimulatedGPS::SimulatedGPS(
     Params params)
     : trajectory_(std::move(trajectory)),
       params_(params) {
-  if (!trajectory_) {
-    dt_per_sample_ = 1.0 / params.update_rate_hz;
-  } else {
-    dt_per_sample_ = 1.0 / params.update_rate_hz;
-  }
+  dt_per_sample_ = 1.0 / params.update_rate_hz;
 }
 
 bool SimulatedGPS::start() {
@@ -28,7 +24,7 @@ void SimulatedGPS::stop() { running_ = false; }
 
 bool SimulatedGPS::is_running() const { return running_; }
 
-bool SimulatedGPS::update(PositionSample& sample) {
+bool SimulatedGPS::poll(PositionSample& sample) {
   if (!running_ || !trajectory_) return false;
 
   last_sample_time_ = sample_time_advance();

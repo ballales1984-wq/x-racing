@@ -13,14 +13,23 @@ namespace p0::tracking {
 // Depends on a parametric p0::track::Track but does not modify it.
 class TrackMapper {
  public:
-  explicit TrackMapper(const p0::track::Track& track);
+  struct LocalOrigin {
+    double latitude = 0.0;
+    double longitude = 0.0;
+  };
 
-  // Convert geodetic sample to track-relative coordinates.
-  // Returns a valid TrackPosition; on_track is false if mapping fails.
+  explicit TrackMapper(const p0::track::Track& track, LocalOrigin origin = {});
+
+  void set_local_origin(LocalOrigin origin);
+  const LocalOrigin& local_origin() const { return origin_; }
+
   TrackPosition map(const PositionSample& sample) const;
 
  private:
+  Vec2 geodetic_to_local(double latitude, double longitude) const;
+
   const p0::track::Track* track_;
+  LocalOrigin origin_;
 };
 
 }  // namespace p0::tracking

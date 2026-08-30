@@ -17,7 +17,7 @@ class RealGPS : public IPositionProvider {
   bool start() override;
   void stop() override;
   bool is_running() const override;
-  bool update(PositionSample& sample) override;
+  bool poll(PositionSample& sample) override;
   double update_rate_hz() const override;
 
   IGPSDevice* device() const { return device_.get(); }

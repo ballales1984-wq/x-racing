@@ -1,4 +1,5 @@
 #include "simulation/simulation_world.h"
+#include "tracking/tracking_system.h"
 #include <algorithm>
 
 namespace p0::simulation {
@@ -27,6 +28,10 @@ void SimulationWorld::set_track(const track::Track& track) {
   for (auto& [id, car] : cars_) {
     if (car.simulation) car.simulation->set_track(track);
   }
+}
+
+void SimulationWorld::set_tracking_system(std::unique_ptr<p0::tracking::TrackingSystem> tracking) {
+  tracking_system_ = std::move(tracking);
 }
 
 int SimulationWorld::add_car(const vehicle::VehicleParams& params, DriverType driver_type, int player_id, const std::string& name) {
@@ -162,6 +167,10 @@ WorldUpdateResult SimulationWorld::update(double delta_time, double timestamp) {
 
     car.distance_along_track = car.last_state.distance_along_track;
     car.lap = car.last_state.lap;
+  }
+
+  if (tracking_system_) {
+    tracking_system_->update();
   }
 
   total_race_time_ += delta_time;

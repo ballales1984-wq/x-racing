@@ -18,7 +18,7 @@ void RealGPS::stop() {
 
 bool RealGPS::is_running() const { return running_; }
 
-bool RealGPS::update(PositionSample& sample) {
+bool RealGPS::poll(PositionSample& sample) {
   if (!running_ || !device_) return false;
   return device_->read(sample);
 }

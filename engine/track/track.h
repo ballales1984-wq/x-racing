@@ -75,11 +75,14 @@ class Track {
   explicit Track(TrackType type, const TrackParams& params = {});
   ~Track() = default;
 
-  TrackType track_type() const { return type_; }
-  const std::vector<double>& pit_box_positions() const { return pit_box_positions_; }
+   TrackType track_type() const { return type_; }
+   const std::vector<double>& pit_box_positions() const { return pit_box_positions_; }
 
-  // Get interpolated track data at distance d (wraps around loop)
-  TrackPoint at(double distance) const;
+   int sample_count() const { return static_cast<int>(points_.size()); }
+   const TrackPoint& sample_at(int index) const { return points_[index]; }
+
+   // Get interpolated track data at distance d (wraps around loop)
+   TrackPoint at(double distance) const;
   // Starting position and heading for a new lap
   Vec2 get_start_position() const;
   double get_start_heading() const;

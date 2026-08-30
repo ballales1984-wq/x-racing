@@ -1,8 +1,10 @@
 #pragma once
 
+#include <memory>
 #include "common.h"
 #include "tracking/position_provider.h"
 #include "tracking/track_position.h"
+#include "tracking/track_mapper.h"
 #include "tracking/clock.h"
 
 // Project 0 — tracking / central tracking system
@@ -27,6 +29,8 @@ class TrackingSystem {
   const PositionSample& current_sample() const { return current_sample_; }
   const TrackPosition& current_track_position() const { return current_track_; }
   bool is_running() const { return running_; }
+
+  IPositionProvider* provider() const { return provider_.get(); }
 
   void set_mapper(std::unique_ptr<TrackMapper> mapper);
 

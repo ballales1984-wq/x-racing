@@ -9,8 +9,18 @@ add_library(project0_engine STATIC
   tracking/clock.cpp
   tracking/simulated_gps.cpp
   tracking/real_gps.cpp
+  tracking/replay_gps.cpp
+  tracking/coordinate_converter.cpp
+  tracking/network_position_provider.cpp
   tracking/track_mapper.cpp
   tracking/tracking_system.cpp
+  tracking/surface_grid.cpp
+  tracking/surface_system.cpp
+  tracking/lap_system.cpp
+  tracking/tracked_telemetry.cpp
+  tracking/physics_trajectory.cpp
+  tracking/replay_trajectory.cpp
+  tracking/checkpoint.cpp
   simulation/simulation.cpp
   simulation/simulation_world.cpp
   telemetry/telemetry.cpp

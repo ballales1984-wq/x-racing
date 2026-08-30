@@ -17,13 +17,15 @@ class IPositionProvider {
   virtual void stop() = 0;
   virtual bool is_running() const = 0;
 
-  // Retrieves the latest sample. Returns false if no new data is available.
-  virtual bool update(PositionSample& sample) = 0;
+  // Polls for a new sample. Returns true and fills `sample` only when a
+  // fresh sample is available; returns false if the source has produced
+  // nothing new since the last poll (e.g. a 10 Hz GPS polled at 120 Hz).
+  virtual bool poll(PositionSample& sample) = 0;
 
   virtual double update_rate_hz() const = 0;
 };
 
-// Trajectory source for SimulatedGPS.
+// Trajectory source for ReplayGPS.
 // Provides deterministic samples for a given absolute time.
 class ITrajectorySource {
  public:

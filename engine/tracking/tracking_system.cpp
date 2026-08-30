@@ -21,7 +21,7 @@ void TrackingSystem::stop() {
 void TrackingSystem::update() {
   if (!running_) return;
 
-  if (provider_->update(current_sample_)) {
+  if (provider_->poll(current_sample_)) {
     if (mapper_) {
       current_track_ = mapper_->map(current_sample_);
     }

@@ -6,6 +6,7 @@
 #include "input/input_manager.h"
 #include "simulation/simulation.h"
 #include "track/race_config.h"
+#include "tracking/tracking_system.h"
 #include <memory>
 #include <unordered_map>
 #include <functional>
@@ -94,6 +95,9 @@ class SimulationWorld {
   void set_track(const track::Track& track);
   const track::Track& track() const;
 
+  void set_tracking_system(std::unique_ptr<p0::tracking::TrackingSystem> tracking);
+  p0::tracking::TrackingSystem* tracking_system() const { return tracking_system_.get(); }
+
   void set_total_laps(int laps) { total_laps_ = laps; }
   int total_laps() const { return total_laps_; }
 
@@ -103,6 +107,7 @@ class SimulationWorld {
  private:
   std::unordered_map<int, CarInstance> cars_;
   const track::Track* track_ = nullptr;
+  std::unique_ptr<p0::tracking::TrackingSystem> tracking_system_;
   int local_car_id_ = 0;
   int next_car_id_ = 0;
   double total_race_time_ = 0.0;
