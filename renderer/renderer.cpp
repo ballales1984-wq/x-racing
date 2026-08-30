@@ -108,7 +108,7 @@ void Renderer::run() {
   running_ = true;
   {
     p0::assets::GLTFSkinnedMesh skinned;
-    if (p0::assets::GLTFLoader::LoadSkinned("D:/x-racing/assets/models/test_export.glb", skinned) && !skinned.positions.empty()) {
+    if (p0::assets::GLTFLoader::LoadSkinned("assets/models/test_export.glb", skinned) && !skinned.positions.empty()) {
       car_meshes_.clear();
       p0::assets::Mesh mesh;
       mesh.vertices.reserve(skinned.positions.size() / 3);
@@ -146,13 +146,13 @@ void Renderer::run() {
     }
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("D:/x-racing/assets/models/vehicle.obj");
+    load_car_mesh("assets/models/vehicle.obj");
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("D:/x-racing/assets/models/car_mesh.obj");
+    load_car_mesh("assets/models/car_mesh.obj");
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("D:/x-racing/assets/models/car.obj");
+    load_car_mesh("assets/models/car.obj");
   }
   std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
 

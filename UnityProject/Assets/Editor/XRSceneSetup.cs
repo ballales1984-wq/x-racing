@@ -95,7 +95,7 @@ namespace Project0.Unity.Setup
         {
             string unityProjectDir = System.IO.Directory.GetParent(Application.dataPath).FullName;
             string projectRoot = System.IO.Directory.GetParent(unityProjectDir).FullName;
-            string[] buildDirs = { "build", "build2", "build3" };
+            string[] buildDirs = { "build", "build2", "build3", "build4" };
             string dst = System.IO.Path.Combine(Application.dataPath, "Plugins", "sim_plugin.dll");
 
             string src = null;

@@ -51,7 +51,6 @@ static void run_debug_demo() {
   ai_driver.set_track(track);
 
   input::AutoInputManager auto_input;
-  auto_input.set_mode(input::AutoInputMode::AI_ASSIST);
 
   const double target_dt = 1.0 / 60.0;
   const int total_frames = 1800;
@@ -63,10 +62,9 @@ static void run_debug_demo() {
     ai_driver.update(sim.state(), target_dt);
     input::InputState ai_input = ai_driver.poll();
 
-    auto_input.update(sim.state(), target_dt);
-    input::InputState final_input = auto_input.blend(ai_input, target_dt);
+    input::InputState final_input = auto_input.poll();
 
-    sim::SimulationResult result = sim.step(final_input);
+    p0::simulation::SimulationResult result = sim.step(final_input);
 
     debug_agent.record_ai_input(0, final_input, ai_params);
     debug_agent.record_frame(result.state, target_dt);

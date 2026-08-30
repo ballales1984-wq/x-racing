@@ -7,7 +7,7 @@
 // Runs a scripted input sequence and logs telemetry to a text file.
 // Useful for regression testing and offline analysis without user input.
 int main() {
-  std::ofstream log("D:/x-racing/data/telemetry/auto_drive_log.txt");
+  std::ofstream log("data/telemetry/auto_drive_log.txt");
   std::cout.rdbuf(log.rdbuf());
 
   std::cout << "Project 0 - Auto Drive\n";

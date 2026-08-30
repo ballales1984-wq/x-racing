@@ -78,7 +78,7 @@ TEST(TelemetryV2, CSVExport) {
   state.rear_tire_wear = 0.97;
   tel.record(state, 1.0 / 60.0);
 
-  std::string path = "D:/x-racing/data/telemetry/test_export.csv";
+  std::string path = "data/telemetry/test_export.csv";
   tel.save_csv(path);
 
   std::ifstream file(path);

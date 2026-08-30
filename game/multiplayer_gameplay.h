@@ -13,6 +13,9 @@
 #include "telemetry/telemetry.h"
 #include "track/track.h"
 #include "ai/ai_driver.h"
+#include "tracking/tracking_system.h"
+#include "tracking/physics_trajectory.h"
+#include "tracking/coordinate_converter.h"
 #include <string>
 #include <vector>
 #include <functional>
@@ -91,6 +94,8 @@ class MultiplayerGameplay {
   network::Lobby lobby_;
   std::unique_ptr<input::InputManager> local_input_;
   std::unique_ptr<telemetry::Telemetry> telemetry_;
+  std::unique_ptr<p0::tracking::CoordinateConverter> tracking_converter_;
+  std::unique_ptr<p0::tracking::PhysicsTrajectory> local_trajectory_;
 
   double countdown_start_time_ = 0.0;
   double countdown_duration_ = 3.0;

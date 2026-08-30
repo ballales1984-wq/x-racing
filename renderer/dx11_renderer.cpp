@@ -549,7 +549,7 @@ void DX11Renderer::render_frame() {
 
 void DX11Renderer::run() {
   running_ = true;
-  load_gltf("D:/x-racing/assets/models/test_export.glb");
+  load_gltf("assets/models/test_export.glb");
 
   LARGE_INTEGER freq, prev;
   QueryPerformanceFrequency(&freq);

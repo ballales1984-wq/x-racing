@@ -29,7 +29,7 @@ std::string ResultStorage::generate_race_id(const std::string& track_id, int car
 }
 
 std::string ResultStorage::default_results_path() {
-  return "D:/x-racing/data/results.json";
+  return "data/results.json";
 }
 
 std::string escape_json_string(const std::string& str) {

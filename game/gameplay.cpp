@@ -33,7 +33,7 @@ static std::string format_time(double time_sec) {
 }
 
 static std::string save_path() {
-  return "D:/x-racing/data/best_times.json";
+  return "data/best_times.json";
 }
 
 Gameplay::Gameplay(simulation::Simulation& sim, telemetry::Telemetry& tel, std::unique_ptr<input::InputManager> input_manager)
@@ -491,8 +491,8 @@ void Gameplay::run() {
               << " s (" << (state_.lap_times[i].valid ? "valid" : "invalid") << ")\n";
   }
 
-  tel_.save_csv("D:/x-racing/data/telemetry/unity_state.csv");
-  std::cout << "Telemetry saved to D:/x-racing/data/telemetry/unity_state.csv\n";
+  tel_.save_csv("data/telemetry/unity_state.csv");
+  std::cout << "Telemetry saved to data/telemetry/unity_state.csv\n";
 }
 
 }

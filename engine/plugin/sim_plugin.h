@@ -33,6 +33,23 @@ extern "C" {
     // Copy the current vehicle state into the caller-provided struct.
     __declspec(dllexport) void SimPlugin_GetVehicleState(VehicleState* state);
 
+    // Geographic + track-relative snapshot produced by the tracking layer.
+    // Combines the simulated GPS sample (latitude/longitude/altitude) with the
+    // mapped track position (S / L). Returns 0 on success, -1 if unavailable.
+    typedef struct {
+        double latitude;     // deg, WGS84 latitude
+        double longitude;    // deg, WGS84 longitude
+        double altitude;     // m, altitude
+        double track_s;      // m, distance along centerline
+        double track_l;      // m, lateral offset from centerline
+        double speed;        // m/s, ground speed
+        double heading;      // rad, true heading
+        double accuracy;     // m, 1-sigma horizontal accuracy
+        int on_track;        // 1 if mapped within track boundaries
+    } TrackingSample;
+
+    __declspec(dllexport) int SimPlugin_GetTracking(TrackingSample* out);
+
 #ifdef __cplusplus
 }
 #endif

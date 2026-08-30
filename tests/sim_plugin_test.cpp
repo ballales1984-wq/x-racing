@@ -18,9 +18,23 @@ struct PluginVehicleState {
   double steer;
 };
 
+// Mirror of the C ABI TrackingSample struct (must match plugin/sim_plugin.h).
+struct PluginTrackingSample {
+  double latitude;
+  double longitude;
+  double altitude;
+  double track_s;
+  double track_l;
+  double speed;
+  double heading;
+  double accuracy;
+  int on_track;
+};
+
 typedef int (*InitFn)();
 typedef void (*UpdateFn)(double, double, double, double);
 typedef void (*GetStateFn)(PluginVehicleState*);
+typedef int (*GetTrackingFn)(PluginTrackingSample*);
 
 namespace {
 struct Plugin {
@@ -28,18 +42,20 @@ struct Plugin {
   InitFn init = nullptr;
   UpdateFn update = nullptr;
   GetStateFn get_state = nullptr;
+  GetTrackingFn get_tracking = nullptr;
   bool ok = false;
 };
 
 Plugin& plugin() {
   static Plugin p;
   if (!p.dll) {
-    p.dll = LoadLibraryA("D:/x-racing/build/engine/Release/sim_plugin.dll");
+    p.dll = LoadLibraryA("build/engine/Release/sim_plugin.dll");
     if (p.dll) {
       p.init = reinterpret_cast<InitFn>(GetProcAddress(p.dll, "SimPlugin_Initialize"));
       p.update = reinterpret_cast<UpdateFn>(GetProcAddress(p.dll, "SimPlugin_Update"));
       p.get_state = reinterpret_cast<GetStateFn>(GetProcAddress(p.dll, "SimPlugin_GetVehicleState"));
-      p.ok = p.init && p.update && p.get_state;
+      p.get_tracking = reinterpret_cast<GetTrackingFn>(GetProcAddress(p.dll, "SimPlugin_GetTracking"));
+      p.ok = p.init && p.update && p.get_state && p.get_tracking;
     }
   }
   return p;
@@ -108,4 +124,21 @@ TEST(SimPlugin, GetVehicleStatePopulated) {
   EXPECT_DOUBLE_EQ(state.brake, 0.0);
   EXPECT_DOUBLE_EQ(state.steer, 0.0);
   EXPECT_GE(state.gear, 1);
+}
+
+// The tracking layer should expose a valid geographic + track-relative sample.
+TEST(SimPlugin, GetTrackingExposed) {
+  auto& p = plugin();
+  if (!p.ok) GTEST_SKIP() << "sim_plugin.dll not built/available";
+  p.init();
+
+  for (int i = 0; i < 200; ++i) {
+    p.update(1.0 / 120.0, 1.0, 0.0, 0.0);
+  }
+
+  PluginTrackingSample sample{};
+  EXPECT_EQ(p.get_tracking(&sample), 0);
+  EXPECT_GT(sample.latitude, 0.0);
+  EXPECT_GT(sample.longitude, 0.0);
+  EXPECT_GE(sample.track_s, 0.0);
 }

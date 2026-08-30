@@ -72,7 +72,7 @@ int main() {
     }
 
     // Save telemetry to CSV for external analysis.
-    tel.save_csv("D:/x-racing/data/telemetry/unity_state.csv");
+    tel.save_csv("data/telemetry/unity_state.csv");
     std::cout << "Telemetry generated: " << total_frames << " frames" << std::endl;
     std::cout << "Final distance: " << sim.state().distance_along_track << " m" << std::endl;
     std::cout << "Laps: " << sim.state().lap << std::endl;

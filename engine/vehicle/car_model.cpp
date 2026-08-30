@@ -29,7 +29,7 @@ void CarRegistry::initialize_default_models() {
         model.name = "Porsche 911 Turbo S";
         model.description = "Rear-engine sports car";
         model.author = "alessio";
-        model.mesh_path = "D:/x-racing/data/models/porsche_911.obj";
+        model.mesh_path = "data/models/porsche_911.obj";
 
         VehicleParams& p = model.params;
         // p keeps the struct defaults (Porsche 911 specs already defined)
@@ -62,7 +62,7 @@ void CarRegistry::initialize_default_models() {
         model.name = "Ferrari F12berlinetta";
         model.description = "Mid-engine V12 supercar";
         model.author = "alessio";
-        model.mesh_path = "D:/x-racing/data/models/ferrari_f12.obj";
+        model.mesh_path = "data/models/ferrari_f12.obj";
 
         VehicleParams& p = model.params;
         p.mass = 1690.0;           // kg — heavier than 911

@@ -44,7 +44,7 @@ int main() {
     std::cout << "\n----------------------------------------" << std::endl;
 
     // Generate and export meshes for every registered car model
-    std::string output_dir = "D:/x-racing/data/models/";
+    std::string output_dir = "data/models/";
     bool ok = registry.generate_all_meshes(output_dir);
 
     std::cout << "\nDone!" << std::endl;

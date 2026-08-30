@@ -3,6 +3,11 @@
 #include "track/track.h"
 #include "vehicle/vehicle.h"
 #include "input/input.h"
+#include "tracking/tracking_system.h"
+#include "tracking/simulated_gps.h"
+#include "tracking/physics_trajectory.h"
+#include "tracking/coordinate_converter.h"
+#include "tracking/track_mapper.h"
 
 // Global simulation instance used by the C plugin ABI.
 // This singleton is shared across all DLL calls and persists for the
@@ -12,6 +17,14 @@
 static p0::track::Track g_track;
 static p0::simulation::Simulation g_sim;
 static bool g_initialized = false;
+
+// Tracking layer: a simulated GPS fed by the live vehicle state, mapped onto
+// the track. Exposed to Unity via SimPlugin_GetTracking.
+static std::unique_ptr<p0::tracking::PhysicsTrajectory> g_trajectory_owner;
+static p0::tracking::PhysicsTrajectory* g_trajectory_raw = nullptr;
+static std::unique_ptr<p0::tracking::SimulatedGPS> g_gps_owner;
+static p0::tracking::SimulatedGPS* g_gps_raw = nullptr;
+static std::unique_ptr<p0::tracking::TrackingSystem> g_tracking;
 
 extern "C" {
 
@@ -31,6 +44,21 @@ extern "C" {
 
         g_sim.reset(initial);
         g_initialized = true;
+
+        g_trajectory_owner = std::make_unique<p0::tracking::PhysicsTrajectory>(
+            p0::tracking::CoordinateConverter(p0::tracking::GeographicOrigin{45.0, 11.0, 0.0}),
+            &g_sim.state());
+        g_trajectory_raw = g_trajectory_owner.get();
+
+        g_gps_owner = std::make_unique<p0::tracking::SimulatedGPS>(
+            std::move(g_trajectory_owner),
+            p0::tracking::SimulatedGPS::Params{10.0});
+        g_gps_raw = g_gps_owner.get();
+        g_tracking = std::make_unique<p0::tracking::TrackingSystem>(
+            std::move(g_gps_owner));
+        g_tracking->set_mapper(
+            std::make_unique<p0::tracking::TrackMapper>(g_track, p0::tracking::TrackMapper::LocalOrigin{45.0, 11.0}));
+        g_tracking->start();
         return 0;
     }
 
@@ -45,6 +73,10 @@ extern "C" {
         input.brake = brake;
         input.steering = steer;
         g_sim.step(input);
+
+        if (g_tracking) {
+            g_tracking->update();
+        }
     }
 
     // Copy the current vehicle state into the caller-provided POD struct.
@@ -65,5 +97,25 @@ extern "C" {
         state->throttle = s.throttle;
         state->brake = s.brake;
         state->steer = s.steer_angle;
+    }
+
+    // Geographic + track-relative snapshot from the tracking layer.
+    // Returns 0 on success; -1 if the tracking layer is not ready.
+    __declspec(dllexport) int SimPlugin_GetTracking(TrackingSample* out) {
+        if (!out || !g_initialized || !g_tracking) return -1;
+
+        const auto& sample = g_tracking->current_sample();
+        const auto& tp = g_tracking->current_track_position();
+
+        out->latitude = sample.latitude;
+        out->longitude = sample.longitude;
+        out->altitude = sample.altitude;
+        out->track_s = tp.s;
+        out->track_l = tp.lateral;
+        out->speed = sample.speed;
+        out->heading = sample.heading;
+        out->accuracy = sample.horizontal_accuracy;
+        out->on_track = tp.on_track ? 1 : 0;
+        return 0;
     }
 }

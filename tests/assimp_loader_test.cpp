@@ -14,7 +14,7 @@ TEST(AssimpLoader, IsAvailable) {
 TEST(AssimpLoader, LoadsFbxMesh) {
   Mesh mesh;
   std::vector<Material> materials;
-  const bool ok = AssimpLoader::LoadMesh("D:/x-racing/assets/models/car.fbx", mesh, materials);
+  const bool ok = AssimpLoader::LoadMesh("assets/models/car.fbx", mesh, materials);
   ASSERT_TRUE(ok);
   EXPECT_GT(mesh.vertices.size(), 0u);
   EXPECT_GT(mesh.indices.size(), 0u);
@@ -26,13 +26,13 @@ TEST(AssimpLoader, LoadsFbxMesh) {
 TEST(AssimpLoader, MissingFileReturnsFalse) {
   Mesh mesh;
   std::vector<Material> materials;
-  EXPECT_FALSE(AssimpLoader::LoadMesh("D:/x-racing/assets/models/does_not_exist.fbx", mesh, materials));
+  EXPECT_FALSE(AssimpLoader::LoadMesh("assets/models/does_not_exist.fbx", mesh, materials));
 }
 
 // Skinned mesh loading should succeed and report geometry + skeleton.
 TEST(AssimpLoader, LoadsSkinnedMesh) {
   SkinnedMesh skinned;
-  const bool ok = AssimpLoader::LoadSkinnedMesh("D:/x-racing/assets/models/car.fbx", skinned);
+  const bool ok = AssimpLoader::LoadSkinnedMesh("assets/models/car.fbx", skinned);
   ASSERT_TRUE(ok);
   EXPECT_GT(skinned.positions.size(), 0u);
   EXPECT_GT(skinned.indices.size(), 0u);

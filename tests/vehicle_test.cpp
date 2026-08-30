@@ -93,7 +93,7 @@ TEST(VehicleGenerator, MeshRoundTripPreservesTriangles) {
   vehicle::VehicleGeometry geo = vehicle::VehicleGenerator::FromParams(params);
   vehicle::MeshData original = vehicle::VehicleGenerator::GenerateCar(geo);
 
-  std::string test_file = "D:/x-racing/assets/models/test_roundtrip.obj";
+  std::string test_file = "assets/models/test_roundtrip.obj";
   vehicle::MeshExporter::ExportOBJ(original, test_file);
 
   p0::assets::Mesh loaded;

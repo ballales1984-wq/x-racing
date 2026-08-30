@@ -30,7 +30,7 @@ uint32_t ReadU32(const std::vector<uint8_t>& b, size_t off) {
 // Exporting a generated car mesh should produce a valid GLB file.
 TEST(GLBExporter, ExportCarProducesValidGLB) {
   VehicleGeometry geo = VehicleGenerator::FromParams(VehicleParams());
-  const std::string path = "D:/x-racing/assets/models/test_export.glb";
+  const std::string path = "assets/models/test_export.glb";
 
   ASSERT_TRUE(GLBExporter::ExportCarGLB(geo, path));
 
@@ -64,7 +64,7 @@ TEST(GLBExporter, ExportCarProducesValidGLB) {
 // The binary buffer must be large enough to hold positions, normals, indices, UVs.
 TEST(GLBExporter, BinaryBufferSizedForAllAttributes) {
   MeshData mesh = VehicleGenerator::GenerateCar(VehicleGenerator::FromParams(VehicleParams()));
-  const std::string path = "D:/x-racing/assets/models/test_export2.glb";
+  const std::string path = "assets/models/test_export2.glb";
 
   ASSERT_TRUE(GLBExporter::ExportGLB(mesh, path));
   auto bytes = ReadAllBytes(path);
@@ -85,6 +85,6 @@ TEST(GLBExporter, BinaryBufferSizedForAllAttributes) {
 // Exporting to an invalid (nonexistent) directory should fail gracefully.
 TEST(GLBExporter, ExportToInvalidPathReturnsFalse) {
   MeshData mesh = VehicleGenerator::GenerateCar(VehicleGenerator::FromParams(VehicleParams()));
-  const std::string path = "D:/x-racing/__no_such_dir__/vehicle.glb";
+  const std::string path = "__no_such_dir__/vehicle.glb";
   EXPECT_FALSE(GLBExporter::ExportGLB(mesh, path));
 }

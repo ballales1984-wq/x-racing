@@ -21,18 +21,6 @@ namespace Project0.Unity
             {
                 raceManager = FindObjectOfType<XRRaceManager>();
             }
-            if (uiManager == null)
-            {
-                uiManager = FindObjectOfType<XRUIManager>();
-            }
-            if (carController == null)
-            {
-                carController = FindObjectOfType<CarController>();
-            }
-            if (carHUD == null)
-            {
-                carHUD = FindObjectOfType<CarHUD>();
-            }
 
             if (raceManager != null && carController != null)
             {
@@ -70,17 +58,8 @@ namespace Project0.Unity
                 carController.enabled = false;
             }
 
-            if (trackGenerator != null)
-            {
-                try
-                {
-                    trackGenerator.GenerateTrack();
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"Initial track generation failed: {e}");
-                }
-            }
+            // XRTrackGenerator.Start() handles initial track generation,
+            // so we don't call GenerateTrack() here to avoid double generation.
         }
     }
 }

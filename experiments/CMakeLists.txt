@@ -20,6 +20,9 @@ if(PROJECT0_BUILD_EXPERIMENTS)
   target_link_libraries(track_blueprint PRIVATE project0_experiments)
   target_link_libraries(track_blueprint PRIVATE user32 gdi32)
 
+  add_executable(tracking_demo tracking_demo.cpp)
+  target_link_libraries(tracking_demo PRIVATE project0_experiments)
+
   if(PROJECT0_BUILD_ASSIMP)
     deploy_assimp_dll(track_analysis)
     deploy_assimp_dll(track_svg)

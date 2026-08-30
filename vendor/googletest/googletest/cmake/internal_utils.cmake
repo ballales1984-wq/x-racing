@@ -195,7 +195,11 @@ function(cxx_library_with_type name type cxx_flags)
     target_link_libraries(${name} PUBLIC Threads::Threads)
   endif()
 
-  target_compile_features(${name} PUBLIC cxx_std_14)
+  if (MSVC)
+    set_target_properties(${name} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED ON)
+  else()
+    target_compile_features(${name} PUBLIC cxx_std_14)
+  endif()
 endfunction()
 
 ########################################################################

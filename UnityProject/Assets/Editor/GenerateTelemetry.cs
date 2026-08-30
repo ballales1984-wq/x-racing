@@ -10,14 +10,33 @@ namespace Project0.Unity.Setup
         [MenuItem("X-Racing/Generate Telemetry")]
         public static void Generate()
         {
-            var exePath = @"D:\x-racing\gen_telemetry.exe";
-            if (!File.Exists(exePath))
+            string unityProjectDir = System.IO.Directory.GetParent(Application.dataPath).FullName;
+            string projectRoot = System.IO.Directory.GetParent(unityProjectDir).FullName;
+            string[] buildDirs = { "build", "build2", "build3", "build4" };
+            string[] exeSubPaths = { "game/Release/gen_telemetry.exe", "game/gen_telemetry.exe" };
+
+            string exePath = null;
+            foreach (var bd in buildDirs)
             {
-                UnityEngine.Debug.LogError($"gen_telemetry.exe not found at {exePath}");
+                foreach (var sp in exeSubPaths)
+                {
+                    string candidate = System.IO.Path.Combine(projectRoot, bd, sp);
+                    if (File.Exists(candidate))
+                    {
+                        exePath = candidate;
+                        break;
+                    }
+                }
+                if (exePath != null) break;
+            }
+
+            if (exePath == null)
+            {
+                UnityEngine.Debug.LogError($"gen_telemetry.exe not found in any build directory under: {projectRoot}\nBuild the C++ project first (cmake --build build --target gen_telemetry)");
                 return;
             }
 
-            var csvPath = @"D:\x-racing\data\telemetry\unity_state.csv";
+            var csvPath = System.IO.Path.Combine(projectRoot, "data", "telemetry", "unity_state.csv");
             var dir = Path.GetDirectoryName(csvPath);
             if (!Directory.Exists(dir))
             {
@@ -30,6 +49,7 @@ namespace Project0.Unity.Setup
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = exePath,
+                    WorkingDirectory = projectRoot,
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardOutput = true,

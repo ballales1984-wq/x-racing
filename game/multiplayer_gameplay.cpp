@@ -2,6 +2,10 @@
 #include "vehicle/car_model.h"
 #include "track/track.h"
 #include "input/platform/windows_input.h"
+#include "tracking/tracking_system.h"
+#include "tracking/physics_trajectory.h"
+#include "tracking/coordinate_converter.h"
+#include "tracking/simulated_gps.h"
 #include <algorithm>
 #include <cmath>
 
@@ -30,6 +34,21 @@ bool MultiplayerGameplay::initialize(const MultiplayerConfig& config) {
                                 : vehicle::CarRegistry::instance().all()[0];
   track::Track track(track::TrackType::Default);
   world_.initialize(track);
+
+  tracking_converter_ = std::make_unique<p0::tracking::CoordinateConverter>(
+      p0::tracking::GeographicOrigin{45.0, 11.0, 0.0});
+
+  local_trajectory_ = std::make_unique<p0::tracking::PhysicsTrajectory>(
+      *tracking_converter_, nullptr);
+
+  auto gps = std::make_unique<p0::tracking::SimulatedGPS>(std::move(local_trajectory_));
+  auto tracking = std::make_unique<p0::tracking::TrackingSystem>(std::move(gps));
+
+  auto mapper = std::make_unique<p0::tracking::TrackMapper>(
+      track, p0::tracking::TrackMapper::LocalOrigin{45.0, 11.0});
+  tracking->set_mapper(std::move(mapper));
+
+  world_.set_tracking_system(std::move(tracking));
 
   local_input_ = std::make_unique<input::WindowsInputManager>();
 
@@ -104,6 +123,16 @@ void MultiplayerGameplay::start_countdown() {
       }
     }
     world_.reset_all(initial_states);
+
+    if (auto* ts = world_.tracking_system()) {
+      if (auto* gps = dynamic_cast<p0::tracking::SimulatedGPS*>(ts->provider())) {
+        if (auto* traj = dynamic_cast<p0::tracking::PhysicsTrajectory*>(gps->trajectory())) {
+          const auto* state = world_.get_state(config_.local_car_id);
+          if (state) traj->set_state(state);
+        }
+      }
+      ts->start();
+    }
   }
 
   set_state(MultiplayerState::COUNTDOWN);

@@ -28,6 +28,11 @@ set(TEST_SOURCES
   ../tools/track_diagram/track_diagram.cpp
 )
 
+set(NON_TEST_SOURCES
+  ../game/gameplay.cpp
+  ../tools/track_diagram/track_diagram.cpp
+)
+
 if(PROJECT0_BUILD_ASSIMP)
   list(APPEND TEST_SOURCES assimp_loader_test.cpp)
 endif()
@@ -53,4 +58,7 @@ if(BUILD_SHARED_LIBS)
 endif()
 
 include(GoogleTest)
-gtest_add_tests(project0_tests "" ${TEST_SOURCES})
+add_test(NAME project0_tests COMMAND project0_tests)
+set_tests_properties(project0_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)

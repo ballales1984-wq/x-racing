@@ -56,9 +56,10 @@ class LapDetector {
     track_length_ = track_length > kEpsilon ? track_length : kEpsilon;
   }
 
-  int completed_laps() const { return completed_laps_; }
+  double completed_laps() const { return completed_laps_; }
   int total_laps() const { return total_laps_; }
   void set_total_laps(int total_laps) { total_laps_ = total_laps; }
+  double track_length() const { return track_length_; }
   bool finished() const {
     return total_laps_ > 0 && completed_laps_ >= total_laps_;
   }
