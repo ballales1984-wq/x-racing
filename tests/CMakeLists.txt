@@ -26,6 +26,7 @@ set(TEST_SOURCES
   tracking_test.cpp
    ai_test.cpp
    audio_test.cpp
+   environment_test.cpp
    standings_test.cpp
    ../game/gameplay.cpp
   ../tools/track_diagram/track_diagram.cpp

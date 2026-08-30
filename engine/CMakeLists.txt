@@ -41,6 +41,7 @@ add_library(project0_engine STATIC
    ai/opponent.cpp
    audio/audio_engine.cpp
    audio/sound.cpp
+   environment/environment_generator.cpp
 )
 
 target_include_directories(project0_engine PUBLIC
