@@ -61,7 +61,8 @@ namespace Project0.Unity
                 // Most common cause: sim_plugin.dll is not deployed (build it and run
                 // X-Racing > Deploy Sim Plugin DLL). Don't let the exception spam the
                 // player loop every frame.
-                Debug.LogError($"SimPlugin initialization failed: {e.Message}");
+                Debug.LogError(
+                    $"SimPlugin initialization failed: {e.GetType().Name}: {e.Message}\n{e.StackTrace}");
                 s_initialized = false;
             }
             return s_initialized;

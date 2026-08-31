@@ -16,12 +16,13 @@ PluginImporter:
      second:
        enabled: 1
        settings:
-         CPU: x86
+         CPU: x86_64
    - first:
        Editor: Editor
      second:
-       enabled: 0
+       enabled: 1
        settings:
+         CPU: x86_64
          DefaultValueInitialized: true
   userData: 
   assetBundleName: 
