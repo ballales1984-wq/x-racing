@@ -55,6 +55,7 @@ namespace Project0.Unity
     {
         public int id;
         public Vector3 position;
+        public float distance;
         public float width;
     }
 

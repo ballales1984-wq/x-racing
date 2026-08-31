@@ -455,63 +455,28 @@ void DX11Renderer::render_frame() {
     D3D11_MAPPED_SUBRESOURCE mapped_vs = {};
     if (SUCCEEDED(context_->Map(vs_constant_buffer_, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_vs))) {
       ConstantBufferVS* cb = (ConstantBufferVS*)mapped_vs.pData;
-      float aspect = (float)config_.width / (float)config_.height;
-      float fov = 1.0f / tanf(60.0f * 3.14159f / 360.0f);
 
-      float proj[16] = {
-        fov / aspect, 0, 0, 0,
-        0, fov, 0, 0,
-        0, 0, 200.1f / -199.9f, -1,
-        0, 0, (200.0f * 0.1f) / -199.9f, 0
-      };
-
-      const auto& state = sim_.state();
-      float cx = (float)state.position.x();
-      float cz = (float)state.position.y();
-      float heading = (float)state.heading;
-
-      float eye_x = cx - cosf(heading) * 8.0f;
-      float eye_y = 4.0f;
-      float eye_z = cz - sinf(heading) * 8.0f;
-      float target_x = cx + cosf(heading) * 2.0f;
-      float target_z = cz + sinf(heading) * 2.0f;
-
-      float fx = target_x - eye_x;
-      float fy = 0.0f - eye_y;
-      float fz = target_z - eye_z;
-      float flen = sqrtf(fx*fx + fy*fy + fz*fz);
-      fx /= flen; fy /= flen; fz /= flen;
-
-      float sx = 0.0f - fz;
-      float sy = 0.0f;
-      float sz = fx;
-      float slen = sqrtf(sx*sx + sy*sy + sz*sz);
-      sx /= slen; sy /= slen; sz /= slen;
-
-      float ux = sy * fz - fy * sz;
-      float uy = fz * sx - fx * sz;
-      float uz = fx * sy - fy * sx;
-
-      float view[16] = {
-        sx, ux, -fx, 0,
-        sy, uy, -fy, 0,
-        sz, uz, -fz, 0,
-        -(sx*eye_x + sy*eye_y + sz*eye_z),
-        -(ux*eye_x + uy*eye_y + uz*eye_z),
-        (fx*eye_x + fy*eye_y + fz*eye_z),
-        1
-      };
+      Mat4 view = camera_.view_matrix();
+      Mat4 proj = camera_.projection_matrix(config_.width, config_.height);
 
       float view_proj[16];
-      multiply_matrices(view, proj, view_proj);
+      for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+          view_proj[col * 4 + row] = 0.0f;
+          for (int k = 0; k < 4; ++k) {
+            view_proj[col * 4 + row] += (float)(view(k, row) * proj(col, k));
+          }
+        }
+      }
 
-      float c = cosf(heading);
-      float s = sinf(heading);
+      const auto& state = sim_.state();
+      float c = cosf((float)state.heading);
+      float s = sinf((float)state.heading);
       float model[16] = {
         c, 0, s, 0,
         0, 1, 0, 0,
         -s, 0, c, 0,
-        cx, 0.5f, cz, 1
+        (float)state.position.x(), 0.5f, (float)state.position.y(), 1
       };
 
       for (int i = 0; i < 16; ++i) cb->view_projection[i] = view_proj[i];
@@ -551,6 +516,9 @@ void DX11Renderer::run() {
   running_ = true;
   load_gltf("assets/models/test_export.glb");
 
+  camera_.set_config(p0::camera::CameraConfig{8.0, 4.0, 2.0, 8.0});
+  camera_.update(sim_.state().position, sim_.state().heading, sim_.state().speed, 0.0);
+
   LARGE_INTEGER freq, prev;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&prev);
@@ -581,6 +549,7 @@ void DX11Renderer::run() {
       if (input.reset) sim_.respawn();
 
       sim_.step(input);
+      camera_.update(sim_.state().position, sim_.state().heading, sim_.state().speed, (float)dt);
       play_animation((float)dt);
       render_frame();
     }

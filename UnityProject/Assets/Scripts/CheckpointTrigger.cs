@@ -8,6 +8,7 @@ namespace Project0.Unity
     {
         public int checkpointIndex = 0;
         public int totalCheckpoints = 8;
+        public float trackWidth = 12f;
 
         private BoxCollider boxCol;
         private bool wasPassed = false;
@@ -16,7 +17,8 @@ namespace Project0.Unity
         {
             boxCol = GetComponent<BoxCollider>();
             boxCol.isTrigger = true;
-                boxCol.size = new Vector3(15f, 4f, 5f);
+            float triggerWidth = trackWidth * 0.35f;
+            boxCol.size = new Vector3(15f, 4f, triggerWidth);
         }
 
         void OnTriggerEnter(Collider other)

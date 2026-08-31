@@ -8,6 +8,10 @@
 #include "../engine/camera/camera.h"
 #include "../engine/assets/mesh.h"
 #include "../engine/assets/gltf_loader.h"
+#include "../engine/tracking/lap_system.h"
+#include "../engine/tracking/track_position.h"
+#include <sstream>
+#include <iomanip>
 
 // Project 0 — Windows GDI renderer with optional 3D wireframe car
 // Namespace: p0::renderer
@@ -63,27 +67,38 @@ class Renderer {
   void draw_car_3d(HDC hdc, const vehicle::VehicleState& state);
   // Draw speed, RPM, gear, lap and telemetry HUD overlay.
   void draw_hud(HDC hdc, const simulation::SimulationResult& result);
-  // Poll keyboard and build the per-frame input state.
-  void handle_input(input::InputState& input);
+   // Poll keyboard and build the per-frame input state.
+   void handle_input(input::InputState& input);
+   // Recreate the back buffer at a new size (called on WM_SIZE).
+   void resize_back_buffer(int width, int height);
 
-   // Project a 3D world point to 2D screen coordinates using a look-at view matrix
-   // and a perspective projection (delegates to the chase camera).
-   Vec3 project(const Vec3& world_pos) const;
-   // Build a simple look-at view matrix following the car from behind.
-   Mat4 view_matrix() const;
+  // Project a 3D world point to 2D screen coordinates using a look-at view matrix
+    // and a perspective projection (delegates to the chase camera).
+    Vec3 project(const Vec3& world_pos) const;
+    // Build a simple look-at view matrix following the car from behind.
+    Mat4 view_matrix() const;
 
-    simulation::Simulation& sim_;
-    RendererConfig config_;
-    HWND window_ = nullptr;
-    HDC mem_dc_ = nullptr;
-    HBITMAP mem_bitmap_ = nullptr;
-    bool running_ = false;
-    double time_ = 0.0;
-    std::vector<p0::assets::Mesh> car_meshes_;
-    bool show_3d_car_ = true;
-    float car_mesh_scale_ = 1.0f;
-    track::TrackType current_track_type_ = track::TrackType::Default;
-    track::Track current_track_;
-    p0::camera::ChaseCamera camera_;
+    std::string format_time(double seconds) const;
+    p0::tracking::TrackPosition build_track_position(const simulation::SimulationResult& result) const;
 
-}
+     simulation::Simulation& sim_;
+     RendererConfig config_;
+     HWND window_ = nullptr;
+     HDC mem_dc_ = nullptr;
+     HBITMAP mem_bitmap_ = nullptr;
+     bool running_ = false;
+     double time_ = 0.0;
+     std::vector<p0::assets::Mesh> car_meshes_;
+     bool show_3d_car_ = true;
+     float car_mesh_scale_ = 1.0f;
+     track::TrackType current_track_type_ = track::TrackType::Default;
+     track::Track current_track_;
+     p0::camera::ChaseCamera camera_;
+     p0::tracking::LapSystem lap_system_;
+     double current_lap_time_ = 0.0;
+     double best_lap_time_ = 0.0;
+     double last_lap_time_ = 0.0;
+     bool lap_invalidated_ = false;
+
+};
+

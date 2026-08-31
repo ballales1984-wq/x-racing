@@ -18,6 +18,13 @@ static const char* kWindowTitle = "X-Racing Simulator";
 // Handles WM_DESTROY (quit), WM_KEYDOWN (ESC to quit, M to toggle 3D, 1/2 to switch track).
 static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
   switch (msg) {
+    case WM_SIZE:
+      if (g_renderer && wparam != SIZE_MINIMIZED) {
+        int w = LOWORD(lparam);
+        int h = HIWORD(lparam);
+        g_renderer->resize_back_buffer(w, h);
+      }
+      return 0;
     case WM_DESTROY:
       PostQuitMessage(0);
       return 0;
@@ -49,7 +56,8 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 }
 
 Renderer::Renderer(simulation::Simulation& sim, const RendererConfig& config)
-    : sim_(sim), config_(config) {}
+    : sim_(sim), config_(config),
+      lap_system_(sim.track().length(), 0) {}
 
 Renderer::~Renderer() {
   g_renderer = nullptr;
@@ -108,7 +116,7 @@ void Renderer::run() {
   running_ = true;
   {
     p0::assets::GLTFSkinnedMesh skinned;
-    if (p0::assets::GLTFLoader::LoadSkinned("assets/models/test_export.glb", skinned) && !skinned.positions.empty()) {
+    if (p0::assets::GLTFLoader::LoadSkinned("data/models/test_export.glb", skinned) && !skinned.positions.empty()) {
       car_meshes_.clear();
       p0::assets::Mesh mesh;
       mesh.vertices.reserve(skinned.positions.size() / 3);
@@ -146,13 +154,13 @@ void Renderer::run() {
     }
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("assets/models/vehicle.obj");
+    load_car_mesh("data/models/vehicle.obj");
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("assets/models/car_mesh.obj");
+    load_car_mesh("data/models/car_mesh.obj");
   }
   if (car_meshes_.empty()) {
-    load_car_mesh("assets/models/car.obj");
+    load_car_mesh("data/models/car.obj");
   }
   std::cout << "Renderer: loaded " << car_meshes_.size() << " mesh(es), 3D=" << (show_3d_car_ ? "ON" : "OFF") << std::endl;
 
@@ -192,6 +200,21 @@ void Renderer::run() {
       camera_.update(result.state.position, result.state.heading, result.state.speed, dt);
       tel.record(result.state, dt);
       time_ += dt;
+
+      const p0::tracking::TrackPosition track_pos = build_track_position(result);
+      lap_system_.update(track_pos, time_);
+      current_lap_time_ = lap_system_.current_lap_time();
+      if (lap_system_.lap_finished()) {
+        last_lap_time_ = lap_system_.last_lap_time();
+        if (last_lap_time_ > 0.0 && (best_lap_time_ == 0.0 || last_lap_time_ < best_lap_time_)) {
+          best_lap_time_ = last_lap_time_;
+        }
+        lap_system_.pop_events();
+      }
+      if (lap_system_.lap_invalidated()) {
+        lap_invalidated_ = true;
+        lap_system_.pop_events();
+      }
 
       HDC hdc = GetDC(window_);
       HDC mem_dc = mem_dc_;
@@ -339,7 +362,6 @@ void Renderer::draw_direction_arrows(HDC hdc) {
 
 // Draw the car as a small rotated rectangle centered at its world position.
 void Renderer::draw_car(HDC hdc, const vehicle::VehicleState& state) {
-  // World-to-screen center (y is flipped so +y points up on screen).
   int cx = static_cast<int>(state.position.x() * config_.scale + config_.width / 2);
   int cy = static_cast<int>(-state.position.y() * config_.scale + config_.height / 2);
   double heading = state.heading;
@@ -349,8 +371,12 @@ void Renderer::draw_car(HDC hdc, const vehicle::VehicleState& state) {
   HPEN old_pen = (HPEN)SelectObject(hdc, car_pen);
   HBRUSH old_brush = (HBRUSH)SelectObject(hdc, car_brush);
 
-  const int car_len = 8;
-  const int car_wid = 4;
+  const track::Track* track = &sim_.track();
+  const auto tp = track->at(state.distance_along_track);
+  const double car_wid_world = tp.width / 4.0;
+  const double car_len_world = car_wid_world * 2.0;
+  const int car_len = static_cast<int>(car_len_world * config_.scale);
+  const int car_wid = static_cast<int>(car_wid_world * config_.scale);
 
   POINT pts[4];
   for (int i = 0; i < 4; ++i) {
@@ -378,26 +404,52 @@ void Renderer::draw_hud(HDC hdc, const simulation::SimulationResult& result) {
   char buf[128];
   const auto& s = result.state;
 
+  const int margin_x = static_cast<int>(config_.width * 0.02);
+  const int margin_y = static_cast<int>(std::min(config_.height * 0.03, config_.height * 0.35));
+  const int line_h = static_cast<int>(config_.height * 0.04);
+  int y = margin_y;
+
   snprintf(buf, sizeof(buf), "Speed: %.1f km/h", s.speed * 3.6);
-  TextOutA(hdc, 10, 10, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
 
   snprintf(buf, sizeof(buf), "RPM: %d", static_cast<int>(s.rpm));
-  TextOutA(hdc, 10, 30, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
 
   snprintf(buf, sizeof(buf), "Gear: %d", s.gear);
-  TextOutA(hdc, 10, 50, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
 
-  snprintf(buf, sizeof(buf), "Time: %.2f s", result.time);
-  TextOutA(hdc, 10, 70, buf, static_cast<int>(std::strlen(buf)));
+  snprintf(buf, sizeof(buf), "Time: %s", format_time(current_lap_time_).c_str());
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
+
+  snprintf(buf, sizeof(buf), "Best Lap: %s", format_time(best_lap_time_).c_str());
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
+
+  snprintf(buf, sizeof(buf), "Last Lap: %s", format_time(last_lap_time_).c_str());
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
 
   snprintf(buf, sizeof(buf), "Lap: %d", s.lap);
-  TextOutA(hdc, 10, 90, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
+
+  if (lap_invalidated_) {
+    SetTextColor(hdc, RGB(255, 80, 80));
+    TextOutA(hdc, margin_x, y, "INVALID LAP", 11);
+    SetTextColor(hdc, RGB(255, 255, 255));
+    y += line_h;
+  }
 
   snprintf(buf, sizeof(buf), "3D Model: %s", show_3d_car_ ? "ON (M to toggle)" : "OFF (M to toggle)");
-  TextOutA(hdc, 10, 110, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
+  y += line_h;
 
   snprintf(buf, sizeof(buf), "Track: %s (1/2/3 to switch)", current_track_type_ == track::TrackType::Default ? "Default" : current_track_type_ == track::TrackType::PitCircuit ? "PitCircuit" : "CustomCircuit");
-  TextOutA(hdc, 10, 130, buf, static_cast<int>(std::strlen(buf)));
+  TextOutA(hdc, margin_x, y, buf, static_cast<int>(std::strlen(buf)));
 }
 
 void Renderer::toggle_3d_mode() {
@@ -415,6 +467,11 @@ void Renderer::set_track_type(track::TrackType type) {
   current_track_type_ = type;
   current_track_ = track::Track(type);
   sim_.set_track(current_track_);
+  lap_system_ = p0::tracking::LapSystem(current_track_.length(), 0);
+  current_lap_time_ = 0.0;
+  best_lap_time_ = 0.0;
+  last_lap_time_ = 0.0;
+  lap_invalidated_ = false;
 }
 
 // Poll the keyboard and populate the per-frame input state.
@@ -435,7 +492,25 @@ void Renderer::handle_input(input::InputState& input) {
   if (GetAsyncKeyState(VK_DOWN) & 0x8000) input.downshift = true;
 }
 
-// Load a car mesh from an OBJ file for 3D rendering.
+// Recreate the back buffer at a new client size.
+void Renderer::resize_back_buffer(int width, int height) {
+  if (width == config_.width && height == config_.height) return;
+  config_.width = width;
+  config_.height = height;
+
+  if (mem_bitmap_) {
+    DeleteObject(mem_bitmap_);
+    mem_bitmap_ = nullptr;
+  }
+  if (window_) {
+    HDC hdc = GetDC(window_);
+    if (hdc && mem_dc_) {
+      mem_bitmap_ = CreateCompatibleBitmap(hdc, width, height);
+      SelectObject(mem_dc_, mem_bitmap_);
+      ReleaseDC(window_, hdc);
+    }
+  }
+}
 // Computes a uniform scale factor so the mesh fits within ~5 world units.
 void Renderer::load_car_mesh(const std::string& filename) {
   car_meshes_.clear();
@@ -467,6 +542,35 @@ void Renderer::load_car_mesh(const std::string& filename) {
 // Delegates to the smoothed ChaseCamera owned by the renderer.
 Mat4 Renderer::view_matrix() const {
   return camera_.view_matrix();
+}
+
+std::string Renderer::format_time(double seconds) const {
+  if (seconds <= 0.0) return "--:--.---";
+  int mins = static_cast<int>(seconds) / 60;
+  double secs = seconds - mins * 60.0;
+  std::ostringstream oss;
+  oss << std::setfill('0') << std::setw(2) << mins << ":"
+      << std::fixed << std::setprecision(3) << std::setw(6) << secs;
+  return oss.str();
+}
+
+p0::tracking::TrackPosition Renderer::build_track_position(const simulation::SimulationResult& result) const {
+  p0::tracking::TrackPosition pos{};
+  const auto& s = result.state;
+  const track::Track* track = &sim_.track();
+  pos.s = s.distance_along_track;
+  pos.on_track = !result.off_track;
+  pos.heading = s.heading;
+  if (track) {
+    const auto tp = track->at(s.distance_along_track);
+    pos.curvature = tp.curvature;
+    pos.track_width = tp.width;
+    pos.banking = tp.banking;
+    pos.distance_to_centerline = 0.0;
+    const Vec2 to_car = s.position - tp.position;
+    pos.lateral = to_car.dot(tp.normal);
+  }
+  return pos;
 }
 
 // Project a world-space 3D point to screen coordinates.

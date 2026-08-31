@@ -75,7 +75,7 @@ class DX11Renderer {
   std::vector<uint32_t> indices_;
   std::vector<float> bone_transforms_;
 
-  p0::assets::GLTFSkinnedMesh skinned_mesh_;
+  p0::camera::ChaseCamera camera_;
   bool has_animation_ = false;
   float anim_time_ = 0.0f;
   int current_animation_ = 0;

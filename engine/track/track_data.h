@@ -87,6 +87,7 @@ struct RacingLineSample {
 struct Checkpoint {
   int id = 0;
   Transform2D transform;
+  double distance = 0.0;
   double width = 20.0;
   bool is_sector_gate = false;
   int sector_index = 0;

@@ -184,6 +184,7 @@ namespace Project0.Unity
                 {
                     id = i,
                     position = pd.position,
+                    distance = targetDist,
                     width = pd.width
                 });
             }
@@ -823,6 +824,7 @@ namespace Project0.Unity
                 var trigger = cpTrigger.AddComponent<CheckpointTrigger>();
                 trigger.checkpointIndex = i;
                 trigger.totalCheckpoints = numCheckpoints;
+                trigger.trackWidth = pd.width;
             }
         }
 

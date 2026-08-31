@@ -36,7 +36,7 @@ bool RaceManager::initialize(const std::vector<p0::race::CarAssignment>& assignm
   std::vector<p0::tracking::Checkpoint> checkpoints;
   for (const auto& cp : track_.checkpoints) {
     p0::tracking::Checkpoint tcp;
-    tcp.s = cp.transform.position.x();
+    tcp.s = cp.distance;
     tcp.tolerance = cp.width;
     tcp.id = cp.id;
     checkpoints.push_back(tcp);

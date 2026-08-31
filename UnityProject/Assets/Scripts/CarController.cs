@@ -6,6 +6,18 @@ namespace Project0.Unity
     [ExecuteAlways]
     public class CarController : MonoBehaviour
     {
+        private void Awake()
+        {
+            var mf = GetComponent<MeshFilter>();
+            if (mf != null && (mf.sharedMesh == null || mf.sharedMesh.name.Contains("Cube")))
+            {
+                var carMesh = Resources.Load<Mesh>("Models/car");
+                if (carMesh != null)
+                {
+                    mf.sharedMesh = carMesh;
+                }
+            }
+        }
         [Header("Telemetry")]
         public string telemetryPath = @"D:\x-racing\data\telemetry\unity_state.csv";
         public bool autoReload = true;
@@ -145,7 +157,7 @@ namespace Project0.Unity
 
             var state = SimPlugin.Update(Time.deltaTime, throttle, brake, steer);
             transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
-            float unityHeading = (float)(-state.heading * Mathf.Rad2Deg + 90f);
+            float unityHeading = Mathf.Repeat((float)state.heading * Mathf.Rad2Deg + 270f, 360f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             currentSpeed = (float)state.speed;
@@ -244,7 +256,7 @@ namespace Project0.Unity
 
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
-            float unityHeading = (float)(-frame.heading * Mathf.Rad2Deg + 270f);
+            float unityHeading = Mathf.Repeat(frame.heading * Mathf.Rad2Deg + 270f, 360f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             CheckProximityCheckpoints();
@@ -263,7 +275,9 @@ namespace Project0.Unity
 
             Transform cpTransform = checkpoints.transform.GetChild(nextIndex);
             float distance = Vector3.Distance(transform.position, cpTransform.position);
-            if (distance < 15f)
+            var trigger = cpTransform.GetComponent<CheckpointTrigger>();
+            float threshold = trigger != null ? trigger.trackWidth * 0.5f : 15f;
+            if (distance < threshold)
             {
                 OnCheckpointPassed(nextIndex, totalCheckpoints);
             }
