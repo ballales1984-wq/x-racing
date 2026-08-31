@@ -172,12 +172,12 @@ namespace Project0.Unity
         {
             float throttle = 0f;
             float brake = 0f;
-            float steer = 0f;
+            float steerInput = 0f;
 
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle = 1f;
             if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) brake = 1f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer = 1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer = -1f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steerInput = 1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steerInput = -1f;
 
             if (throttle > 0f)
             {
@@ -206,8 +206,15 @@ namespace Project0.Unity
             if (Mathf.Abs(currentSpeed) > 0.1f)
             {
                 float steerFactor = Mathf.Clamp01(Mathf.Abs(currentSpeed) / (maxSpeed * 0.5f));
-                float effectiveSteer = steer * maxSteerAngle * (1f - steerFactor * 0.7f);
+                float steerChange = steerInput * steerSpeed * Time.deltaTime;
+                currentSteerAngle += steerChange;
+                currentSteerAngle = Mathf.Clamp(currentSteerAngle, -maxSteerAngle * Mathf.Deg2Rad, maxSteerAngle * Mathf.Deg2Rad);
+                float effectiveSteer = currentSteerAngle * (1f - steerFactor * 0.7f);
                 currentHeading -= effectiveSteer * Time.deltaTime * Mathf.Sign(currentSpeed);
+            }
+            else if (steerInput == 0f)
+            {
+                currentSteerAngle = 0f;
             }
 
             currentHeading = NormalizeAngle(currentHeading);
@@ -220,7 +227,6 @@ namespace Project0.Unity
             float speedFrac = Mathf.Abs(currentSpeed) / maxSpeed;
             currentRpm = 800f + speedFrac * 7000f;
             currentGear = Mathf.Clamp(Mathf.FloorToInt(speedFrac * 6f) + 1, 1, 6);
-            currentSteerAngle = steer * maxSteerAngle * Mathf.Deg2Rad;
         }
 
         void UpdateTelemetryPlayback()
