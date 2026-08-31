@@ -111,6 +111,7 @@ namespace Project0.Unity
         public void SetStartPose(Vector3 position, float heading)
         {
             transform.position = position;
+            startLinePosition = position;
             currentHeading = heading;
             transform.eulerAngles = new Vector3(0f, heading * Mathf.Rad2Deg, 0f);
             currentSpeed = 0f;
@@ -271,7 +272,7 @@ namespace Project0.Unity
 
             totalCheckpoints = checkpoints.transform.childCount;
             int nextIndex = lastCheckpoint + 1;
-            if (nextIndex >= totalCheckpoints) return;
+            if (nextIndex >= totalCheckpoints) nextIndex = 0;
 
             Transform cpTransform = checkpoints.transform.GetChild(nextIndex);
             float distance = Vector3.Distance(transform.position, cpTransform.position);

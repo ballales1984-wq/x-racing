@@ -88,8 +88,8 @@ namespace Project0.Unity
         // centerline point, so the car can be spawned aligned with the track.
         public Vector3 GetStartPosition()
         {
-            if (generatedPoints_ != null && generatedPoints_.Count > 0) return generatedPoints_[0].position;
-            return Vector3.zero;
+            if (generatedPoints_ != null && generatedPoints_.Count > 0) return generatedPoints_[0].position + Vector3.up * 0.6f;
+            return Vector3.up * 0.6f;
         }
 
         public float GetStartHeading()
@@ -427,6 +427,7 @@ namespace Project0.Unity
             collider.sharedMesh = trackMesh;
 
             CreateBorders(parent, points, widths);
+            CreateCurbs(parent, points, widths);
         }
 
         void CreateBorders(GameObject parent, List<TrackPointData> points, List<float> widths)
@@ -498,6 +499,94 @@ namespace Project0.Unity
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
             mf.mesh = mesh;
+        }
+
+        void CreateCurbs(GameObject parent, List<TrackPointData> points, List<float> widths)
+        {
+            var redGo = GameObject.Find("CurbsRed") ?? new GameObject("CurbsRed");
+            redGo.transform.SetParent(parent.transform);
+            var whiteGo = GameObject.Find("CurbsWhite") ?? new GameObject("CurbsWhite");
+            whiteGo.transform.SetParent(parent.transform);
+
+            float curbWidth = 0.4f;
+            float curbHeight = 0.03f;
+
+            var redVerts = new List<Vector3>();
+            var redTris = new List<int>();
+            var whiteVerts = new List<Vector3>();
+            var whiteTris = new List<int>();
+
+            bool isCurve = false;
+            int colorIndex = 0;
+
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                var p0 = points[i];
+                var p1 = points[i + 1];
+                float w0 = widths[i];
+
+                if (i > 0)
+                {
+                    var pm = points[i - 1];
+                    float hm = HeadingOf(pm, p0);
+                    float h0 = HeadingOf(p0, p1);
+                    float delta = Mathf.Abs(Mathf.DeltaAngle(hm * Mathf.Rad2Deg, h0 * Mathf.Rad2Deg));
+                    isCurve = delta > 2f;
+                }
+
+                if (!isCurve) continue;
+
+                Vector3 outer0 = p0.position + p0.normal * (w0 * 0.5f + curbWidth);
+                Vector3 outer1 = p1.position + p1.normal * (w0 * 0.5f + curbWidth);
+                Vector3 inner0 = p0.position + p0.normal * (w0 * 0.5f);
+                Vector3 inner1 = p1.position + p1.normal * (w0 * 0.5f);
+
+                var verts = (colorIndex % 2 == 0) ? redVerts : whiteVerts;
+                var tris = (colorIndex % 2 == 0) ? redTris : whiteTris;
+
+                int baseIdx = verts.Count;
+                verts.Add(inner0);
+                verts.Add(outer0);
+                verts.Add(inner1);
+                verts.Add(outer1);
+
+                tris.Add(baseIdx);
+                tris.Add(baseIdx + 2);
+                tris.Add(baseIdx + 1);
+                tris.Add(baseIdx + 1);
+                tris.Add(baseIdx + 2);
+                tris.Add(baseIdx + 3);
+
+                colorIndex++;
+            }
+
+            if (redVerts.Count >= 4)
+            {
+                var mf = redGo.GetComponent<MeshFilter>();
+                if (mf == null) mf = redGo.AddComponent<MeshFilter>();
+                var mr = redGo.GetComponent<MeshRenderer>();
+                if (mr == null) mr = redGo.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = CreateDefaultMaterial(new Color(0.9f, 0.1f, 0.1f));
+                var mesh = new Mesh();
+                mesh.vertices = redVerts.ToArray();
+                mesh.triangles = redTris.ToArray();
+                mesh.RecalculateNormals();
+                mf.mesh = mesh;
+            }
+
+            if (whiteVerts.Count >= 4)
+            {
+                var mf = whiteGo.GetComponent<MeshFilter>();
+                if (mf == null) mf = whiteGo.AddComponent<MeshFilter>();
+                var mr = whiteGo.GetComponent<MeshRenderer>();
+                if (mr == null) mr = whiteGo.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = CreateDefaultMaterial(Color.white);
+                var mesh = new Mesh();
+                mesh.vertices = whiteVerts.ToArray();
+                mesh.triangles = whiteTris.ToArray();
+                mesh.RecalculateNormals();
+                mf.mesh = mesh;
+            }
         }
 
         // Draw the pit/box lane as a distinct red band laid down outside the track edge
@@ -734,20 +823,20 @@ namespace Project0.Unity
             Vector3 tangent = pd.tangent;
             Vector3 normal = pd.normal;
             float halfW = pd.width * 0.5f;
-            float bandDepth = 4f;
 
+            // Thin line across the track (0.5m along tangent, full width across normal).
             // Black backing so the checkered band reads clearly from a distance.
             MakeFlatMarker(sfObj, "StartBacking",
-                pd.position, tangent, normal, bandDepth + 1f, pd.width + 1.5f, 0.02f,
+                pd.position, tangent, normal, 0.5f, pd.width + 1.5f, 0.02f,
                 CreateDefaultMaterial(Color.black));
             // White foreground of the checkered band.
             MakeFlatMarker(sfObj, "StartWhite",
-                pd.position, tangent, normal, bandDepth, pd.width, 0.03f,
+                pd.position, tangent, normal, 0.3f, pd.width, 0.03f,
                 CreateDefaultMaterial(Color.white));
 
             // Two bright gantry posts at the track edges mark start/finish from afar.
-            CreateGantryPost(sfObj, pd.position + normal * (halfW + 0.5f) + tangent * (bandDepth * 0.5f));
-            CreateGantryPost(sfObj, pd.position - normal * (halfW + 0.5f) + tangent * (bandDepth * 0.5f));
+            CreateGantryPost(sfObj, pd.position + normal * (halfW + 0.5f));
+            CreateGantryPost(sfObj, pd.position - normal * (halfW + 0.5f));
         }
 
         void CreateGantryPost(GameObject parent, Vector3 pos)

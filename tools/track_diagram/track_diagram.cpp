@@ -92,7 +92,7 @@ void TrackSvgExporter::write_track_sections(std::ostringstream& oss) {
 
     oss << "  <g id=\"track-fill\" stroke=\"none\">\n";
 
-    for (double d = 0.0; d <= length + step; d += step) {
+    for (double d = 0.0; d < length; d += step) {
         // Wrap distance into [0, length) range for closed-loop tracks.
         double dd = std::fmod(d, length);
         if (dd < 0) dd += length;
@@ -128,6 +128,25 @@ void TrackSvgExporter::write_track_sections(std::ostringstream& oss) {
         prev_right_y = right_y;
     }
 
+    // Close the loop: connect last sample back to start position.
+    if (!first) {
+        const auto tp_start = track_.at(0.0);
+        double nx = tp_start.normal.x();
+        double ny = tp_start.normal.y();
+        double start_left_x = (tp_start.position.x() + nx * tp_start.width * 0.5) * scale_ + offset_x_;
+        double start_left_y = -(tp_start.position.y() + ny * tp_start.width * 0.5) * scale_ + offset_y_;
+        double start_right_x = (tp_start.position.x() - nx * tp_start.width * 0.5) * scale_ + offset_x_;
+        double start_right_y = -(tp_start.position.y() - ny * tp_start.width * 0.5) * scale_ + offset_y_;
+        const auto& sc = color_for_surface(tp_start.surface_type);
+        oss << "    <polygon points=\""
+            << std::fixed << std::setprecision(2)
+            << prev_left_x << "," << prev_left_y << " "
+            << start_left_x << "," << start_left_y << " "
+            << start_right_x << "," << start_right_y << " "
+            << prev_right_x << "," << prev_right_y
+            << "\" fill=\"" << format_color(sc.r, sc.g, sc.b, 0.20) << "\" />\n";
+    }
+
     oss << "  </g>\n";
 }
 
@@ -143,7 +162,7 @@ void TrackSvgExporter::write_centerline(std::ostringstream& oss) {
     oss << "    <path d=\"";
 
     bool first = true;
-    for (double d = 0.0; d <= length + step; d += step) {
+    for (double d = 0.0; d < length; d += step) {
         double dd = std::fmod(d, length);
         if (dd < 0) dd += length;
         const auto tp = track_.at(dd);
@@ -175,7 +194,7 @@ void TrackSvgExporter::write_box_lane(std::ostringstream& oss) {
 
     oss << "  <g id=\"box-lane\" stroke=\"none\">\n";
 
-    for (double d = 0.0; d <= length + step; d += step) {
+    for (double d = 0.0; d < length; d += step) {
         double dd = std::fmod(d, length);
         if (dd < 0) dd += length;
         const auto tp = track_.at(dd);
@@ -217,6 +236,26 @@ void TrackSvgExporter::write_box_lane(std::ostringstream& oss) {
         } else {
             in_box = false;
         }
+    }
+
+    // Close the loop: if we ended inside a box lane segment, connect back to its start.
+    if (in_box && !first) {
+        const auto tp_start = track_.at(0.0);
+        double nx = tp_start.normal.x();
+        double ny = tp_start.normal.y();
+        double outer_offset = tp_start.width * 0.5 + tp_start.box_lane_width * 0.5;
+        double inner_offset = tp_start.width * 0.5 + tp_start.box_lane_width * 0.25;
+        double start_outer_x = (tp_start.position.x() + nx * outer_offset) * scale_ + offset_x_;
+        double start_outer_y = -(tp_start.position.y() + ny * outer_offset) * scale_ + offset_y_;
+        double start_inner_x = (tp_start.position.x() + nx * inner_offset) * scale_ + offset_x_;
+        double start_inner_y = -(tp_start.position.y() + ny * inner_offset) * scale_ + offset_y_;
+        oss << "    <polygon points=\""
+            << std::fixed << std::setprecision(2)
+            << prev_outer_x << "," << prev_outer_y << " "
+            << start_outer_x << "," << start_outer_y << " "
+            << start_inner_x << "," << start_inner_y << " "
+            << prev_inner_x << "," << prev_inner_y
+            << "\" fill=\"#ff5050\" fill-opacity=\"0.35\" stroke=\"#ff3030\" stroke-width=\"1\" />\n";
     }
 
     oss << "  </g>\n";
@@ -358,7 +397,7 @@ void TrackSvgExporter::write_curvature_chart(std::ostringstream& oss) {
     // Second pass: draw the curvature polyline.
     oss << "    <path d=\"";
     bool first = true;
-    for (double d = 0.0; d <= length + step; d += step) {
+    for (double d = 0.0; d < length; d += step) {
         double dd = std::fmod(d, length);
         if (dd < 0) dd += length;
         const auto tp = track_.at(dd);
@@ -487,7 +526,7 @@ void TrackSvgExporter::write_boundary_edges(std::ostringstream& oss) {
         double sign = (side == 0) ? 1.0 : -1.0;
         oss << "    <path d=\"";
         bool first = true;
-        for (double d = 0.0; d <= length + step; d += step) {
+        for (double d = 0.0; d < length; d += step) {
             double dd = std::fmod(d, length);
             if (dd < 0) dd += length;
             const auto tp = track_.at(dd);

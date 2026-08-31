@@ -18,7 +18,7 @@ namespace Project0.Unity
             boxCol = GetComponent<BoxCollider>();
             boxCol.isTrigger = true;
             float triggerWidth = trackWidth * 0.35f;
-            boxCol.size = new Vector3(15f, 4f, triggerWidth);
+            boxCol.size = new Vector3(triggerWidth, 4f, 15f);
         }
 
         void OnTriggerEnter(Collider other)
