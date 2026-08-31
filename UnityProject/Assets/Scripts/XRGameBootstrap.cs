@@ -15,11 +15,11 @@ namespace Project0.Unity
         {
             if (trackGenerator == null)
             {
-                trackGenerator = FindObjectOfType<XRTrackGenerator>();
+                trackGenerator = FindAnyObjectByType<XRTrackGenerator>();
             }
             if (raceManager == null)
             {
-                raceManager = FindObjectOfType<XRRaceManager>();
+                raceManager = FindAnyObjectByType<XRRaceManager>();
             }
 
             if (raceManager != null && carController != null)

@@ -36,7 +36,7 @@ namespace Project0.Unity.Setup
             float mainStraightWidth = 16f;
             var points = GenerateTrackPoints(out var widths);
 
-            var oldBorders = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            var oldBorders = Object.FindObjectsByType<GameObject>();
             foreach (var border in oldBorders)
             {
                 if (border.name.Contains("TrackBorder"))
@@ -45,7 +45,7 @@ namespace Project0.Unity.Setup
                 }
             }
 
-            var oldGrass = Object.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+            var oldGrass = Object.FindObjectsByType<GameObject>();
             foreach (var g in oldGrass)
             {
                 if (g.name == "Grass")

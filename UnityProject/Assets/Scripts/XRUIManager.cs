@@ -25,11 +25,11 @@ namespace Project0.Unity
         {
             if (raceManager == null)
             {
-                raceManager = FindObjectOfType<XRRaceManager>();
+                raceManager = FindAnyObjectByType<XRRaceManager>();
             }
             if (carController == null)
             {
-                carController = FindObjectOfType<CarController>();
+                carController = FindAnyObjectByType<CarController>();
             }
 
             UpdateMenuDisplay();

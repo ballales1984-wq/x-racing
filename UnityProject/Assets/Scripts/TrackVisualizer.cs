@@ -38,7 +38,7 @@ namespace Project0.Unity
         {
             if (trackData == null)
             {
-                var gen = FindObjectOfType<XRTrackGenerator>();
+                var gen = FindAnyObjectByType<XRTrackGenerator>();
                 if (gen != null) trackData = gen.GetTrackData();
             }
             if (trackData == null) return;

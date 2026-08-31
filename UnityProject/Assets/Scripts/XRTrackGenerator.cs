@@ -509,7 +509,6 @@ namespace Project0.Unity
             whiteGo.transform.SetParent(parent.transform);
 
             float curbWidth = 0.4f;
-            float curbHeight = 0.03f;
 
             var redVerts = new List<Vector3>();
             var redTris = new List<int>();
