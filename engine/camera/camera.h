@@ -3,6 +3,7 @@
 #pragma once
 
 #include "common.h"
+#include <cstdio>
 
 // Project 0 — camera subsystem
 // Namespace: p0::camera

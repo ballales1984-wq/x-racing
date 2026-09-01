@@ -8,6 +8,9 @@ set(TEST_SOURCES
   track_test.cpp
   track_diagram_test.cpp
   telemetry_test.cpp
+  telemetry_validation_test.cpp
+  checkpoint_validation_test.cpp
+  race_data_collection_test.cpp
   gameplay_test.cpp
   glb_exporter_test.cpp
   auto_input_test.cpp

@@ -107,6 +107,7 @@ class DebugAgent {
   void export_telemetry_csv(const std::string& path) const;
   void export_snapshot_json(const std::string& path) const;
   void export_logs_csv(const std::string& path) const;
+  void load_snapshot_json(const std::string& path);
 
   DebugConsole* console() { return console_.get(); }
   const DebugConsole* console() const { return console_.get(); }

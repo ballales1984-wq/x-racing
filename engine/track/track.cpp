@@ -4,7 +4,6 @@
 #include <cmath>
 #include <numeric>
 
-// Project 0 — parametric track implementation
 namespace p0::track {
 
 Track::Track(const TrackParams& params)
@@ -687,6 +686,60 @@ PitLaneDefinition Track::build_pit_lane_definition() const {
   def.pit_lane_length_m = exit_tp.distance - entry_tp.distance;
 
   return def;
+}
+
+Track::TrackMesh Track::generate_mesh() const {
+  if (mesh_cache_valid_) return mesh_cache_;
+
+  TrackMesh& mesh = mesh_cache_;
+  if (points_.size() < 2) {
+    mesh_cache_valid_ = true;
+    return mesh;
+  }
+
+  mesh.vertices.reserve(points_.size() * 2);
+  mesh.indices.reserve(points_.size() * 6);
+
+  for (const auto& tp : points_) {
+    const double half_width = tp.width * 0.5;
+    mesh.vertices.push_back(tp.position + tp.normal * half_width);
+    mesh.vertices.push_back(tp.position - tp.normal * half_width);
+  }
+
+  const int n = static_cast<int>(points_.size());
+  for (int i = 0; i < n; ++i) {
+    const int next = (i + 1) % n;
+    const int bl = i * 2;
+    const int br = i * 2 + 1;
+    const int tl = next * 2;
+    const int tr = next * 2 + 1;
+
+    mesh.indices.push_back(bl);
+    mesh.indices.push_back(tl);
+    mesh.indices.push_back(br);
+
+    mesh.indices.push_back(br);
+    mesh.indices.push_back(tl);
+    mesh.indices.push_back(tr);
+  }
+
+  mesh_cache_valid_ = true;
+  return mesh;
+}
+
+bool Track::collides_with_mesh(const Vec2& point) const {
+  const TrackMesh& mesh = generate_mesh();
+  if (mesh.vertices.size() < 3) return false;
+
+  for (size_t i = 0; i < mesh.indices.size(); i += 3) {
+    const Vec2& a = mesh.vertices[mesh.indices[i]];
+    const Vec2& b = mesh.vertices[mesh.indices[i + 1]];
+    const Vec2& c = mesh.vertices[mesh.indices[i + 2]];
+
+    if (point_in_triangle(point, a, b, c)) return true;
+  }
+
+  return false;
 }
 
 }

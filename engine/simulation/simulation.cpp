@@ -22,7 +22,12 @@ void Simulation::set_track(const track::Track& track) {
 void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_ = initial_state;
   state_.lap = 0;
+  state_.current_fuel_l = vehicle_params_.fuel_capacity_l;
+  state_.fuel_capacity_l = vehicle_params_.fuel_capacity_l;
+  state_.fuel_consumption_per_lap_l = vehicle_params_.fuel_consumption_per_lap_l;
+  state_.out_of_fuel = false;
   reversing_ = false;
+  prev_slip_ratio_ = 0.0;
   if (track_) {
     lap_detector_.set_track_length(track_->length());
   }
@@ -45,6 +50,9 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.centripetal_force = 0.0;
   state_.centrifugal_force = 0.0;
   state_.lateral_g = 0.0;
+  state_.in_box_lane = false;
+  state_.box_lane_speed = 0.0;
+  state_.box_lane_entry_requested = false;
 }
 
 // Advance the simulation by one frame (params_.dt seconds).
@@ -88,6 +96,26 @@ SimulationResult Simulation::step(const input::InputState& input) {
     update_tire_temperature();
     update_suspension();
     update_tire_forces(dt);
+
+    if (params_.use_abs && state_.brake > kEpsilon && state_.speed > kEpsilon) {
+      const double abs_threshold = 0.15;
+      if (std::abs(prev_slip_ratio_) > abs_threshold) {
+        const double slip_excess = std::abs(prev_slip_ratio_) - abs_threshold;
+        const double reduction = slip_excess / (1.0 - abs_threshold);
+        state_.brake = std::max(0.0, state_.brake * (1.0 - reduction));
+      }
+    }
+
+    if (params_.use_tcs && state_.throttle > kEpsilon && state_.speed > kEpsilon) {
+      const double tcs_threshold = 0.15;
+      if (std::abs(prev_slip_ratio_) > tcs_threshold) {
+        const double slip_excess = std::abs(prev_slip_ratio_) - tcs_threshold;
+        const double reduction = slip_excess / (1.0 - tcs_threshold);
+        state_.throttle = std::max(0.0, state_.throttle * (1.0 - reduction));
+      }
+    }
+
+    prev_slip_ratio_ = state_.slip_ratio;
     update_centripetal_forces();
     integrate(dt);
   }
@@ -125,6 +153,7 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
   apply_off_track_physics();
   apply_box_lane_speed_limit();
+  update_fuel_consumption();
 
   // Save last valid on-track state for respawn
   const bool currently_off = std::abs(lateral) > track_half && !state_.in_box_lane;
@@ -227,7 +256,7 @@ void Simulation::update_engine_forces(const input::InputState& input) {
 
   const bool manual_shift = (input.upshift || input.downshift);
   if (!manual_shift) {
-    if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size()) + 1) {
+    if (state_.rpm >= vehicle_params_.max_rpm * 0.95 && state_.gear < static_cast<int>(vehicle_params_.gear_ratios.size())) {
       state_.gear++;
       target_rpm = compute_rpm(state_.gear);
       state_.rpm = std::max(state_.rpm - max_rpm_accel * 2.0, target_rpm);
@@ -321,9 +350,9 @@ void Simulation::update_weather() {
   // Update weather grip factor based on rain
   state_.weather_grip_factor = 1.0 - rain * vehicle_params_.rain_grip_reduction;
 
-  // Wind effect on speed (simplified)
-  const double wind_speed = 0.0; // placeholder for future wind implementation
-  if (wind_speed > 0.0) {
+  // Wind effect on speed
+  const double wind_speed = vehicle_params_.wind_speed;
+  if (wind_speed > kEpsilon) {
     const double wind_effect = vehicle_params_.wind_effect_on_speed * wind_speed;
     state_.speed += wind_effect * (params_.dt / params_.substeps);
     state_.speed = clamp(state_.speed, 0.0, 150.0);
@@ -354,8 +383,19 @@ void Simulation::update_tire_temperature() {
       wear_rate += vehicle_params_.tire_wear_per_lap / track_len * std::abs(speed);
     }
   }
-  state_.front_tire_wear -= wear_rate * (params_.dt / params_.substeps);
-  state_.rear_tire_wear -= wear_rate * (params_.dt / params_.substeps);
+
+  double compound_wear = 1.0;
+  switch (state_.tire_compound) {
+    case 0: compound_wear = vehicle_params_.tire_wear_soft; break;
+    case 1: compound_wear = vehicle_params_.tire_wear_medium; break;
+    case 2: compound_wear = vehicle_params_.tire_wear_hard; break;
+    case 3: compound_wear = vehicle_params_.tire_wear_wet; break;
+    case 4: compound_wear = vehicle_params_.tire_wear_intermediate; break;
+    default: break;
+  }
+
+  state_.front_tire_wear -= wear_rate * compound_wear * (params_.dt / params_.substeps);
+  state_.rear_tire_wear -= wear_rate * compound_wear * (params_.dt / params_.substeps);
 
   state_.front_tire_wear = clamp(state_.front_tire_wear, 0.0, 1.0);
   state_.rear_tire_wear = clamp(state_.rear_tire_wear, 0.0, 1.0);
@@ -471,12 +511,24 @@ void Simulation::update_tire_forces(double dt) {
   const double alpha_f = state_.front_slip_angle_relaxed;
   const double alpha_r = state_.rear_slip_angle_relaxed;
 
-  // Grip factors (temperature, wear)
-  auto tire_grip_factor = [](double temp, double wear, const vehicle::VehicleParams& p) {
+  // Grip factors (temperature, wear, compound)
+  auto tire_grip_factor = [&](double temp, double wear, const vehicle::VehicleParams& p) {
     double temp_diff = temp - p.tire_optimal_temp;
     double temp_factor = std::exp(-0.5 * std::pow(temp_diff / p.tire_temp_curve_width, 2));
     double wear_factor = 0.5 + 0.5 * wear;
-    return temp_factor * wear_factor;
+
+    double compound_grip = 1.0;
+    double compound_wear = 1.0;
+    switch (state_.tire_compound) {
+      case 0: compound_grip = p.tire_grip_soft; compound_wear = p.tire_wear_soft; break;
+      case 1: compound_grip = p.tire_grip_medium; compound_wear = p.tire_wear_medium; break;
+      case 2: compound_grip = p.tire_grip_hard; compound_wear = p.tire_wear_hard; break;
+      case 3: compound_grip = p.tire_grip_wet; compound_wear = p.tire_wear_wet; break;
+      case 4: compound_grip = p.tire_grip_intermediate; compound_wear = p.tire_wear_intermediate; break;
+      default: break;
+    }
+
+    return temp_factor * wear_factor * compound_grip;
   };
 
   double grip_front = tire_grip_factor(state_.front_tire_temp, state_.front_tire_wear, vehicle_params_);
@@ -507,9 +559,12 @@ void Simulation::update_tire_forces(double dt) {
   // Calculate longitudinal slip from engine/braking forces
   // Approximate: use total longitudinal acceleration to estimate slip
   const double a_long = state_.acceleration.dot(forward_dir);
-  const double engine_force = state_.engine_torque *
+  // engine_force here is in the *forward* direction; flip sign when reversing
+  // so that the tire slip ratio matches the actual driven wheel direction.
+  const double engine_force_raw = state_.engine_torque *
     vehicle_params_.gear_ratios[std::clamp(state_.gear - 1, 0, static_cast<int>(vehicle_params_.gear_ratios.size()) - 1)] *
     vehicle_params_.final_drive * (1.0 - vehicle_params_.drivetrain_loss) / vehicle_params_.wheel_radius;
+  const double engine_force = reversing_ ? -engine_force_raw : engine_force_raw;
   const double drive_force = engine_force * state_.throttle;
   const double brake_decel = vehicle_params_.max_brake_force * state_.brake;
 
@@ -584,7 +639,13 @@ void Simulation::update_tire_forces(double dt) {
   const double yaw_damping_moment = -vehicle_params_.yaw_damping * state_.yaw_rate;
   const double total_yaw_moment = yaw_from_lateral + yaw_from_long + yaw_damping_moment;
   const double yaw_inertia = vehicle_params_.yaw_inertia;
-  state_.yaw_rate = total_yaw_moment / yaw_inertia;
+  const double yaw_accel = total_yaw_moment / yaw_inertia;
+  // Integrate angular acceleration into angular velocity.
+  // State_.yaw_rate now holds the actual rad/s (was previously mis-labelled).
+  state_.yaw_rate += yaw_accel * dt;
+  const double kMaxYawRate = 8.0;  // rad/s, ~460 deg/s, beyond any realistic corner
+  if (state_.yaw_rate >  kMaxYawRate) state_.yaw_rate =  kMaxYawRate;
+  if (state_.yaw_rate < -kMaxYawRate) state_.yaw_rate = -kMaxYawRate;
 }
 
 // Simple braking model: constant deceleration proportional to brake pedal.
@@ -621,12 +682,18 @@ void Simulation::update_centripetal_forces() {
   const Vec2 normal = tp.normal;
 
   const Vec2 f_c = physics::centripetal_force(m, speed, kappa, normal);
-  state_.centripetal_force = f_c.norm();
+
+  double banking_factor = 1.0;
+  if (std::abs(tp.banking) > kEpsilon) {
+    banking_factor = std::cos(tp.banking);
+  }
+
+  state_.centripetal_force = f_c.norm() * banking_factor;
   state_.centrifugal_force = -state_.centripetal_force;
   state_.lateral_g = state_.centripetal_force / (m * kGravity);
 
   if (on_track) {
-    state_.acceleration += f_c / m;
+    state_.acceleration += f_c * banking_factor / m;
   }
 }
 
@@ -676,6 +743,7 @@ void Simulation::integrate(double dt) {
 void Simulation::apply_box_lane_speed_limit() {
   if (state_.in_box_lane && state_.speed > state_.box_lane_speed) {
     state_.speed = state_.box_lane_speed;
+    state_.lateral_velocity = 0.0;
     const Vec2 forward_dir(std::cos(state_.heading), std::sin(state_.heading));
     state_.velocity = forward_dir * state_.speed;
   }
@@ -706,7 +774,8 @@ void Simulation::apply_off_track_physics() {
   // Preserve the sign of the speed so reversing off-track still works.
   const double terrain_drag = std::max(0.0, 1.0 - 4.0 * (params_.dt / params_.substeps));
   const double speed_sign = (state_.speed < 0.0) ? -1.0 : 1.0;
-  state_.speed = speed_sign * std::max(0.0, std::abs(state_.speed) * terrain_drag);
+  const double new_speed = speed_sign * std::max(0.0, std::abs(state_.speed) * terrain_drag);
+  state_.speed = new_speed;
 
   const double lateral_damping = std::max(0.0, 1.0 - 8.0 * (params_.dt / params_.substeps));
   state_.lateral_velocity *= lateral_damping;
@@ -733,11 +802,11 @@ void Simulation::apply_off_track_physics() {
 
     // Clamp speed and apply impulse
     state_.velocity += barrier_force * (params_.dt / params_.substeps) / vehicle_params_.mass;
-    state_.speed = state_.velocity.norm();
-    // Hard cap: car cannot move through the barrier
-    if (state_.speed > 0.0) {
-      state_.velocity = state_.velocity.normalized() * std::min(state_.speed, 10.0);
-      state_.speed = state_.velocity.norm();
+    const double current_speed = state_.velocity.norm();
+    const double speed_sign = (state_.speed < 0.0) ? -1.0 : 1.0;
+    state_.speed = speed_sign * std::min(current_speed, 10.0);
+    if (current_speed > 0.0) {
+      state_.velocity = state_.velocity.normalized() * state_.speed;
     }
 
     state_.lateral_velocity = right_dir.dot(state_.velocity);
@@ -753,17 +822,14 @@ void Simulation::respawn() {
   vehicle::VehicleState respawn_state;
 
   if (has_valid_state_) {
-    // Restore last valid on-track position
     respawn_state = last_valid_state_;
   } else {
-    // Fall back to track start
     respawn_state.position = track_->get_start_position();
     respawn_state.heading  = track_->get_start_heading();
     respawn_state.distance_along_track = 0.0;
     respawn_state.lap = state_.lap;
   }
 
-  // Zero out all motion
   respawn_state.velocity         = Vec2::Zero();
   respawn_state.acceleration     = Vec2::Zero();
   respawn_state.speed            = 0.0;
@@ -772,12 +838,31 @@ void Simulation::respawn() {
   respawn_state.rpm              = vehicle_params_.idle_rpm;
   respawn_state.gear             = 1;
 
-  // Align heading to track tangent at the respawn point
   const auto& tp = track_->at(respawn_state.distance_along_track);
   respawn_state.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
 
   state_ = respawn_state;
   frames_off_track_ = 0;
+  lap_detector_.reset(state_.distance_along_track);
+}
+
+void Simulation::update_fuel_consumption() {
+  if (state_.out_of_fuel) return;
+  if (state_.current_fuel_l <= 0.0) {
+    state_.out_of_fuel = true;
+    state_.current_fuel_l = 0.0;
+    state_.engine_torque = 0.0;
+    state_.throttle = 0.0;
+    return;
+  }
+
+  const double base_consumption = vehicle_params_.fuel_consumption_per_lap_l / (track_ ? track_->length() : 1000.0);
+  const double throttle_factor = 0.5 + 0.5 * state_.throttle;
+  const double speed_factor = state_.speed / 100.0;
+  const double consumption = base_consumption * throttle_factor * (1.0 + speed_factor) * (params_.dt / params_.substeps);
+
+  state_.current_fuel_l -= consumption;
+  if (state_.current_fuel_l < 0.0) state_.current_fuel_l = 0.0;
 }
 
 }

@@ -13,6 +13,24 @@
 
 namespace p0::gameplay {
 
+const MenuChoices& MenuChoices::defaults() {
+  static const MenuChoices kDefaults = [] {
+    MenuChoices c;
+    c.track_options = {
+      {"Default Circuit", 0},
+      {"Pit Circuit", 1}
+    };
+    c.lap_options = {
+      {"1 Lap", 1},
+      {"3 Laps", 3},
+      {"5 Laps", 5},
+      {"10 Laps", 10}
+    };
+    return c;
+  }();
+  return kDefaults;
+}
+
 static void enable_ansi_console() {
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
   if (hOut == INVALID_HANDLE_VALUE) return;
@@ -59,51 +77,90 @@ void Gameplay::reset_race() {
   initial.heading = sim_.track().get_start_heading();
   initial.speed = 0.0;
   sim_.reset(initial);
+  // Reset also clears telemetry so the new lap recording is clean.
   tel_.clear();
+  // Drop any in-progress best times from the previous race; we'll persist
+  // the new ones at RESULTS time.
+  results_ = RaceResults{};
 }
 
 void Gameplay::handle_menu_input(const input::InputState& input) {
-  if (input.upshift || input.downshift) {
-    if (current_menu_index == 0) {
-      selected_track = (selected_track + 1) % static_cast<int>(track_options.size());
-    } else if (current_menu_index == 1) {
+  const auto& choices = this->choices();
+  const bool throttle_pressed = input.throttle > 0.5f;
+  const bool brake_pressed = input.brake > 0.5f;
+  const bool upshift_pressed = input.upshift;
+  const bool box_pressed = input.enter_exit_box;
+
+  if (throttle_pressed) {
+    if (menu_.current_menu_index == 0) {
+      menu_.selected_track = (menu_.selected_track + 1) %
+                              static_cast<int>(choices.track_options.size());
+    } else {
       int opt_idx = -1;
-      for (int i = 0; i < static_cast<int>(lap_options.size()); ++i) {
-        if (lap_options[i].value == selected_laps) { opt_idx = i; break; }
+      for (int i = 0; i < static_cast<int>(choices.lap_options.size()); ++i) {
+        if (choices.lap_options[i].value == menu_.selected_laps) {
+          opt_idx = i;
+          break;
+        }
       }
       if (opt_idx >= 0) {
-        opt_idx = (opt_idx + 1) % static_cast<int>(lap_options.size());
-        selected_laps = lap_options[opt_idx].value;
+        opt_idx = (opt_idx + 1) % static_cast<int>(choices.lap_options.size());
+        menu_.selected_laps = choices.lap_options[opt_idx].value;
       }
     }
   }
 
-  if (input.throttle > 0.5) {
-    if (current_menu_index == 0) current_menu_index = 1;
-  }
-  if (input.brake > 0.5) {
-    if (current_menu_index == 1) current_menu_index = 0;
+  if (brake_pressed) {
+    if (menu_.current_menu_index == 0) {
+      menu_.selected_track =
+          (menu_.selected_track + static_cast<int>(choices.track_options.size()) - 1) %
+          static_cast<int>(choices.track_options.size());
+    } else {
+      int opt_idx = -1;
+      for (int i = 0; i < static_cast<int>(choices.lap_options.size()); ++i) {
+        if (choices.lap_options[i].value == menu_.selected_laps) {
+          opt_idx = i;
+          break;
+        }
+      }
+      if (opt_idx >= 0) {
+        opt_idx = (opt_idx + static_cast<int>(choices.lap_options.size()) - 1) %
+                  static_cast<int>(choices.lap_options.size());
+        menu_.selected_laps = choices.lap_options[opt_idx].value;
+      }
+    }
   }
 
-  if (input.reset) {
-    countdown_start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-    countdown_last_number = -1;
-    countdown_finished = false;
-    ::p0::gameplay::state = GameState::COUNTDOWN;
+  if (upshift_pressed) {
+    menu_.current_menu_index = (menu_.current_menu_index + 1) % 2;
+  }
+
+  if (box_pressed) {
+    menu_.current_menu_index = 1 - menu_.current_menu_index;
+  }
+
+  // ENTER starts the race (also accept R as a legacy shortcut).
+  if (input_manager_->is_key_down(VK_RETURN) || input.reset) {
+    countdown_.start_time = std::chrono::duration<double>(
+        std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    countdown_.last_number = -1;
+    countdown_.finished = false;
+    phase_ = GameState::COUNTDOWN;
   }
 }
 
 void Gameplay::handle_countdown() {
   auto now = std::chrono::high_resolution_clock::now();
-  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count() - countdown_start_time;
-  int number = static_cast<int>(countdown_duration - elapsed) + 1;
+  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count()
+                   - countdown_.start_time;
+  int number = static_cast<int>(std::ceil(countdown_.duration - elapsed));
   if (number > 3) number = 3;
-  if (number < 1 && !countdown_finished) {
-    countdown_finished = true;
+  if (number <= 0 && !countdown_.finished) {
+    countdown_.finished = true;
     reset_race();
-    ::p0::gameplay::state = GameState::RACING;
+    phase_ = GameState::RACING;
   }
-  countdown_last_number = number;
+  countdown_.last_number = number;
 }
 
 void Gameplay::handle_racing(const simulation::SimulationResult& result) {
@@ -119,25 +176,26 @@ void Gameplay::handle_racing(const simulation::SimulationResult& result) {
 
   update_lap_timing(result);
 
-  if (state_.current_lap >= selected_laps && state_.current_lap > 0) {
-    ::p0::gameplay::state = GameState::RESULTS;
-    results.completed = true;
-    results.completed_laps = static_cast<int>(state_.lap_times.size());
-    results.total_time = 0.0;
-    results.lap_times.clear();
-    results.lap_valid.clear();
+  if (state_.current_lap >= menu_.selected_laps && state_.current_lap > 0) {
+    phase_ = GameState::RESULTS;
+    results_.completed = true;
+    results_.completed_laps = static_cast<int>(state_.lap_times.size());
+    results_.total_time = 0.0;
+    results_.lap_times.clear();
+    results_.lap_valid.clear();
     for (const auto& lt : state_.lap_times) {
-      results.lap_times.push_back(lt.lap_time);
-      results.lap_valid.push_back(lt.valid);
+      results_.lap_times.push_back(lt.lap_time);
+      results_.lap_valid.push_back(lt.valid);
       if (lt.valid) {
-        results.total_time += lt.lap_time;
-        if (results.best_lap_time == 0.0 || lt.lap_time < results.best_lap_time) {
-          results.best_lap_time = lt.lap_time;
+        results_.total_time += lt.lap_time;
+        if (results_.best_lap_time == 0.0 || lt.lap_time < results_.best_lap_time) {
+          results_.best_lap_time = lt.lap_time;
         }
       }
     }
-    if (state_.best_lap_time > 0.0 && (results.best_lap_time == 0.0 || state_.best_lap_time < results.best_lap_time)) {
-      results.best_lap_time = state_.best_lap_time;
+    if (state_.best_lap_time > 0.0 &&
+        (results_.best_lap_time == 0.0 || state_.best_lap_time < results_.best_lap_time)) {
+      results_.best_lap_time = state_.best_lap_time;
     }
     save_best_times();
   }
@@ -146,22 +204,23 @@ void Gameplay::handle_racing(const simulation::SimulationResult& result) {
 void Gameplay::save_best_times() {
   std::ofstream ofs(save_path());
   if (!ofs) return;
+  const auto& choices = this->choices();
   ofs << "{\n";
-  ofs << "  \"best_lap_time\": " << (results.best_lap_time > 0.0 ? std::to_string(results.best_lap_time) : "null") << ",\n";
-  ofs << "  \"total_time\": " << std::to_string(results.total_time) << ",\n";
-  ofs << "  \"completed_laps\": " << results.completed_laps << ",\n";
-  ofs << "  \"track\": \"" << track_options[selected_track].label << "\",\n";
-  ofs << "  \"lap_count\": " << selected_laps << ",\n";
+  ofs << "  \"best_lap_time\": " << (results_.best_lap_time > 0.0 ? std::to_string(results_.best_lap_time) : "null") << ",\n";
+  ofs << "  \"total_time\": " << std::to_string(results_.total_time) << ",\n";
+  ofs << "  \"completed_laps\": " << results_.completed_laps << ",\n";
+  ofs << "  \"track\": \"" << choices.track_options[menu_.selected_track].label << "\",\n";
+  ofs << "  \"lap_count\": " << menu_.selected_laps << ",\n";
   ofs << "  \"lap_times\": [";
-  for (size_t i = 0; i < results.lap_times.size(); ++i) {
+  for (size_t i = 0; i < results_.lap_times.size(); ++i) {
     if (i > 0) ofs << ", ";
-    ofs << std::to_string(results.lap_times[i]);
+    ofs << std::to_string(results_.lap_times[i]);
   }
   ofs << "],\n";
   ofs << "  \"lap_valid\": [";
-  for (size_t i = 0; i < results.lap_valid.size(); ++i) {
+  for (size_t i = 0; i < results_.lap_valid.size(); ++i) {
     if (i > 0) ofs << ", ";
-    ofs << (results.lap_valid[i] ? "true" : "false");
+    ofs << (results_.lap_valid[i] ? "true" : "false");
   }
   ofs << "]\n";
   ofs << "}\n";
@@ -202,10 +261,10 @@ void Gameplay::load_best_times() {
     }
   };
 
-  results.best_lap_time = find_double("best_lap_time");
-  results.total_time = find_double("total_time");
-  results.completed_laps = find_int("completed_laps");
-  results.completed = results.completed_laps > 0;
+  results_.best_lap_time = find_double("best_lap_time");
+  results_.total_time = find_double("total_time");
+  results_.completed_laps = find_int("completed_laps");
+  results_.completed = results_.completed_laps > 0;
 
   // Parse lap_times array
   size_t lt_pos = content.find("\"lap_times\"");
@@ -218,7 +277,7 @@ void Gameplay::load_best_times() {
       std::string token;
       while (std::getline(iss, token, ',')) {
         try {
-          results.lap_times.push_back(std::stod(token));
+          results_.lap_times.push_back(std::stod(token));
         } catch (const std::exception&) {}
       }
     }
@@ -234,7 +293,7 @@ void Gameplay::load_best_times() {
       std::istringstream iss(arr);
       std::string token;
       while (std::getline(iss, token, ',')) {
-        results.lap_valid.push_back(token.find("true") != std::string::npos);
+        results_.lap_valid.push_back(token.find("true") != std::string::npos);
       }
     }
   }
@@ -242,25 +301,26 @@ void Gameplay::load_best_times() {
 
 void Gameplay::show_results() {
   enable_ansi_console();
+  const auto& choices = this->choices();
   std::cout << "\033[2J\033[H";
   std::cout << "=== PROJECT 0 - Race Results ===\n\n";
 
-  std::cout << "Track: " << track_options[selected_track].label << "\n";
-  std::cout << "Laps: " << selected_laps << "\n\n";
+  std::cout << "Track: " << choices.track_options[menu_.selected_track].label << "\n";
+  std::cout << "Laps: " << menu_.selected_laps << "\n\n";
 
   std::cout << "--- Lap Times ---\n";
   std::cout << std::left << std::setw(6) << "Lap" << std::setw(12) << "Time" << "Status\n";
   std::cout << std::string(40, '-') << "\n";
-  for (size_t i = 0; i < results.lap_times.size(); ++i) {
-    std::cout << std::setw(6) << (i + 1) << std::setw(12) << format_time(results.lap_times[i])
-              << (results.lap_valid[i] ? "VALID" : "INVALID") << "\n";
+  for (size_t i = 0; i < results_.lap_times.size(); ++i) {
+    std::cout << std::setw(6) << (i + 1) << std::setw(12) << format_time(results_.lap_times[i])
+              << (results_.lap_valid[i] ? "VALID" : "INVALID") << "\n";
   }
 
   std::cout << "\n--- Session Summary ---\n";
-  std::cout << "Best Lap:  " << format_time(results.best_lap_time) << "\n";
-  std::cout << "Total Time: " << format_time(results.total_time) << "\n";
-  std::cout << "Valid Laps: " << std::count(results.lap_valid.begin(), results.lap_valid.end(), true)
-            << " / " << results.lap_times.size() << "\n";
+  std::cout << "Best Lap:  " << format_time(results_.best_lap_time) << "\n";
+  std::cout << "Total Time: " << format_time(results_.total_time) << "\n";
+  std::cout << "Valid Laps: " << std::count(results_.lap_valid.begin(), results_.lap_valid.end(), true)
+            << " / " << results_.lap_times.size() << "\n";
 
   std::cout << "\nControls: R = Race Again | M = Main Menu | ESC = Quit\n";
 
@@ -274,14 +334,14 @@ void Gameplay::show_results() {
     }
     if (input.reset) {
       reset_race();
-      countdown_start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-      countdown_last_number = -1;
-      countdown_finished = false;
-      ::p0::gameplay::state = GameState::COUNTDOWN;
+      countdown_.start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+      countdown_.last_number = -1;
+      countdown_.finished = false;
+      phase_ = GameState::COUNTDOWN;
       waiting = false;
     }
     if (input.throttle > 0.5) {
-      ::p0::gameplay::state = GameState::MENU;
+      phase_ = GameState::MENU;
       waiting = false;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -290,6 +350,7 @@ void Gameplay::show_results() {
 
 void Gameplay::render_menu() {
   enable_ansi_console();
+  const auto& choices = this->choices();
   std::cout << "\033[2J\033[H";
   std::cout << "╔══════════════════════════════════════╗\n";
   std::cout << "║        X-RACING - PROJECT 0          ║\n";
@@ -297,28 +358,30 @@ void Gameplay::render_menu() {
   std::cout << "╚══════════════════════════════════════╝\n\n";
 
   std::cout << "--- Track ---\n";
-  for (size_t i = 0; i < track_options.size(); ++i) {
-    std::string marker = (static_cast<int>(i) == selected_track) ? "> " : "  ";
-    std::cout << marker << track_options[i].label << "\n";
+  for (size_t i = 0; i < choices.track_options.size(); ++i) {
+    std::string marker = (static_cast<int>(i) == menu_.selected_track) ? "> " : "  ";
+    std::cout << marker << choices.track_options[i].label << "\n";
   }
 
   std::cout << "\n--- Laps ---\n";
-  for (size_t i = 0; i < lap_options.size(); ++i) {
-    std::string marker = (lap_options[i].value == selected_laps) ? "> " : "  ";
-    std::cout << marker << lap_options[i].label << "\n";
+  for (size_t i = 0; i < choices.lap_options.size(); ++i) {
+    std::string marker = (choices.lap_options[i].value == menu_.selected_laps) ? "> " : "  ";
+    std::cout << marker << choices.lap_options[i].label << "\n";
   }
 
-  std::cout << "\nControls: W/S = Navigate | ENTER = Start Race | ESC = Quit\n";
+  std::cout << "\nControls: W/S = Cycle | B = Switch Group | ENTER / R = Start | ESC = Quit\n";
 }
 
 void Gameplay::render_countdown() {
   enable_ansi_console();
+  const auto& choices = this->choices();
   auto now = std::chrono::high_resolution_clock::now();
-  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count() - countdown_start_time;
-  int number = static_cast<int>(countdown_duration - elapsed) + 1;
+  double elapsed = std::chrono::duration<double>(now.time_since_epoch()).count()
+                   - countdown_.start_time;
+  int number = static_cast<int>(std::ceil(countdown_.duration - elapsed));
   if (number > 3) number = 3;
   if (number < 0) number = 0;
-  countdown_last_number = number;
+  countdown_.last_number = number;
 
   std::cout << "\033[2J\033[H";
   std::cout << "╔══════════════════════════════════════╗\n";
@@ -341,8 +404,8 @@ void Gameplay::render_countdown() {
   std::cout << "║\n";
   std::cout << "         ╚═══════════╝\n\n";
 
-  std::cout << "Track: " << track_options[selected_track].label << "\n";
-  std::cout << "Laps: " << selected_laps << "\n";
+  std::cout << "Track: " << choices.track_options[menu_.selected_track].label << "\n";
+  std::cout << "Laps: " << menu_.selected_laps << "\n";
   std::cout << "ESC = Back to Menu\n";
 }
 
@@ -390,7 +453,7 @@ void Gameplay::render_console(const simulation::SimulationResult& result) {
   std::cout << "Steer:      " << std::setw(6) << s.steer_angle * kRadToDeg << " deg\n";
 
   std::cout << "\n--- Telemetry ---\n";
-  std::cout << "Lap:        " << s.lap << " / " << selected_laps << "\n";
+  std::cout << "Lap:        " << s.lap << " / " << menu_.selected_laps << "\n";
   std::cout << "Lap Time:   " << std::setw(6) << state_.current_lap_time << " s\n";
   if (state_.best_lap_time > 0.0) {
     std::cout << "Best Lap:   " << std::setw(6) << state_.best_lap_time << " s\n";
@@ -440,16 +503,16 @@ void Gameplay::run() {
 
     input::InputState input = poll_input();
 
-    if (input_manager_->is_key_down(VK_ESCAPE) && ::p0::gameplay::state != GameState::MENU) {
-      ::p0::gameplay::state = GameState::MENU;
+    if (input_manager_->is_key_down(VK_ESCAPE) && phase_ != GameState::MENU) {
+      phase_ = GameState::MENU;
       continue;
     }
-    if (input_manager_->is_key_down(VK_ESCAPE) && ::p0::gameplay::state == GameState::MENU) {
+    if (input_manager_->is_key_down(VK_ESCAPE) && phase_ == GameState::MENU) {
       state_.running = false;
       break;
     }
 
-    switch (::p0::gameplay::state) {
+    switch (phase_) {
       case GameState::MENU:
         handle_menu_input(input);
         render_menu();

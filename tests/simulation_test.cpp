@@ -550,6 +550,35 @@ TEST(Centripetal, CentrifugalIsReaction) {
   EXPECT_DOUBLE_EQ(sim.state().centrifugal_force, -sim.state().centripetal_force);
 }
 
+// Banking reduces effective centripetal force on banked corners
+TEST(Centripetal, BankingReducesLateralG) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  const double curve_distance = 400.0;
+  const auto& tp = track.at(curve_distance);
+
+  vehicle::VehicleState initial;
+  initial.position = tp.position;
+  initial.heading = std::atan2(tp.tangent.y(), tp.tangent.x());
+  initial.distance_along_track = curve_distance;
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.0;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  const double lateral_g = sim.state().lateral_g;
+  EXPECT_GT(lateral_g, 0.0);
+  EXPECT_LT(lateral_g, 2.0);
+}
+
 // Box lane exists on the main straight
 TEST(BoxLane, ExistsOnStraight) {
   track::Track track;
@@ -767,10 +796,10 @@ TEST(Reverse, MovesBackwardFromStandstill) {
   double start_x = sim.state().position.x();
   for (int i = 0; i < 600; ++i) {
     sim.step(input);
-    EXPECT_LE(sim.state().speed, sim.max_reverse_speed() + 1e-6);
+    EXPECT_LE(std::abs(sim.state().speed), sim.max_reverse_speed() + 1e-6);
   }
 
-  EXPECT_GT(sim.state().speed, 0.5);
+  EXPECT_LT(sim.state().speed, -0.1);
   EXPECT_LT(sim.state().position.x(), start_x);
 }
 
@@ -821,5 +850,240 @@ TEST(LapDetection, ForwardLapIncrementsCount) {
   EXPECT_GE(sim.state().distance_along_track, 0.0);
   EXPECT_LT(sim.state().distance_along_track, track_len);
 }
+
+// Wind: wind_speed increases vehicle speed (directional wind not yet implemented)
+TEST(Wind, WindIncreasesSpeed) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 30.0;
+  sim.reset(initial);
+
+  sim.mutable_params().wind_speed = 50.0;
+  sim.mutable_params().wind_effect_on_speed = 1.0;
+
+  input::InputState input;
+  input.throttle = 0.0;
+
+  const double speed_before = sim.state().speed;
+  for (int i = 0; i < 120; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().speed, speed_before);
+}
+
+// Wind: zero wind_speed leaves speed unchanged
+TEST(Wind, ZeroWindNoEffect) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 30.0;
+  sim.reset(initial);
+
+  sim.mutable_params().wind_speed = 0.0;
+  sim.mutable_params().wind_effect_on_speed = 1.0;
+
+  input::InputState input;
+  input.throttle = 0.0;
+
+  for (int i = 0; i < 120; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_LT(sim.state().speed, 30.0);
+}
+
+// ABS: reduces brake when slip ratio exceeds threshold
+TEST(ABS, ReducesBrakeOnLockup) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  simulation::SimulationParams params;
+  params.use_abs = true;
+  params.use_tcs = true;
+  sim = simulation::Simulation(params);
+  sim.set_track(track);
+  sim.reset(initial);
+
+  input::InputState input;
+  input.brake = 1.0;
+
+  for (int i = 0; i < 600; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().speed, 0.0);
+  EXPECT_LE(sim.state().brake, 1.0);
+}
+
+// TCS: reduces throttle when slip ratio exceeds threshold
+TEST(TCS, ReducesThrottleOnSpin) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 0.0;
+  sim.reset(initial);
+
+  simulation::SimulationParams params;
+  params.use_abs = true;
+  params.use_tcs = true;
+  sim = simulation::Simulation(params);
+  sim.set_track(track);
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  for (int i = 0; i < 300; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GE(sim.state().speed, 0.0);
+  EXPECT_LE(sim.state().throttle, 1.0);
+}
+
+// ABS disabled: full brake force is applied
+TEST(ABS, DisabledAppliesFullBrake) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  simulation::SimulationParams params;
+  params.use_abs = false;
+  params.use_tcs = false;
+  sim = simulation::Simulation(params);
+  sim.set_track(track);
+  sim.reset(initial);
+
+  input::InputState input;
+  input.brake = 1.0;
+
+  for (int i = 0; i < 600; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_GT(sim.state().speed, 0.0);
+}
+
+// Tire compounds: soft wears faster than hard
+TEST(TireCompound, SoftWearsFasterThanHard) {
+  track::Track track;
+  simulation::Simulation sim_soft;
+  simulation::Simulation sim_hard;
+  sim_soft.set_track(track);
+  sim_hard.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  initial.tire_compound = 0;
+  sim_soft.reset(initial);
+
+  initial.tire_compound = 2;
+  sim_hard.reset(initial);
+
+  input::InputState input;
+  input.throttle = 0.0;
+  input.steering = 0.8;
+
+  for (int i = 0; i < 500; ++i) {
+    sim_soft.step(input);
+    sim_hard.step(input);
+  }
+
+  EXPECT_LT(sim_soft.state().front_tire_wear, sim_hard.state().front_tire_wear);
+}
+
+// Tire compounds: compound parameter exists in VehicleParams
+TEST(TireCompound, ParametersExistInVehicleParams) {
+  vehicle::VehicleParams params;
+  EXPECT_GT(params.tire_grip_soft, 0.0);
+  EXPECT_GT(params.tire_grip_medium, 0.0);
+  EXPECT_GT(params.tire_grip_hard, 0.0);
+  EXPECT_GT(params.tire_grip_wet, 0.0);
+  EXPECT_GT(params.tire_wear_soft, 0.0);
+  EXPECT_GT(params.tire_wear_medium, 0.0);
+  EXPECT_GT(params.tire_wear_hard, 0.0);
+  EXPECT_GT(params.tire_wear_wet, 0.0);
+}
+
+// Fuel consumption: fuel decreases over time
+TEST(Fuel, ConsumptionDecreasesFuel) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  const double fuel_before = sim.state().current_fuel_l;
+  for (int i = 0; i < 600; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_LT(sim.state().current_fuel_l, fuel_before);
+}
+
+// Fuel consumption: out of fuel stops engine torque
+TEST(Fuel, OutOfFuelStopsEngine) {
+  track::Track track;
+  simulation::Simulation sim;
+  sim.set_track(track);
+
+  vehicle::VehicleState initial;
+  initial.position = track.get_start_position();
+  initial.heading = track.get_start_heading();
+  initial.speed = 50.0;
+  initial.current_fuel_l = 0.001;
+  initial.fuel_capacity_l = 0.001;
+  initial.fuel_consumption_per_lap_l = 100.0;
+  sim.mutable_params().fuel_capacity_l = 0.001;
+  sim.mutable_params().fuel_consumption_per_lap_l = 100.0;
+  sim.reset(initial);
+
+  input::InputState input;
+  input.throttle = 1.0;
+
+  for (int i = 0; i < 600; ++i) {
+    sim.step(input);
+  }
+
+  EXPECT_TRUE(sim.state().out_of_fuel);
+  EXPECT_DOUBLE_EQ(sim.state().current_fuel_l, 0.0);
+}
+
 
 

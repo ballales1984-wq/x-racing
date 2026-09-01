@@ -103,14 +103,34 @@ class Track {
      return ::p0::track::friction_for_surface(type);
    }
 
-   PitLaneDefinition build_pit_lane_definition() const;
+  PitLaneDefinition build_pit_lane_definition() const;
 
-  private:
+  struct TrackMesh {
+    std::vector<Vec2> vertices;
+    std::vector<int> indices;
+  };
+
+  TrackMesh generate_mesh() const;
+  bool collides_with_mesh(const Vec2& point) const;
+
+ private:
    void build_default_track();
    void build_pit_track();
    void build_custom_track();
    TrackPoint interpolate(double distance, int i0, int i1, double frac) const;
    void find_adjacent_points(double distance, int& i0, int& i1, double& frac) const;
+
+  mutable TrackMesh mesh_cache_;
+  mutable bool mesh_cache_valid_ = false;
+
+  static bool point_in_triangle(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {
+    const double cross1 = (b.x() - a.x()) * (p.y() - a.y()) - (b.y() - a.y()) * (p.x() - a.x());
+    const double cross2 = (c.x() - b.x()) * (p.y() - b.y()) - (c.y() - b.y()) * (p.x() - b.x());
+    const double cross3 = (a.x() - c.x()) * (p.y() - c.y()) - (a.y() - c.y()) * (p.x() - c.x());
+    const bool has_neg = (cross1 < 0.0) || (cross2 < 0.0) || (cross3 < 0.0);
+    const bool has_pos = (cross1 > 0.0) || (cross2 > 0.0) || (cross3 > 0.0);
+    return !(has_neg && has_pos);
+  }
 
   std::vector<TrackPoint> points_;
   std::vector<double> pit_box_positions_;

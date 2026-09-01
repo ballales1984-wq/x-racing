@@ -226,3 +226,35 @@ TEST(PitCircuitV2, StartHeadingValid) {
   double heading = track.get_start_heading();
   EXPECT_TRUE(std::isfinite(heading));
 }
+
+// Mesh collider: start position should be inside track
+TEST(TrackMesh, StartPositionInsideTrack) {
+  track::Track track;
+  Vec2 start = track.get_start_position();
+  EXPECT_TRUE(track.collides_with_mesh(start));
+}
+
+// Mesh collider: point far off track should not collide
+TEST(TrackMesh, FarOffTrackDoesNotCollide) {
+  track::Track track;
+  Vec2 far_away(10000.0, 10000.0);
+  EXPECT_FALSE(track.collides_with_mesh(far_away));
+}
+
+// Mesh collider: point on track centerline should collide
+TEST(TrackMesh, CenterlineCollides) {
+  track::Track track;
+  for (double d = 0.0; d < track.length(); d += 50.0) {
+    const auto& tp = track.at(d);
+    EXPECT_TRUE(track.collides_with_mesh(tp.position));
+  }
+}
+
+// Mesh collider: generate_mesh should have valid vertices and indices
+TEST(TrackMesh, GenerateMeshHasValidData) {
+  track::Track track;
+  auto mesh = track.generate_mesh();
+  EXPECT_GT(mesh.vertices.size(), 0u);
+  EXPECT_GT(mesh.indices.size(), 0u);
+  EXPECT_EQ(mesh.indices.size() % 3, 0u);
+}

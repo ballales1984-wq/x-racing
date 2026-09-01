@@ -6,10 +6,16 @@
 
 ---
 
+## Stato Attuale
+
+Il gioco è **giocabile e divertente**. Anche con i suoi difetti (documentati in [GAME.md](GAME.md)), l'esperienza di guida è sorprendentemente coinvolgente: fisica a 120 Hz, AI competitive, pit stop completi, e un sistema di gara funzionante. Non è perfetto — ed è esattamente per questo che è bello.
+
+---
+
 ## Current Status
 
 | Component | Status |
-|---|
+|---|---|
 | Build system (CMake) | ✅ |
 | Math types + utility | ✅ |
 | Tire model (Pacejka) | ✅ |
@@ -19,13 +25,21 @@
 | 120 Hz simulation | ✅ |
 | Telemetry + CSV export | ✅ |
 | Weather (rain, temperature, grip) | ✅ |
+| Wind effect | ✅ |
+| ABS / TCS | ✅ |
 | Gameplay (input, lap timing) | ✅ |
 | Track SVG diagrams | ✅ |
-| Unit tests (35+ GoogleTest) | ✅ |
-| Rendering (Unity placeholder) | ✅ |
+| Unit tests (55+ GoogleTest) | ✅ |
+| Rendering (Unity + GDI + DX11) | ✅ |
 | Unity editor integration | ✅ |
 | Race management (pit, validation, config) | ✅ |
 | AI (racing line, opponents, overtaking, defense, traffic, errors) | ✅ |
+| Mesh-based track collider | ✅ |
+| Banking / kerbs | ✅ |
+| Guardrails / run-off | ✅ |
+| Debug console save/load | ✅ |
+| Audio engine (scaffolding + Windows output) | ✅ |
+| **Playability** | ✅ **Giocabile e divertente — anche con i suoi difetti** |
 
 ---
 
@@ -110,7 +124,10 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Start line / grid (data model)
 - [x] Checkpoint (data model)
 - [x] Lap detection (runtime)
-- [ ] Mesh-based collider
+- [x] Mesh-based collider
+- [x] Kerbs with elevation/banking
+- [x] Guardrails (perimeter barriers)
+- [x] Run-off area (error zone)
 
 **Completion criterion:** a parametric track can be defined and the car drives it correctly.
 
@@ -142,11 +159,12 @@ No trees, no graphical details, no sophisticated AI.
 - [x] Track spline (central path definition)
 - [x] Variable width (per segment)
 - [x] Asphalt mesh (generated from spline + width)
-- [ ] Kerbs (optional elevation/banking)
-- [ ] Guardrails (perimeter barriers)
-- [ ] Run-off area (error zone)
+- [x] Kerbs (optional elevation/banking)
+- [x] Guardrails (perimeter barriers)
+- [x] Run-off area (error zone)
 - [x] Checkpoint system (data model, trigger volumes planned)
 - [x] Track data export (SVG, JSON / binary for gameplay)
+- [x] Mesh-based collider
 
 **Completion criterion:** a new track can be defined by modifying only spline parameters and generating the entire geometry automatically.
 
@@ -219,7 +237,7 @@ No trees, no graphical details, no sophisticated AI.
 - [ ] Materials (asphalt, metal, rubber)
 - [ ] Particles (dust, rain, sparks)
 - [ ] Effects (motion blur, DOF, lens flare)
-- [ ] Audio engine (engine, exhaust, environment)
+- [x] Audio engine (engine, exhaust, environment) — scaffolding + Windows output
 - [ ] UI (menus, advanced HUD, map)
 - [ ] Optimization (LOD, instancing, draw calls)
 
@@ -276,10 +294,10 @@ x-racing/
 │   │   └── manifest.json
 │   └── ProjectSettings/
 ├── tests/
-│   ├── simulation_test.cpp   - Physics tests (33+ cases)
+│   ├── simulation_test.cpp   - Physics tests (55+ cases)
 │   ├── physics_test.cpp      - Pacejka model validation
 │   ├── vehicle_test.cpp      - Vehicle tests
-│   ├── track_test.cpp        - Track generation tests
+│   ├── track_test.cpp        - Track generation + mesh collider tests
 │   ├── track_diagram_test.cpp - Track SVG export tests
 │   ├── telemetry_test.cpp    - Telemetry tests
 │   └── gameplay_test.cpp     - Gameplay tests

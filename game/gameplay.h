@@ -51,6 +51,23 @@ class Gameplay {
   void load_best_times();
   void reset_race();
 
+  // Per-instance runtime state accessors (replaces the previous global
+  // inline variables; tests should use these instead of the legacy globals).
+  GameState& phase() { return phase_; }
+  const GameState& phase() const { return phase_; }
+  void set_phase(GameState s) { phase_ = s; }
+
+  MenuState& menu() { return menu_; }
+  const MenuState& menu() const { return menu_; }
+
+  CountdownState& countdown() { return countdown_; }
+  const CountdownState& countdown() const { return countdown_; }
+
+  RaceResults& results() { return results_; }
+  const RaceResults& results() const { return results_; }
+
+  const MenuChoices& choices() const { return MenuChoices::defaults(); }
+
  private:
   input::InputState poll_input();
   void render_console(const simulation::SimulationResult& result);
@@ -63,9 +80,14 @@ class Gameplay {
   telemetry::Telemetry& tel_;
   std::unique_ptr<input::InputManager> input_manager_;
   GameplayState state_;
+
+  GameState phase_ = GameState::MENU;
+  MenuState menu_{};
+  CountdownState countdown_{};
+  RaceResults results_{};
+
   double last_lap_distance_ = 0.0;
   double last_sim_time_ = 0.0;
 };
 
 }
-

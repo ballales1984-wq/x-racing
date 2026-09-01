@@ -409,12 +409,13 @@ void DebugConsole::cmd_save(DebugAgent& agent, const std::vector<std::string>& a
   print_line("Debug state saved to: " + path);
 }
 
-void DebugConsole::cmd_load(DebugAgent&, const std::vector<std::string>& args) {
+void DebugConsole::cmd_load(DebugAgent& agent, const std::vector<std::string>& args) {
   if (args.empty()) {
     print_line("Usage: load <path>");
     return;
   }
-  print_line("Load not yet implemented (debug state is runtime-only)");
+  agent.load_snapshot_json(args[0]);
+  print_line("Debug state loaded from: " + args[0]);
 }
 
 }

@@ -307,14 +307,12 @@ MeshData VehicleGenerator::GenerateTaillights(const VehicleGeometry& geo) {
 
 // Append an axis-aligned box primitive to the mesh.
 // Generates 8 vertices (corners), 1 UV set, 1 color set, and 12 indices
-// forming 6 faces (2 triangles each). Normals are all set to (0,1,0) as
-// a placeholder; the mesh generator does not compute smooth normals.
+// forming 6 faces (2 triangles each). Each face has its own normal.
 void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& size) {
     double hx = size[0] * 0.5;
     double hy = size[1] * 0.5;
     double hz = size[2] * 0.5;
 
-    // 8 corners of the box (binary pattern: xyz).
     Vec3 v000(center[0] - hx, center[1] - hy, center[2] - hz);
     Vec3 v100(center[0] + hx, center[1] - hy, center[2] - hz);
     Vec3 v110(center[0] + hx, center[1] + hy, center[2] - hz);
@@ -335,9 +333,23 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.vertices.push_back(v111);
     mesh.vertices.push_back(v011);
 
-    // Per-vertex attributes: uniform normal and white color.
+    const Vec3 nFront(0, 0, -1);
+    const Vec3 nBack(0, 0, 1);
+    const Vec3 nTop(0, 1, 0);
+    const Vec3 nBottom(0, -1, 0);
+    const Vec3 nRight(1, 0, 0);
+    const Vec3 nLeft(-1, 0, 0);
+
+    mesh.normals.push_back(nFront);
+    mesh.normals.push_back(nFront);
+    mesh.normals.push_back(nFront);
+    mesh.normals.push_back(nFront);
+    mesh.normals.push_back(nBack);
+    mesh.normals.push_back(nBack);
+    mesh.normals.push_back(nBack);
+    mesh.normals.push_back(nBack);
+
     for (int i = 0; i < 8; ++i) {
-        mesh.normals.push_back(Vec3(0, 1, 0));
         mesh.colors.push_back(Vec3(1.0, 1.0, 1.0));
     }
 
@@ -345,7 +357,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
         mesh.uvs.push_back(Vec2(0, 0));
     }
 
-    // Front face (z-)
     mesh.indices.push_back(baseIndex + 0);
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 2);
@@ -353,7 +364,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 2);
     mesh.indices.push_back(baseIndex + 3);
 
-    // Back face (z+)
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 7);
@@ -361,7 +371,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 7);
     mesh.indices.push_back(baseIndex + 6);
 
-    // Top face (y+)
     mesh.indices.push_back(baseIndex + 3);
     mesh.indices.push_back(baseIndex + 2);
     mesh.indices.push_back(baseIndex + 6);
@@ -369,7 +378,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 6);
     mesh.indices.push_back(baseIndex + 7);
 
-    // Bottom face (y-)
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 1);
@@ -377,7 +385,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 0);
 
-    // Right face (x+)
     mesh.indices.push_back(baseIndex + 1);
     mesh.indices.push_back(baseIndex + 5);
     mesh.indices.push_back(baseIndex + 6);
@@ -385,7 +392,6 @@ void VehicleGenerator::AddBox(MeshData& mesh, const Vec3& center, const Vec3& si
     mesh.indices.push_back(baseIndex + 6);
     mesh.indices.push_back(baseIndex + 2);
 
-    // Left face (x-)
     mesh.indices.push_back(baseIndex + 4);
     mesh.indices.push_back(baseIndex + 0);
     mesh.indices.push_back(baseIndex + 3);

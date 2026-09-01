@@ -305,6 +305,60 @@ void DebugAgent::export_logs_csv(const std::string& path) const {
   }
 }
 
+void DebugAgent::load_snapshot_json(const std::string& path) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::ifstream file(path);
+  if (!file.is_open()) return;
+
+  std::string content((std::istreambuf_iterator<char>(file)),
+                       std::istreambuf_iterator<char>());
+
+  auto find_double = [&](const std::string& key) -> double {
+    size_t pos = content.find("\"" + key + "\"");
+    if (pos == std::string::npos) return 0.0;
+    pos = content.find(':', pos);
+    if (pos == std::string::npos) return 0.0;
+    ++pos;
+    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
+    try {
+      return std::stod(content.substr(pos));
+    } catch (const std::exception&) {
+      return 0.0;
+    }
+  };
+
+  auto find_int = [&](const std::string& key) -> int {
+    size_t pos = content.find("\"" + key + "\"");
+    if (pos == std::string::npos) return 0;
+    pos = content.find(':', pos);
+    if (pos == std::string::npos) return 0;
+    ++pos;
+    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
+    try {
+      return std::stoi(content.substr(pos));
+    } catch (const std::exception&) {
+      return 0;
+    }
+  };
+
+  last_snapshot_.sim_time = find_double("sim_time");
+  last_snapshot_.frame_count = find_int("frame");
+  last_snapshot_.state.speed = find_double("speed_mps");
+  last_snapshot_.state.rpm = find_double("rpm");
+  last_snapshot_.state.gear = find_int("gear");
+  last_snapshot_.state.lateral_g = find_double("lateral_g");
+  last_snapshot_.state.front_tire_temp = find_double("front_tire_temp_k");
+  last_snapshot_.state.rear_tire_temp = find_double("rear_tire_temp_k");
+  last_snapshot_.state.front_tire_wear = find_double("front_tire_wear");
+  last_snapshot_.state.rear_tire_wear = find_double("rear_tire_wear");
+  last_snapshot_.state.slip_angle = find_double("slip_angle");
+  last_snapshot_.state.slip_ratio = find_double("slip_ratio");
+  last_snapshot_.state.aero_drag = find_double("aero_drag_n");
+  last_snapshot_.state.aero_downforce = find_double("aero_downforce_n");
+  last_snapshot_.profiler.last_frame_time_ms = find_double("frame_time_ms");
+  last_snapshot_.profiler.last_physics_time_ms = find_double("physics_time_ms");
+}
+
 void DebugAgent::process_console_command(const std::string& cmd_line) {
   if (console_) console_->process_command(*this, cmd_line);
 }

@@ -23,7 +23,7 @@ struct SimulationParams {
 // Result of a single simulation step
 struct SimulationResult {
   vehicle::VehicleState state;           // vehicle state after step
-  bool collision = false;                // collision detected (placeholder)
+  bool collision = false;                // collision detected (stuck off-track >2s)
   bool off_track = false;                // vehicle outside track bounds
   double time = 0.0;                     // accumulated simulation time
 };
@@ -65,6 +65,7 @@ class Simulation {
   void integrate(double dt);              // velocity-space integration
   void apply_box_lane_speed_limit();      // enforce box lane speed limit
   void apply_off_track_physics();         // grip reduction + barrier push when off track
+  void update_fuel_consumption();         // fuel consumption model
 
   SimulationParams params_;
   const track::Track* track_ = nullptr;
@@ -83,6 +84,7 @@ class Simulation {
 
   // Runtime lap detection with forward-direction validation.
   track::LapDetector lap_detector_{0.0};
+  double prev_slip_ratio_ = 0.0;
 };
 
 }

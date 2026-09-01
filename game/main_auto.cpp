@@ -27,6 +27,15 @@ int main() {
   tel.clear();
 
   p0::gameplay::Gameplay gameplay(sim, tel, std::make_unique<p0::input::AutoInputManager>());
+
+  // Auto-drive starts directly from the countdown to avoid waiting 16s
+  // in the menu for the scripted sequence to reach the reset key.
+  gameplay.set_phase(p0::gameplay::GameState::COUNTDOWN);
+  gameplay.countdown().start_time =
+      std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  gameplay.countdown().last_number = -1;
+  gameplay.countdown().finished = false;
+
   gameplay.run();
 
   const auto& final_state = sim.state();

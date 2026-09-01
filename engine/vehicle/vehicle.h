@@ -68,13 +68,27 @@ struct VehicleParams {
   double tire_heat_per_slip = 1.5;       // K per slip
   double tire_wear_per_slip = 0.00008;   // wear
   double tire_wear_per_lap = 0.0008;     // base wear
+  double tire_grip_soft = 1.15;          // soft compound grip multiplier
+  double tire_grip_medium = 1.0;         // medium compound grip multiplier
+  double tire_grip_hard = 0.95;          // hard compound grip multiplier
+  double tire_grip_wet = 0.75;           // wet compound grip multiplier
+  double tire_grip_intermediate = 0.85;  // intermediate compound grip multiplier
+  double tire_wear_soft = 1.5;           // soft compound wear multiplier
+  double tire_wear_medium = 1.0;         // medium compound wear multiplier
+  double tire_wear_hard = 0.6;           // hard compound wear multiplier
+  double tire_wear_wet = 2.0;            // wet compound wear multiplier
+  double tire_wear_intermediate = 1.3;   // intermediate compound wear multiplier
   double rain_intensity = 0.0;           // [0, 1]
   double rain_grip_reduction = 0.35;     // grip reduction
   double rain_rolling_resistance = 1.2;  // rolling resistance multiplier
   double wind_effect_on_speed = 0.08;    // wind effect
+  double wind_speed = 0.0;               // m/s, wind speed
+  double wind_direction = 0.0;           // rad, wind direction
   double temp_cooling_rate = 0.15;       // K/s
   double rain_cooling = 1.5;             // K/s
   double track_heat_rate = 0.04;         // K/s
+  double fuel_capacity_l = 110.0;        // L, fuel tank capacity
+  double fuel_consumption_per_lap_l = 2.5; // L per lap
 };
 
 // Vehicle state: instantaneous values updated each simulation step
@@ -108,6 +122,7 @@ struct VehicleState {
   double rear_tire_temp = 300.0;         // K, rear tire temperature
   double front_tire_wear = 1.0;          // [0,1], front tire wear (1=new)
   double rear_tire_wear = 1.0;           // [0,1], rear tire wear (1=new)
+  int tire_compound = 0;                 // tire compound index (0=soft, 1=medium, 2=hard, 3=wet)
   double distance_along_track = 0.0;     // m, progress along track centerline
   int lap = 0;                           // completed laps
   double fl_tire_load = 0.0;             // N, front-left tire normal force
@@ -124,6 +139,10 @@ struct VehicleState {
   double centripetal_force = 0.0;        // N, toward center of curvature
   double centrifugal_force = 0.0;        // N, outward inertial force
   double lateral_g = 0.0;                // g, lateral acceleration / gravity
+  double current_fuel_l = 0.0;           // L, current fuel level
+  double fuel_capacity_l = 0.0;          // L, fuel tank capacity
+  double fuel_consumption_per_lap_l = 0.0; // L per lap
+  bool out_of_fuel = false;              // true when fuel is depleted
 };
 
 }
