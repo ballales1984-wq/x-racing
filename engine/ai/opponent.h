@@ -31,15 +31,19 @@ class Opponent {
  public:
   explicit Opponent(const AIDriverParams& params = {}, const std::string& name = "AI");
 
+  // Configure track geometry and racing line.
   void set_track(const track::Track& track);
   void set_racing_line(const std::vector<track::RacingLineSample>& samples);
+  // Reset vehicle state at session start or respawn.
   void reset(const vehicle::VehicleState& state);
 
+  // Compute AI input for the next physics tick.
   input::InputState update(const vehicle::VehicleState& state, double delta_time);
 
   const AIDriver& driver() const { return driver_; }
   AIDriver& driver() { return driver_; }
 
+  // Current runtime state (updated each frame by the manager).
   OpponentState state() const { return state_; }
   void set_state(const OpponentState& s) { state_ = s; }
 
@@ -48,17 +52,23 @@ class Opponent {
   OpponentState state_;
 };
 
+// Manages a collection of Opponent instances.
+// Provides batch reset/update for all opponents in a race session.
 class OpponentManager {
  public:
   explicit OpponentManager(const track::Track* track = nullptr);
 
+  // Bind track geometry and racing line to all existing opponents.
   void set_track(const track::Track& track);
   void set_racing_line(const std::vector<track::RacingLineSample>& samples);
 
+  // Add a new opponent and return its assigned car ID.
   int add_opponent(const AIDriverParams& params, const std::string& name);
   void remove_opponent(int car_id);
 
+  // Reset all opponents with fresh vehicle states (session start / respawn).
   void reset_all(const std::vector<vehicle::VehicleState>& states);
+  // Update all opponents and return their inputs for the simulation.
   std::vector<input::InputState> update_all(const std::vector<vehicle::VehicleState>& states,
                                             double delta_time);
 
