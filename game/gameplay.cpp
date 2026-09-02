@@ -46,7 +46,7 @@ static std::string format_time(double time_sec) {
   double seconds = time_sec - minutes * 60.0;
   std::ostringstream oss;
   oss << std::setfill('0') << std::setw(2) << minutes << ":"
-      << std::fixed << std::setprecision(3) << std::setw(6) << seconds;
+       << std::fixed << std::setprecision(3) << std::setw(8) << seconds;
   return oss.str();
 }
 
@@ -86,10 +86,10 @@ void Gameplay::reset_race() {
 
 void Gameplay::handle_menu_input(const input::InputState& input) {
   const auto& choices = this->choices();
-  const bool throttle_pressed = input.throttle > 0.5f;
-  const bool brake_pressed = input.brake > 0.5f;
-  const bool upshift_pressed = input.upshift;
-  const bool box_pressed = input.enter_exit_box;
+  const bool throttle_pressed = input.throttle > 0.5f && prev_input_.throttle <= 0.5f;
+  const bool brake_pressed = input.brake > 0.5f && prev_input_.brake <= 0.5f;
+  const bool upshift_pressed = input.upshift && !prev_input_.upshift;
+  const bool box_pressed = input.enter_exit_box && !prev_input_.enter_exit_box;
 
   if (throttle_pressed) {
     if (menu_.current_menu_index == 0) {
@@ -140,7 +140,7 @@ void Gameplay::handle_menu_input(const input::InputState& input) {
   }
 
   // ENTER starts the race (also accept R as a legacy shortcut).
-  if (input_manager_->is_key_down(VK_RETURN) || input.reset) {
+  if (input_manager_->is_key_down(VK_RETURN) || (input.reset && !prev_input_.reset)) {
     countdown_.start_time = std::chrono::duration<double>(
         std::chrono::high_resolution_clock::now().time_since_epoch()).count();
     countdown_.last_number = -1;
@@ -325,14 +325,17 @@ void Gameplay::show_results() {
   std::cout << "\nControls: R = Race Again | M = Main Menu | ESC = Quit\n";
 
   input::InputState input;
+  input::InputState prev_result_input;
   bool waiting = true;
   while (waiting && state_.running) {
     input = poll_input();
+    prev_result_input = input;
+
     if (input_manager_->is_key_down(VK_ESCAPE)) {
       state_.running = false;
       waiting = false;
     }
-    if (input.reset) {
+    if (input.reset && !prev_result_input.reset) {
       reset_race();
       countdown_.start_time = std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
       countdown_.last_number = -1;
@@ -340,12 +343,13 @@ void Gameplay::show_results() {
       phase_ = GameState::COUNTDOWN;
       waiting = false;
     }
-    if (input.throttle > 0.5) {
+    if (input.throttle > 0.5 && prev_result_input.throttle <= 0.5) {
       phase_ = GameState::MENU;
       waiting = false;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
+  prev_input_ = input;
 }
 
 void Gameplay::render_menu() {
@@ -524,12 +528,12 @@ void Gameplay::run() {
         break;
 
       case GameState::RACING: {
-        if (input.reset) {
-          sim_.respawn();
-          state_.off_track_warning = true;
-          state_.off_track_frames = 0;
-          continue;
-        }
+      if (input.reset && !prev_input_.reset) {
+        sim_.respawn();
+        state_.off_track_warning = true;
+        state_.off_track_frames = 0;
+        continue;
+      }
 
         simulation::SimulationResult result = sim_.step(input);
         handle_racing(result);
@@ -544,6 +548,7 @@ void Gameplay::run() {
     }
 
     std::this_thread::sleep_for(std::chrono::duration<double>(target_dt));
+    prev_input_ = input;
   }
 
   std::cout << "\nSession ended.\n";

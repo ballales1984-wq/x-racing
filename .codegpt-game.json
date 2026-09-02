@@ -1,0 +1,14 @@
+{
+  "name": "x-racing",
+  "engine": "generic",
+  "build": { "cmd": "cmake --build build --config Release --parallel" },
+  "install": [],
+  "launch": { "cmd": "build\\game\\Release\\project0_gameplay_exe.exe", "args": [] },
+  "log": { "format": "generic", "stdout": true, "paths": [] },
+  "ready": "",
+  "window": "",
+  "rcon": null,
+  "reload": "",
+  "sourceRoots": ["engine", "game", "tests", "X-Engine"],
+  "vars": {}
+}

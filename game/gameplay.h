@@ -73,7 +73,6 @@ class Gameplay {
   void render_console(const simulation::SimulationResult& result);
   void render_menu();
   void render_countdown();
-  void render_results();
 
  private:
   simulation::Simulation& sim_;
@@ -88,6 +87,7 @@ class Gameplay {
 
   double last_lap_distance_ = 0.0;
   double last_sim_time_ = 0.0;
+  input::InputState prev_input_;
 };
 
 }
