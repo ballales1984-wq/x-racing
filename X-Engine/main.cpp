@@ -190,7 +190,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.9");
+    XE_LOG_INFO("X-Engine V0.10");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -200,7 +200,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.9 — Fly Camera + Console", 1280, 720)) {
+    if (!app.Create("X-Engine V0.10 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -231,9 +231,58 @@ int main() {
         app.Shutdown();
     });
 
+    // Physics world — 3 sphere bodies for the orbiting cubes.
+    xe::PhysicsWorld physics;
+    for (int i = 0; i < 3; ++i) {
+        xe::RigidBody b;
+        b.position = { 1.6f * std::cos(i * 2.094f), 0.0f, 1.6f * std::sin(i * 2.094f) };
+        b.radius = 0.55f;
+        b.mass   = 1.0f;
+        physics.Add(b);
+    }
+    physics.SetEnabled(false);  // off by default; toggle via console
+
+    console.Register("physics", "Enable/disable physics simulation (on|off|toggle)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage: physics on|off|toggle");
+            return;
+        }
+        std::string a = args[1];
+        bool cur = physics.IsEnabled();
+        if (a == "on")      physics.SetEnabled(true);
+        else if (a == "off") physics.SetEnabled(false);
+        else if (a == "toggle") physics.SetEnabled(!cur);
+        else { console.PrintLn("[err] expected on|off|toggle"); return; }
+        std::ostringstream o; o << "Physics: " << (physics.IsEnabled() ? "ON" : "OFF")
+                                << "  bodies=" << physics.Size();
+        console.PrintLn(o.str());
+    });
+    console.Register("kick", "Kick body #N (0..N-1) with impulse (x y z)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 5) {
+            console.PrintLn("Usage: kick <body_idx> <x> <y> <z>");
+            return;
+        }
+        int idx = std::stoi(args[1]);
+        float x = std::stof(args[2]);
+        float y = std::stof(args[3]);
+        float z = std::stof(args[4]);
+        physics.Kick(idx, x, y, z);
+        std::ostringstream o; o << "Kicked body " << idx << " impulse=("
+                                << x << "," << y << "," << z << ")";
+        console.PrintLn(o.str());
+    });
+    console.Register("collisions", "Print last step collision count",
+                     [&physics, &console](auto&) {
+        std::ostringstream o; o << "Last collisions: " << physics.LastCollisionCount();
+        console.PrintLn(o.str());
+    });
+
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
     app.SetConsole(&console);
+    app.SetPhysics(&physics);
 
     // Register help with full closure now that we have context
     console.Register("help", "List all available commands", [&console](auto&) {
