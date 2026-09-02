@@ -209,3 +209,21 @@ TEST(TrackDiagram, FormatColorRgba) {
     std::string result = track_diagram::format_color(255, 0, 0, 0.5);
     EXPECT_TRUE(result.find("rgba(255,0,0") != std::string::npos);
 }
+
+TEST(TrackDiagram, TrackDiagramContainsEnvironmentObjects) {
+    track::Track track;
+    environment::EnvironmentGenerator gen;
+    gen.set_track(&track);
+    gen.generate();
+
+    track_diagram::TrackSvgExporter exporter(track);
+    exporter.set_output_path("");
+    exporter.set_environment_objects(&gen.objects());
+    ASSERT_TRUE(exporter.export_svg());
+
+    const std::string& svg = exporter.svg_content();
+    EXPECT_NE(svg.find("id=\"environment-objects\""), std::string::npos);
+    EXPECT_NE(svg.find("corner barrier"), std::string::npos);
+    EXPECT_NE(svg.find("brake sign"), std::string::npos);
+}
+

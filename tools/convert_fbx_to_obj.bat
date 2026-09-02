@@ -9,13 +9,13 @@ set OBJ=%~2
 if "%FBX%"=="" set FBX=%PROJECT_ROOT%\assets\models\car.fbx
 if "%OBJ%"=="" set OBJ=%PROJECT_ROOT%\assets\models\car_converted.obj
 
-echo Converting "%FBX%" -> "%OBJ%"
+echo Converting "%FBX%" -^> "%OBJ%"
 
-D:\blender.exe --background --python "%SCRIPT_DIR%convert_fbx_to_obj.py" -- "%FBX%" "%OBJ%"
+python "%SCRIPT_DIR%convert_fbx_to_obj_assimp.py" "%FBX%" "%OBJ%"
 set RESULT=%ERRORLEVEL%
 
 if %RESULT% neq 0 (
-    echo ERROR: Blender conversion failed with exit code %RESULT%
+    echo ERROR: Conversion failed with exit code %RESULT%
     exit /b %RESULT%
 )
 

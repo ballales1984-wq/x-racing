@@ -84,8 +84,9 @@ class Renderer {
      simulation::Simulation& sim_;
      RendererConfig config_;
      HWND window_ = nullptr;
-     HDC mem_dc_ = nullptr;
-     HBITMAP mem_bitmap_ = nullptr;
+      HDC mem_dc_ = nullptr;
+      HBITMAP mem_bitmap_ = nullptr;
+      HBRUSH bg_brush_ = nullptr;
      bool running_ = false;
      double time_ = 0.0;
      std::vector<p0::assets::Mesh> car_meshes_;
@@ -94,11 +95,12 @@ class Renderer {
      track::TrackType current_track_type_ = track::TrackType::Default;
      track::Track current_track_;
      p0::camera::ChaseCamera camera_;
-     p0::tracking::LapSystem lap_system_;
-     double current_lap_time_ = 0.0;
-     double best_lap_time_ = 0.0;
-     double last_lap_time_ = 0.0;
-     bool lap_invalidated_ = false;
+      p0::tracking::LapSystem lap_system_;
+      double current_lap_time_ = 0.0;
+      double best_lap_time_ = 0.0;
+      double last_lap_time_ = 0.0;
+      bool lap_invalidated_ = false;
+      int last_recorded_lap_ = -1;
 
 };
 

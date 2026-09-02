@@ -15,7 +15,10 @@ public:
         initialize_called = true;
         return should_succeed;
     }
-    void BeginFrame() override { begin_count++; }
+    void BeginFrame(float total_time = 0.0f) override {
+        begin_count++;
+        last_total_time = total_time;
+    }
     void EndFrame() override { end_count++; }
     void Resize(uint32_t w, uint32_t h) override {
         resize_calls.emplace_back(w, h);
@@ -26,6 +29,7 @@ public:
     bool should_succeed = true;
     int begin_count = 0;
     int end_count = 0;
+    float last_total_time = -1.0f;
     std::vector<std::pair<uint32_t, uint32_t>> resize_calls;
 };
 
@@ -106,4 +110,21 @@ TEST(RendererTest, RendererInitFailureFailsAppCreate) {
 
     Application app(std::move(window), std::move(input), std::move(renderer));
     EXPECT_FALSE(app.Create("Test", 800, 600));
+}
+
+TEST(RendererTest, BeginFrameReceivesTotalTime) {
+    auto window = std::make_unique<test::FakeWindow>();
+    auto input = std::make_unique<test::FakeInput>();
+    auto renderer = std::make_unique<test::FakeRenderer>();
+    test::FakeWindow* window_ptr = window.get();
+    test::FakeRenderer* renderer_ptr = renderer.get();
+    window_ptr->auto_close_after = 3;
+
+    Application app(std::move(window), std::move(input), std::move(renderer));
+    ASSERT_TRUE(app.Create("Test", 800, 600));
+    app.Run();
+
+    EXPECT_GT(renderer_ptr->last_total_time, 0.0f);
+
+    app.Shutdown();
 }

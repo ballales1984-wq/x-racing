@@ -13,12 +13,17 @@
 
 namespace p0::debug {
 
+//! @brief Default constructor.
 DebugAgent::DebugAgent() = default;
 
+//! @brief Destructor. Ensures clean shutdown of debug systems.
 DebugAgent::~DebugAgent() {
   shutdown();
 }
 
+//! @brief Initializes the debug agent and all subsystems.
+//! @param config Debug configuration settings.
+//! @return true if initialization succeeded.
 bool DebugAgent::initialize(const DebugConfig& config) {
   std::lock_guard<std::mutex> lock(mutex_);
   config_ = config;
@@ -38,6 +43,7 @@ bool DebugAgent::initialize(const DebugConfig& config) {
   return true;
 }
 
+//! @brief Shuts down the debug agent and exports remaining logs.
 void DebugAgent::shutdown() {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!initialized_) return;
@@ -56,30 +62,46 @@ void DebugAgent::shutdown() {
   add_log(DebugSeverity::INFO, "system", "Debug agent shutdown");
 }
 
+//! @brief Sets the simulation pointer for state monitoring.
+//! @param sim Pointer to the simulation instance.
 void DebugAgent::set_simulation(simulation::Simulation* sim) {
   sim_ = sim;
 }
 
+//! @brief Sets the simulation world pointer.
+//! @param world Pointer to the simulation world.
 void DebugAgent::set_simulation_world(simulation::SimulationWorld* world) {
   world_ = world;
 }
 
+//! @brief Sets the telemetry interface for auto-export.
+//! @param tel Pointer to the telemetry system.
 void DebugAgent::set_telemetry(telemetry::Telemetry* tel) {
   telemetry_ = tel;
 }
 
+//! @brief Sets the network session for diagnostics.
+//! @param net Pointer to the network session.
 void DebugAgent::set_network_session(network::NetworkSession* net) {
   network_session_ = net;
 }
 
+//! @brief Sets the track pointer for track-related diagnostics.
+//! @param track Pointer to the track data.
 void DebugAgent::set_track(const track::Track* track) {
   track_ = track;
 }
 
+//! @brief Sets the local car ID for focused diagnostics.
+//! @param car_id The local car identifier.
 void DebugAgent::set_local_car_id(int car_id) {
   local_car_id_ = car_id;
 }
 
+//! @brief Main update function called each simulation frame.
+//!        Records state, detects anomalies, and updates profiler.
+//! @param delta_time Simulation time step.
+//! @param real_delta_time Real wall-clock time step.
 void DebugAgent::update(double delta_time, double real_delta_time) {
   if (!config_.enabled || !initialized_) return;
 
@@ -109,6 +131,9 @@ void DebugAgent::update(double delta_time, double real_delta_time) {
   }
 }
 
+//! @brief Records a frame of simulation data for analysis.
+//! @param state Current vehicle state.
+//! @param dt Time step.
 void DebugAgent::record_frame(const p0::vehicle::VehicleState& state, double dt) {
   physics_->analyze(state, dt);
   profiler_->record_physics_step(dt);
@@ -118,21 +143,32 @@ void DebugAgent::record_frame(const p0::vehicle::VehicleState& state, double dt)
   }
 }
 
+//! @brief Records AI input for diagnostics.
+//! @param car_id The car ID.
+//! @param input The AI input state.
+//! @param params The AI driver parameters.
 void DebugAgent::record_ai_input(int car_id, const input::InputState& input,
                                  const ai::AIDriverParams& params) {
   ai_->record_input(car_id, input, params);
 }
 
+//! @brief Records a network snapshot for analysis.
+//! @param snapshot The world snapshot from the network.
 void DebugAgent::record_network_snapshot(const network::WorldSnapshot& snapshot) {
   network_->analyze_snapshot(snapshot);
 }
 
+//! @brief Toggles the debug agent enabled state.
 void DebugAgent::toggle_enabled() {
   config_.enabled = !config_.enabled;
   add_log(DebugSeverity::INFO, "system",
           config_.enabled ? "Debug agent enabled" : "Debug agent disabled");
 }
 
+//! @brief Adds a log entry to the debug log.
+//! @param severity The severity level.
+//! @param category The log category.
+//! @param message The log message.
 void DebugAgent::add_log(DebugSeverity severity, const std::string& category,
                          const std::string& message) {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -152,6 +188,9 @@ void DebugAgent::add_log(DebugSeverity severity, const std::string& category,
   }
 }
 
+//! @brief Detects anomalies in the simulation state.
+//!        Checks for off-track, spin, and physics warnings.
+//! @param state Current vehicle state.
 void DebugAgent::detect_anomalies(const p0::vehicle::VehicleState& state) {
   if (config_.detect_off_track && track_) {
     const bool currently_off = std::abs(state.lateral_velocity) > 5.0 && state.speed < 2.0;
@@ -202,6 +241,9 @@ void DebugAgent::detect_anomalies(const p0::vehicle::VehicleState& state) {
   }
 }
 
+//! @brief Updates the debug snapshot with current state.
+//! @param state Current vehicle state.
+//! @param dt Time step.
 void DebugAgent::update_snapshot(const p0::vehicle::VehicleState& state, double dt) {
   std::lock_guard<std::mutex> lock(mutex_);
   last_snapshot_.sim_time = total_sim_time_;
@@ -246,10 +288,13 @@ void DebugAgent::update_snapshot(const p0::vehicle::VehicleState& state, double 
   }
 }
 
+//! @brief Ensures the output directory exists.
 void DebugAgent::ensure_output_directory() const {
   std::filesystem::create_directories(config_.export_directory);
 }
 
+//! @brief Exports telemetry data to CSV file.
+//! @param path Output file path.
 void DebugAgent::export_telemetry_csv(const std::string& path) const {
   if (!telemetry_) return;
   std::lock_guard<std::mutex> lock(mutex_);
@@ -257,6 +302,8 @@ void DebugAgent::export_telemetry_csv(const std::string& path) const {
   telemetry_->save_csv(path);
 }
 
+//! @brief Exports the current debug snapshot to JSON file.
+//! @param path Output file path.
 void DebugAgent::export_snapshot_json(const std::string& path) const {
   std::lock_guard<std::mutex> lock(mutex_);
   ensure_output_directory();
@@ -284,6 +331,8 @@ void DebugAgent::export_snapshot_json(const std::string& path) const {
   file << "}\n";
 }
 
+//! @brief Exports all debug logs to CSV file.
+//! @param path Output file path.
 void DebugAgent::export_logs_csv(const std::string& path) const {
   std::lock_guard<std::mutex> lock(mutex_);
   ensure_output_directory();
@@ -305,6 +354,8 @@ void DebugAgent::export_logs_csv(const std::string& path) const {
   }
 }
 
+//! @brief Loads a debug snapshot from JSON file.
+//! @param path Input file path.
 void DebugAgent::load_snapshot_json(const std::string& path) {
   std::lock_guard<std::mutex> lock(mutex_);
   std::ifstream file(path);
@@ -359,6 +410,8 @@ void DebugAgent::load_snapshot_json(const std::string& path) {
   last_snapshot_.profiler.last_physics_time_ms = find_double("physics_time_ms");
 }
 
+//! @brief Processes a console command line.
+//! @param cmd_line The raw command line string.
 void DebugAgent::process_console_command(const std::string& cmd_line) {
   if (console_) console_->process_command(*this, cmd_line);
 }

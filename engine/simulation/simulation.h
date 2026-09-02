@@ -15,7 +15,7 @@ namespace p0::simulation {
 // Simulation configuration
 struct SimulationParams {
   double dt = 1.0 / 60.0;                // s, base timestep (60 Hz)
-  double substeps = 4.0;                 // number of physics sub-steps per frame
+  int substeps = 4;                      // number of physics sub-steps per frame
   bool use_abs = true;                   // enable ABS (placeholder)
   bool use_tcs = true;                   // enable TCS (placeholder)
 };

@@ -43,10 +43,6 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.body_pitch = 0.0;
   state_.weather_grip_factor = 1.0;
   state_.track_temp = 305.0;
-  state_.front_tire_temp = vehicle_params_.ambient_temperature;
-  state_.rear_tire_temp = vehicle_params_.ambient_temperature;
-  state_.front_tire_wear = 1.0;
-  state_.rear_tire_wear = 1.0;
   state_.front_slip_angle_relaxed = 0.0;
   state_.rear_slip_angle_relaxed = 0.0;
   state_.front_camber = 0.0;
@@ -360,7 +356,7 @@ void Simulation::update_weather() {
     const double wind_dir = vehicle_params_.wind_direction;
     const Vec2 wind_vector(std::cos(wind_dir), std::sin(wind_dir));
     const double wind_effect = vehicle_params_.wind_effect_on_speed * wind_speed;
-    state_.acceleration += wind_vector * wind_effect / vehicle_params_.mass;
+    state_.acceleration += wind_vector * wind_effect;
   }
 }
 

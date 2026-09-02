@@ -15,9 +15,21 @@ add_executable(xe_tests
     test_main.cpp
     logger_test.cpp
     clock_test.cpp
+    math_test.cpp
+    camera_test.cpp
+    mesh_test.cpp
+    mouse_test.cpp
+    scene_test.cpp
+    scene_loader_test.cpp
+    light_test.cpp
+    uv_test.cpp
+    fly_camera_test.cpp
     application_test.cpp
     renderer_test.cpp
 )
+
+set_target_properties(xe_tests PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/X-Engine)
 
 target_link_libraries(xe_tests PRIVATE xe_core GTest::gtest)
 

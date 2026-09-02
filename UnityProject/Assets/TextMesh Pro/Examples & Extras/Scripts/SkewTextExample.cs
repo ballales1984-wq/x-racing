@@ -1,5 +1,4 @@
-using TMPro;
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections;
 
 
@@ -157,4 +156,3 @@ namespace TMPro.Examples
         }
     }
 }
-

@@ -18,6 +18,9 @@ public:
     virtual void GetSize(int& width, int& height) const = 0;
     virtual uintptr_t GetNativeHandle() const = 0;
     virtual void SetResizeCallback(ResizeCallback callback) = 0;
+    virtual void* GetNativeDC() const = 0;
+    virtual void SetCursorCapture([[maybe_unused]] bool captured) {}
+    virtual bool IsCursorCaptured() const { return false; }
 };
 
 }  // namespace xe

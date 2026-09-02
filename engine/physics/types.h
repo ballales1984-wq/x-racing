@@ -45,7 +45,7 @@ inline Vec2 centripetal_force(double mass, double speed, double curvature, const
 // Centrifugal force (inertial reaction, opposite to centripetal).
 inline Vec2 centrifugal_force(double mass, double speed, double curvature, const Vec2& normal) {
   if (speed < kEpsilon) return Vec2::Zero();
-  return mass * speed * speed * curvature * normal;
+  return -mass * speed * speed * curvature * normal;
 }
 
 }

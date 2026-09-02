@@ -2,6 +2,7 @@
 // Handles input polling, simulation stepping, lap timing, game flow, and console HUD.
 #include "game/gameplay.h"
 #include "game/game_state.h"
+#include "game/json_parser.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -205,25 +206,27 @@ void Gameplay::save_best_times() {
   std::ofstream ofs(save_path());
   if (!ofs) return;
   const auto& choices = this->choices();
-  ofs << "{\n";
-  ofs << "  \"best_lap_time\": " << (results_.best_lap_time > 0.0 ? std::to_string(results_.best_lap_time) : "null") << ",\n";
-  ofs << "  \"total_time\": " << std::to_string(results_.total_time) << ",\n";
-  ofs << "  \"completed_laps\": " << results_.completed_laps << ",\n";
-  ofs << "  \"track\": \"" << choices.track_options[menu_.selected_track].label << "\",\n";
-  ofs << "  \"lap_count\": " << menu_.selected_laps << ",\n";
-  ofs << "  \"lap_times\": [";
-  for (size_t i = 0; i < results_.lap_times.size(); ++i) {
-    if (i > 0) ofs << ", ";
-    ofs << std::to_string(results_.lap_times[i]);
+
+  p0::json::Object root;
+  root["best_lap_time"] = p0::json::Value(results_.best_lap_time > 0.0 ? results_.best_lap_time : 0.0);
+  root["total_time"] = p0::json::Value(results_.total_time);
+  root["completed_laps"] = p0::json::Value(static_cast<double>(results_.completed_laps));
+  root["track"] = p0::json::Value(choices.track_options[menu_.selected_track].label);
+  root["lap_count"] = p0::json::Value(static_cast<double>(menu_.selected_laps));
+
+  p0::json::Array lap_times_arr;
+  for (const auto& lt : results_.lap_times) {
+    lap_times_arr.push_back(p0::json::Value(lt));
   }
-  ofs << "],\n";
-  ofs << "  \"lap_valid\": [";
-  for (size_t i = 0; i < results_.lap_valid.size(); ++i) {
-    if (i > 0) ofs << ", ";
-    ofs << (results_.lap_valid[i] ? "true" : "false");
+  root["lap_times"] = p0::json::Value(lap_times_arr);
+
+  p0::json::Array lap_valid_arr;
+  for (const auto& lv : results_.lap_valid) {
+    lap_valid_arr.push_back(p0::json::Value(lv));
   }
-  ofs << "]\n";
-  ofs << "}\n";
+  root["lap_valid"] = p0::json::Value(lap_valid_arr);
+
+  ofs << p0::json::serialize(p0::json::Value(root));
 }
 
 void Gameplay::load_best_times() {
@@ -233,69 +236,37 @@ void Gameplay::load_best_times() {
   std::string content((std::istreambuf_iterator<char>(ifs)),
                        std::istreambuf_iterator<char>());
 
-  auto find_double = [&](const std::string& key) -> double {
-    size_t pos = content.find("\"" + key + "\"");
-    if (pos == std::string::npos) return 0.0;
-    pos = content.find(':', pos);
-    if (pos == std::string::npos) return 0.0;
-    ++pos;
-    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
-    try {
-      return std::stod(content.substr(pos));
-    } catch (const std::exception&) {
-      return 0.0;
+  try {
+    p0::json::Value root = p0::json::parse(content);
+    if (!root.is_object()) return;
+
+    if (root.has("best_lap_time") && root["best_lap_time"].is_number()) {
+      results_.best_lap_time = root["best_lap_time"].as_double();
     }
-  };
-
-  auto find_int = [&](const std::string& key) -> int {
-    size_t pos = content.find("\"" + key + "\"");
-    if (pos == std::string::npos) return 0;
-    pos = content.find(':', pos);
-    if (pos == std::string::npos) return 0;
-    ++pos;
-    while (pos < content.size() && (content[pos] == ' ' || content[pos] == '\t')) ++pos;
-    try {
-      return std::stoi(content.substr(pos));
-    } catch (const std::exception&) {
-      return 0;
+    if (root.has("total_time") && root["total_time"].is_number()) {
+      results_.total_time = root["total_time"].as_double();
     }
-  };
+    if (root.has("completed_laps") && root["completed_laps"].is_number()) {
+      results_.completed_laps = root["completed_laps"].as_int();
+    }
+    results_.completed = results_.completed_laps > 0;
 
-  results_.best_lap_time = find_double("best_lap_time");
-  results_.total_time = find_double("total_time");
-  results_.completed_laps = find_int("completed_laps");
-  results_.completed = results_.completed_laps > 0;
-
-  // Parse lap_times array
-  size_t lt_pos = content.find("\"lap_times\"");
-  if (lt_pos != std::string::npos) {
-    size_t bracket = content.find('[', lt_pos);
-    if (bracket != std::string::npos) {
-      size_t end = content.find(']', bracket);
-      std::string arr = content.substr(bracket + 1, end - bracket - 1);
-      std::istringstream iss(arr);
-      std::string token;
-      while (std::getline(iss, token, ',')) {
-        try {
-          results_.lap_times.push_back(std::stod(token));
-        } catch (const std::exception&) {}
+    if (root.has("lap_times") && root["lap_times"].is_array()) {
+      for (size_t i = 0; i < root["lap_times"].size(); ++i) {
+        if (root["lap_times"][i].is_number()) {
+          results_.lap_times.push_back(root["lap_times"][i].as_double());
+        }
       }
     }
-  }
 
-  // Parse lap_valid array
-  size_t lv_pos = content.find("\"lap_valid\"");
-  if (lv_pos != std::string::npos) {
-    size_t bracket = content.find('[', lv_pos);
-    if (bracket != std::string::npos) {
-      size_t end = content.find(']', bracket);
-      std::string arr = content.substr(bracket + 1, end - bracket - 1);
-      std::istringstream iss(arr);
-      std::string token;
-      while (std::getline(iss, token, ',')) {
-        results_.lap_valid.push_back(token.find("true") != std::string::npos);
+    if (root.has("lap_valid") && root["lap_valid"].is_array()) {
+      for (size_t i = 0; i < root["lap_valid"].size(); ++i) {
+        if (root["lap_valid"][i].is_bool()) {
+          results_.lap_valid.push_back(root["lap_valid"][i].as_bool());
+        }
       }
     }
+  } catch (const std::exception&) {
   }
 }
 

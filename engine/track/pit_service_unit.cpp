@@ -4,11 +4,15 @@
 
 namespace p0::track {
 
+//! @brief Constructs the PSU manager and creates units for all pit boxes.
+//! @param pit_def The pit lane definition containing box configurations.
 PitServiceUnitManager::PitServiceUnitManager(const PitLaneDefinition& pit_def)
     : def_(pit_def) {
   create_units_for_boxes();
 }
 
+//! @brief Creates PSU instances for each pit box based on box configuration.
+//!        Each box gets one of each PSU type: JACK, COMPRESSOR, FUEL_DISPENSER, TIRE_CHANGER.
 void PitServiceUnitManager::create_units_for_boxes() {
   units_.clear();
   box_configs_.clear();
@@ -42,6 +46,9 @@ void PitServiceUnitManager::create_units_for_boxes() {
   }
 }
 
+//! @brief Builds a default PSU configuration for a pit box.
+//! @param box_index The index of the pit box.
+//! @return BoxPSUConfig with all PSU types enabled.
 BoxPSUConfig PitServiceUnitManager::build_box_config(int box_index) const {
   BoxPSUConfig cfg;
   cfg.box_id = box_index;
@@ -53,6 +60,10 @@ BoxPSUConfig PitServiceUnitManager::build_box_config(int box_index) const {
   return cfg;
 }
 
+//! @brief Assigns specific PSU types to a pit box for a service.
+//! @param box_id The pit box ID.
+//! @param required Vector of required PSU types.
+//! @return true if at least one unit was assigned.
 bool PitServiceUnitManager::assign_units_to_box(int box_id, const std::vector<PSUType>& required) {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return false;
 
@@ -69,6 +80,8 @@ bool PitServiceUnitManager::assign_units_to_box(int box_id, const std::vector<PS
   return !cfg.psu_ids.empty();
 }
 
+//! @brief Releases all PSUs from a pit box, resetting them to IDLE state.
+//! @param box_id The pit box ID.
 void PitServiceUnitManager::release_box(int box_id) {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return;
   BoxPSUConfig& cfg = box_configs_[box_id];
@@ -82,6 +95,11 @@ void PitServiceUnitManager::release_box(int box_id) {
   }
 }
 
+//! @brief Activates all PSUs assigned to a box for service.
+//! @param box_id The pit box ID.
+//! @param car_id The car being serviced.
+//! @param timestamp Current race time in seconds.
+//! @return true if all units were successfully activated.
 bool PitServiceUnitManager::activate_units_for_service(int box_id, int car_id, double timestamp) {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return false;
   BoxPSUConfig& cfg = box_configs_[box_id];
@@ -103,6 +121,10 @@ bool PitServiceUnitManager::activate_units_for_service(int box_id, int car_id, d
   return true;
 }
 
+//! @brief Deactivates all PSUs for a box after service completion.
+//!        Accumulates total usage time for maintenance tracking.
+//! @param box_id The pit box ID.
+//! @param timestamp Current race time in seconds.
 void PitServiceUnitManager::deactivate_units(int box_id, double timestamp) {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return;
   for (auto& u : units_) {
@@ -117,6 +139,9 @@ void PitServiceUnitManager::deactivate_units(int box_id, double timestamp) {
   }
 }
 
+//! @brief Checks if all PSUs for a box are ready for service.
+//! @param box_id The pit box ID.
+//! @return true if all assigned units are in READY state.
 bool PitServiceUnitManager::is_service_ready(int box_id) const {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return false;
   const BoxPSUConfig& cfg = box_configs_[box_id];
@@ -128,6 +153,12 @@ bool PitServiceUnitManager::is_service_ready(int box_id) const {
   return true;
 }
 
+//! @brief Estimates the total service time based on requested services.
+//! @param box_id The pit box ID.
+//! @param refuel Whether refueling is requested.
+//! @param tires Whether tire change is requested.
+//! @param repair Whether repair is requested.
+//! @return Estimated service time in seconds.
 double PitServiceUnitManager::estimated_service_time(int box_id, bool refuel, bool tires, bool repair) const {
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return 0.0;
   const BoxPSUConfig& cfg = box_configs_[box_id];
@@ -139,6 +170,9 @@ double PitServiceUnitManager::estimated_service_time(int box_id, bool refuel, bo
   return max_time;
 }
 
+//! @brief Returns all PSU units assigned to a specific pit box.
+//! @param box_id The pit box ID.
+//! @return Vector of PitServiceUnit structs.
 std::vector<PitServiceUnit> PitServiceUnitManager::units_for_box(int box_id) const {
   std::vector<PitServiceUnit> result;
   if (box_id < 0 || static_cast<size_t>(box_id) >= box_configs_.size()) return result;
@@ -150,6 +184,9 @@ std::vector<PitServiceUnit> PitServiceUnitManager::units_for_box(int box_id) con
   return result;
 }
 
+//! @brief Finds a PSU unit by its unique ID.
+//! @param unit_id The unit ID to search for.
+//! @return Pointer to the unit, or nullptr if not found.
 const PitServiceUnit* PitServiceUnitManager::find_unit(int unit_id) const {
   for (const auto& u : units_) {
     if (u.unit_id == unit_id) return &u;
@@ -157,6 +194,9 @@ const PitServiceUnit* PitServiceUnitManager::find_unit(int unit_id) const {
   return nullptr;
 }
 
+//! @brief Updates fault detection for all active PSUs.
+//!        Units with fault_count > 0 are transitioned to FAULT state.
+//! @param timestamp Current race time in seconds.
 void PitServiceUnitManager::update_faults(double timestamp) {
   for (auto& u : units_) {
     if (u.state == PSUState::ACTIVE && u.fault_count > 0 && u.state != PSUState::FAULT) {
@@ -166,6 +206,9 @@ void PitServiceUnitManager::update_faults(double timestamp) {
   }
 }
 
+//! @brief Sets or clears maintenance mode for a specific PSU.
+//! @param unit_id The unit ID.
+//! @param in_maintenance true to put in maintenance, false to restore to IDLE.
 void PitServiceUnitManager::set_maintenance(int unit_id, bool in_maintenance) {
   auto* u = const_cast<PitServiceUnit*>(find_unit(unit_id));
   if (!u) return;
@@ -177,6 +220,7 @@ void PitServiceUnitManager::set_maintenance(int unit_id, bool in_maintenance) {
   }
 }
 
+//! @brief Reinitializes all PSU units from the pit lane definition.
 void PitServiceUnitManager::initialize_units() {
   create_units_for_boxes();
 }

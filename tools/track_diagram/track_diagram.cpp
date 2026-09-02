@@ -422,8 +422,74 @@ void TrackSvgExporter::write_curvature_chart(std::ostringstream& oss) {
 }
 
 // Draw the surface legend in the upper-right corner.
+void TrackSvgExporter::write_environment_objects(std::ostringstream& oss) {
+    if (!env_objects_ || env_objects_->empty()) return;
+
+    oss << "  <g id=\"environment-objects\">\n";
+
+    for (const auto& obj : *env_objects_) {
+        double sx = obj.position.x() * scale_ + offset_x_;
+        double sy = -obj.position.y() * scale_ + offset_y_;
+
+        switch (obj.type) {
+            case environment::EnvironmentObjectType::BARRIER: {
+                const char* barrier_color = (obj.variant == 1) ? "#ff6600" : "#aaaaaa";
+                double r = (obj.variant == 1) ? 3.0 : 2.0;
+                oss << "    <circle cx=\"" << std::fixed << std::setprecision(2) << sx
+                    << "\" cy=\"" << sy << "\" r=\"" << r
+                    << "\" fill=\"" << barrier_color << "\" stroke=\"#111111\" stroke-width=\"0.5\" />\n";
+                break;
+            }
+            case environment::EnvironmentObjectType::SIGN: {
+                double rect_w = 16.0;
+                double rect_h = 10.0;
+                double rx = sx - rect_w * 0.5;
+                double ry = sy - rect_h * 0.5;
+                const char* bg_color = "#0055ff";
+
+                oss << "    <rect x=\"" << std::fixed << std::setprecision(2) << rx
+                    << "\" y=\"" << ry << "\" width=\"" << rect_w << "\" height=\"" << rect_h
+                    << "\" fill=\"" << bg_color << "\" stroke=\"#ffffff\" stroke-width=\"0.8\" rx=\"2\" />\n";
+
+                std::string label = (obj.variant > 0) ? std::to_string(obj.variant) : "S";
+                oss << "    <text x=\"" << sx << "\" y=\"" << (sy + 3.0)
+                    << "\" font-size=\"8\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#ffffff\">"
+                    << label << "</text>\n";
+                break;
+            }
+            case environment::EnvironmentObjectType::TREE: {
+                double r = 4.0 * scale_ * obj.scale;
+                if (r < 2.5) r = 2.5;
+                oss << "    <circle cx=\"" << std::fixed << std::setprecision(2) << sx
+                    << "\" cy=\"" << sy << "\" r=\"" << r
+                    << "\" fill=\"#2e8b57\" fill-opacity=\"0.7\" stroke=\"#1e5b37\" stroke-width=\"0.5\" />\n";
+                break;
+            }
+            case environment::EnvironmentObjectType::ROCK: {
+                double r = 3.0 * scale_ * obj.scale;
+                if (r < 2.0) r = 2.0;
+                oss << "    <circle cx=\"" << std::fixed << std::setprecision(2) << sx
+                    << "\" cy=\"" << sy << "\" r=\"" << r
+                    << "\" fill=\"#696969\" stroke=\"#333333\" stroke-width=\"0.5\" />\n";
+                break;
+            }
+            case environment::EnvironmentObjectType::GRASS: {
+                double r = 2.0 * scale_ * obj.scale;
+                if (r < 1.5) r = 1.5;
+                oss << "    <circle cx=\"" << std::fixed << std::setprecision(2) << sx
+                    << "\" cy=\"" << sy << "\" r=\"" << r
+                    << "\" fill=\"#32cd32\" fill-opacity=\"0.5\" />\n";
+                break;
+            }
+        }
+    }
+
+    oss << "  </g>\n";
+}
+
+// Draw the surface legend in the upper-right corner.
 // Lists all surface types with their representative colors and friction coefficients.
-// Also includes entries for box lane, pit box, and start/finish line.
+// Also includes entries for box lane, pit box, start/finish line, and environment elements.
 void TrackSvgExporter::write_legend(std::ostringstream& oss) {
     double lx = canvas_width_ - margin_ - kLegendWidth;
     double ly = margin_;
@@ -435,7 +501,7 @@ void TrackSvgExporter::write_legend(std::ostringstream& oss) {
     oss << "  <g id=\"legend\">\n";
     // Legend background panel.
     oss << "    <rect x=\"" << lx << "\" y=\"" << ly
-        << "\" width=\"" << kLegendWidth << "\" height=\"" << (item_h * count + 24)
+        << "\" width=\"" << kLegendWidth << "\" height=\"" << (item_h * (count + 6) + 24)
         << "\" fill=\"#1a1a1a\" fill-opacity=\"0.92\" stroke=\"#444\" stroke-width=\"1\" rx=\"4\" />\n";
 
     // Legend title.
@@ -489,6 +555,25 @@ void TrackSvgExporter::write_legend(std::ostringstream& oss) {
         << "\" stroke=\"#FFD700\" stroke-width=\"3\" />\n";
     oss << "    <text x=\"" << (lx + 8 + box_size + 6) << "\" y=\"" << (ty + 11)
         << "\" font-size=\"10\" fill=\"#cccccc\">start/finish</text>\n";
+    ty += item_h;
+
+    oss << "    <circle cx=\"" << (lx + 8 + box_size * 0.5) << "\" cy=\"" << (ty + box_size * 0.5)
+        << "\" r=\"5\" fill=\"#ff6600\" stroke=\"#111111\" stroke-width=\"0.5\" />\n";
+    oss << "    <text x=\"" << (lx + 8 + box_size + 6) << "\" y=\"" << (ty + box_size - 1)
+        << "\" font-size=\"10\" fill=\"#cccccc\">corner barrier</text>\n";
+    ty += item_h;
+
+    oss << "    <rect x=\"" << (lx + 8) << "\" y=\"" << ty
+        << "\" width=\"" << box_size << "\" height=\"" << (box_size * 0.7)
+        << "\" fill=\"#0055ff\" stroke=\"#ffffff\" stroke-width=\"0.5\" rx=\"1\" />\n";
+    oss << "    <text x=\"" << (lx + 8 + box_size + 6) << "\" y=\"" << (ty + box_size - 1)
+        << "\" font-size=\"10\" fill=\"#cccccc\">brake sign</text>\n";
+    ty += item_h;
+
+    oss << "    <circle cx=\"" << (lx + 8 + box_size * 0.5) << "\" cy=\"" << (ty + box_size * 0.5)
+        << "\" r=\"5\" fill=\"#2e8b57\" fill-opacity=\"0.8\" />\n";
+    oss << "    <text x=\"" << (lx + 8 + box_size + 6) << "\" y=\"" << (ty + box_size - 1)
+        << "\" font-size=\"10\" fill=\"#cccccc\">tree / obstacle</text>\n";
 
     oss << "  </g>\n";
 }
@@ -546,7 +631,7 @@ void TrackSvgExporter::write_boundary_edges(std::ostringstream& oss) {
 
 // Main entry point: build the complete SVG document and write to file.
 // Layers are written back-to-front (fill first, then details on top):
-// track sections -> pit boxes -> box lane -> boundaries -> centerline
+// track sections -> pit boxes -> box lane -> boundaries -> environment objects -> centerline
 // -> start/finish -> optional chart -> optional legend.
 bool TrackSvgExporter::export_svg() {
     if (track_.length() <= 0) {
@@ -572,6 +657,7 @@ bool TrackSvgExporter::export_svg() {
     write_pit_boxes(oss);
     write_box_lane(oss);
     write_boundary_edges(oss);
+    write_environment_objects(oss);
     write_centerline(oss);
     write_start_finish(oss);
 

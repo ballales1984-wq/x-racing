@@ -40,6 +40,7 @@ public:
     }
 
     uintptr_t GetNativeHandle() const override { return 0; }
+    void* GetNativeDC() const override { return nullptr; }
 
     void SetResizeCallback(ResizeCallback callback) override {
         resize_callback_ = std::move(callback);

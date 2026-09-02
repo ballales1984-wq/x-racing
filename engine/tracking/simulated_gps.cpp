@@ -63,8 +63,8 @@ void SimulatedGPS::apply_noise(PositionSample& sample) {
   const double meters_per_deg_lat = 111132.92;
   const double meters_per_deg_lon = 111412.84 * std::cos(lat_rad);
 
-  sample.latitude += (dy / meters_per_deg_lat) / kDegToRad;
-  sample.longitude += (dx / meters_per_deg_lon) / kDegToRad;
+  sample.latitude += dy / meters_per_deg_lat;
+  sample.longitude += dx / meters_per_deg_lon;
 
   sample.horizontal_accuracy = params_.noise_m;
 

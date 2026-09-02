@@ -49,3 +49,8 @@ if(PROJECT0_BUILD_RENDERER)
     deploy_assimp_dll(project0_app)
   endif()
 endif()
+
+option(XENGINE_BUILD "Build X-Engine" OFF)
+if(XENGINE_BUILD)
+  add_subdirectory(X-Engine)
+endif()

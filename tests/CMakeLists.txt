@@ -30,6 +30,7 @@ set(TEST_SOURCES
    ai_test.cpp
    audio_test.cpp
    environment_test.cpp
+  physics_validation_test.cpp
    hud_test.cpp
    menu_test.cpp
    standings_test.cpp

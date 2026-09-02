@@ -8,15 +8,18 @@
 #include "tracking/physics_trajectory.h"
 #include "tracking/coordinate_converter.h"
 #include "tracking/track_mapper.h"
+#include <mutex>
 
 // Global simulation instance used by the C plugin ABI.
 // This singleton is shared across all DLL calls and persists for the
 // lifetime of the loaded module.
 // NOTE: Simulation stores a pointer to the track, so the track must outlive
 // the simulation; keep it as a persistent static rather than a local.
+// Thread safety: all public functions acquire g_mutex before accessing state.
 static p0::track::Track g_track;
 static p0::simulation::Simulation g_sim;
 static bool g_initialized = false;
+static std::mutex g_mutex;
 
 // Tracking layer: a simulated GPS fed by the live vehicle state, mapped onto
 // the track. Exposed to Unity via SimPlugin_GetTracking.
@@ -32,6 +35,7 @@ extern "C" {
     // to the start line. Safe to call once; subsequent calls are ignored.
     // Returns 0 on success.
     __declspec(dllexport) int SimPlugin_Initialize() {
+        std::lock_guard<std::mutex> lock(g_mutex);
         if (g_initialized) return 0;
 
         g_track = p0::track::Track();
@@ -66,6 +70,7 @@ extern "C" {
     // dt is currently unused; the simulation uses its own fixed timestep.
     // Call SimPlugin_Initialize before using this function.
     __declspec(dllexport) void SimPlugin_Update(double dt, double throttle, double brake, double steer) {
+        std::lock_guard<std::mutex> lock(g_mutex);
         if (!g_initialized) return;
 
         p0::input::InputState input;
@@ -83,7 +88,9 @@ extern "C" {
     // This is the primary read-back mechanism for the Unity/external integration.
     // Call SimPlugin_Initialize before using this function.
     __declspec(dllexport) void SimPlugin_GetVehicleState(VehicleState* state) {
-        if (!state || !g_initialized) return;
+        if (!state) return;
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (!g_initialized) return;
 
         const auto& s = g_sim.state();
         state->x = s.position.x();
@@ -102,7 +109,9 @@ extern "C" {
     // Geographic + track-relative snapshot from the tracking layer.
     // Returns 0 on success; -1 if the tracking layer is not ready.
     __declspec(dllexport) int SimPlugin_GetTracking(TrackingSample* out) {
-        if (!out || !g_initialized || !g_tracking) return -1;
+        if (!out) return -1;
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (!g_initialized || !g_tracking) return -1;
 
         const auto& sample = g_tracking->current_sample();
         const auto& tp = g_tracking->current_track_position();
@@ -118,4 +127,18 @@ extern "C" {
         out->on_track = tp.on_track ? 1 : 0;
         return 0;
     }
+
+    // Release all resources held by the plugin. Safe to call multiple times.
+    // After this call, SimPlugin_Initialize must be called again before use.
+    __declspec(dllexport) void SimPlugin_Shutdown() {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (g_tracking) {
+            g_tracking->stop();
+        }
+        g_tracking.reset();
+        g_gps_owner.reset();
+        g_trajectory_owner.reset();
+        g_initialized = false;
+    }
+
 }

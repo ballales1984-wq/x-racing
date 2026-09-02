@@ -9,15 +9,20 @@
 
 namespace p0::vehicle {
 
+//! @brief Returns the singleton instance of the car registry.
+//! @reference car_model.h:33
 CarRegistry& CarRegistry::instance() {
     static CarRegistry registry;
     return registry;
 }
 
+//! @brief Constructs the registry and initializes default car models.
 CarRegistry::CarRegistry() {
     initialize_default_models();
 }
 
+//! @brief Initializes the default car models (Porsche 911 and Ferrari F12).
+//!        Each model includes full vehicle physics parameters.
 void CarRegistry::initialize_default_models() {
     models_.clear();
     id_to_index_.clear();
@@ -132,6 +137,9 @@ void CarRegistry::initialize_default_models() {
     }
 }
 
+//! @brief Registers a car model in the registry.
+//!        If the model ID already exists, updates the existing entry.
+//! @param model The car model to register.
 void CarRegistry::register_model(const CarModel& model) {
     auto it = id_to_index_.find(model.id);
     if (it != id_to_index_.end()) {
@@ -142,6 +150,9 @@ void CarRegistry::register_model(const CarModel& model) {
     models_.push_back(model);
 }
 
+//! @brief Looks up a car model by its ID.
+//! @param id The model identifier.
+//! @return Pointer to the model, or nullptr if not found.
 const CarModel* CarRegistry::get(const std::string& id) const {
     auto it = id_to_index_.find(id);
     if (it == id_to_index_.end()) {
@@ -150,18 +161,29 @@ const CarModel* CarRegistry::get(const std::string& id) const {
     return &models_[it->second];
 }
 
+//! @brief Returns all registered car models.
+//! @return Const reference to the models vector.
 const std::vector<CarModel>& CarRegistry::all() const {
     return models_;
 }
 
+//! @brief Returns the number of registered models.
+//! @return Count of models.
 size_t CarRegistry::size() const {
     return models_.size();
 }
 
+//! @brief Checks if a model with the given ID exists.
+//! @param id The model identifier.
+//! @return true if the model exists.
 bool CarRegistry::has(const std::string& id) const {
     return id_to_index_.find(id) != id_to_index_.end();
 }
 
+//! @brief Generates the mesh for a car model and exports it to OBJ and GLB.
+//!        Derives geometry from physics parameters.
+//! @param model The car model to generate mesh for.
+//! @return true if mesh generation and export succeeded.
 bool CarRegistry::generate_mesh(CarModel& model) {
     model.geometry = VehicleGenerator::FromParams(model.params);
 
@@ -187,6 +209,10 @@ bool CarRegistry::generate_mesh(CarModel& model) {
     return true;
 }
 
+//! @brief Generates meshes for all registered models.
+//!        Optionally overrides the output directory.
+//! @param output_dir Directory to save meshes (empty = use model's mesh_path).
+//! @return true if all meshes were generated successfully.
 bool CarRegistry::generate_all_meshes(const std::string& output_dir) {
     bool ok = true;
     for (auto& model : models_) {

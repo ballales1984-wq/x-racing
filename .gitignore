@@ -88,6 +88,7 @@ UnityProject/Assets/*.fbx.meta
 
 # Test artifacts
 Testing/
+test_tracked_header.csv
 
 # Temp directory
 temp/

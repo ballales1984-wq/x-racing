@@ -47,29 +47,29 @@ namespace Project0.Unity
 
         void HandleMenuInput()
         {
-            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
+            if (InputCompat.GetKeyDown(KeyCode.W) || InputCompat.GetKeyDown(KeyCode.UpArrow))
             {
                 selectedTrack = (selectedTrack + 1) % trackNames.Length;
                 UpdateMenuDisplay();
             }
-            if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
+            if (InputCompat.GetKeyDown(KeyCode.S) || InputCompat.GetKeyDown(KeyCode.DownArrow))
             {
                 selectedTrack = (selectedTrack - 1 + trackNames.Length) % trackNames.Length;
                 UpdateMenuDisplay();
             }
 
-            if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+            if (InputCompat.GetKeyDown(KeyCode.A) || InputCompat.GetKeyDown(KeyCode.LeftArrow))
             {
                 selectedLapIndex = (selectedLapIndex - 1 + lapOptions.Length) % lapOptions.Length;
                 UpdateMenuDisplay();
             }
-            if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
+            if (InputCompat.GetKeyDown(KeyCode.D) || InputCompat.GetKeyDown(KeyCode.RightArrow))
             {
                 selectedLapIndex = (selectedLapIndex + 1) % lapOptions.Length;
                 UpdateMenuDisplay();
             }
 
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+            if (InputCompat.GetKeyDown(KeyCode.Return) || InputCompat.GetKeyDown(KeyCode.Space))
             {
                 StartRace();
             }

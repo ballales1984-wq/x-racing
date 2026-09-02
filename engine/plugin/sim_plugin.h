@@ -50,6 +50,10 @@ extern "C" {
 
     __declspec(dllexport) int SimPlugin_GetTracking(TrackingSample* out);
 
+    // Release all resources held by the plugin. Safe to call multiple times.
+    // After this call, SimPlugin_Initialize must be called again before use.
+    __declspec(dllexport) void SimPlugin_Shutdown();
+
 #ifdef __cplusplus
 }
 #endif

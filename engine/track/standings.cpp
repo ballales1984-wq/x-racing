@@ -2,12 +2,14 @@
 
 namespace p0::track {
 
+//! @brief Resets all standings data to initial state.
 void StandingsTracker::reset() {
   car_data_.clear();
   leader_lap_count_ = 0;
   dirty_ = true;
 }
 
+//! @brief Clears dynamic race data while preserving grid assignments.
 void StandingsTracker::clear_dynamic_data() {
   for (auto& [id, data] : car_data_) {
     data.laps_completed = 0;
@@ -24,6 +26,9 @@ void StandingsTracker::clear_dynamic_data() {
   dirty_ = true;
 }
 
+//! @brief Initializes standings from race assignments and grid slots.
+//! @param assignments Car assignments with grid positions.
+//! @param grid_slots Available grid slots on the track.
 void StandingsTracker::set_grid(const std::vector<p0::race::CarAssignment>& assignments,
                                 const std::vector<GridSlot>& grid_slots) {
   car_data_.clear();
@@ -36,6 +41,9 @@ void StandingsTracker::set_grid(const std::vector<p0::race::CarAssignment>& assi
   dirty_ = true;
 }
 
+//! @brief Updates standings with current lap counts and finish times.
+//! @param car_finished_times Map of car ID to finish time.
+//! @param car_lap_counts Map of car ID to completed lap count.
 void StandingsTracker::update(const std::unordered_map<int, double>& car_finished_times,
                               const std::unordered_map<int, int>& car_lap_counts) {
   for (auto& [id, data] : car_data_) {
@@ -55,6 +63,9 @@ void StandingsTracker::update(const std::unordered_map<int, double>& car_finishe
   dirty_ = true;
 }
 
+//! @brief Computes and returns the current standings sorted by position.
+//!        Sorting priority: DNF last, then finished, then laps, then best lap.
+//! @return Vector of CarStandingsEntry sorted by position.
 std::vector<CarStandingsEntry> StandingsTracker::current_standings() const {
   std::vector<CarStandingsEntry> result;
   result.reserve(car_data_.size());
@@ -101,6 +112,9 @@ std::vector<CarStandingsEntry> StandingsTracker::current_standings() const {
   return result;
 }
 
+//! @brief Returns standings for a specific car.
+//! @param car_id The car to find.
+//! @return CarStandingsEntry for the car, or empty if not found.
 CarStandingsEntry StandingsTracker::get_car(int car_id) const {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return CarStandingsEntry{};
@@ -111,6 +125,10 @@ CarStandingsEntry StandingsTracker::get_car(int car_id) const {
   return CarStandingsEntry{};
 }
 
+//! @brief Records a lap time for a car, updating best lap if faster.
+//! @param car_id The car that completed the lap.
+//! @param lap_time The lap time in seconds.
+//! @param valid Whether the lap was valid (all checkpoints passed).
 void StandingsTracker::record_lap(int car_id, double lap_time, bool valid) {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return;
@@ -123,6 +141,9 @@ void StandingsTracker::record_lap(int car_id, double lap_time, bool valid) {
   dirty_ = true;
 }
 
+//! @brief Marks a car as finished with the given finish time.
+//! @param car_id The car that finished.
+//! @param finish_time The race time when the car finished.
 void StandingsTracker::mark_finished(int car_id, double finish_time) {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return;
@@ -131,6 +152,9 @@ void StandingsTracker::mark_finished(int car_id, double finish_time) {
   dirty_ = true;
 }
 
+//! @brief Marks a car as Did Not Finish with a reason.
+//! @param car_id The car that DNF'd.
+//! @param reason The reason for not finishing.
 void StandingsTracker::mark_dnf(int car_id, const std::string& reason) {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return;
@@ -139,6 +163,8 @@ void StandingsTracker::mark_dnf(int car_id, const std::string& reason) {
   dirty_ = true;
 }
 
+//! @brief Increments the pit stop counter for a car.
+//! @param car_id The car that pitted.
 void StandingsTracker::increment_pit_stops(int car_id) {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return;
@@ -146,6 +172,9 @@ void StandingsTracker::increment_pit_stops(int car_id) {
   dirty_ = true;
 }
 
+//! @brief Updates the race session status for a car.
+//! @param car_id The car to update.
+//! @param status The current session state.
 void StandingsTracker::set_car_status(int car_id, p0::race::RaceSessionState status) {
   auto it = car_data_.find(car_id);
   if (it == car_data_.end()) return;
@@ -153,6 +182,7 @@ void StandingsTracker::set_car_status(int car_id, p0::race::RaceSessionState sta
   dirty_ = true;
 }
 
+//! @brief Marks standings as clean (positions recomputed).
 void StandingsTracker::recompute_positions() {
   dirty_ = false;
 }

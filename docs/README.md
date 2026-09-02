@@ -2,6 +2,11 @@
 
 Laboratory racing simulator. Build, measure, test, fix, document, repeat.
 
+## Documentazione
+
+- [📖 **GAME.md**](GAME.md) — Documentazione del gioco: come si gioca, fisica, tracciati, AI, pit stop, e i difetti che lo rendono unico *(leggilo per capire perché è così bello)*
+- [🗺️ **ROADMAP.md**](ROADMAP.md) — Stato sviluppo e piani futuri
+
 ## Table of Contents
 
 - [Overview](#overview)

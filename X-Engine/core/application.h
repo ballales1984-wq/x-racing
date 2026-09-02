@@ -26,6 +26,7 @@ public:
     Window& GetWindow() const;
     Input& GetInput() const;
     Clock& GetClock() const;
+    Renderer* GetRenderer() const { return renderer_.get(); }
 
 protected:
     virtual void OnUpdate(float) {}

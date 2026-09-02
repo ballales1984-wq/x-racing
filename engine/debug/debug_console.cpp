@@ -7,15 +7,18 @@
 
 namespace p0::debug {
 
+//! @brief Initializes the debug console and registers default commands.
 void DebugConsole::initialize() {
   register_default_commands();
 }
 
+//! @brief Shuts down the console, clearing commands and history.
 void DebugConsole::shutdown() {
   commands_.clear();
   history_.clear();
 }
 
+//! @brief Registers all built-in debug commands.
 void DebugConsole::register_default_commands() {
   commands_.clear();
 
@@ -77,10 +80,15 @@ void DebugConsole::register_default_commands() {
     [this](DebugAgent& a, const std::vector<std::string>& args) { cmd_load(a, args); }});
 }
 
+//! @brief Registers a custom console command.
+//! @param cmd The command to register.
 void DebugConsole::register_command(const ConsoleCommand& cmd) {
   commands_.push_back(cmd);
 }
 
+//! @brief Processes a command line input and executes the matching command.
+//! @param agent Reference to the debug agent.
+//! @param cmd_line The raw command line string.
 void DebugConsole::process_command(DebugAgent& agent, const std::string& cmd_line) {
   auto tokens = tokenize(cmd_line);
   if (tokens.empty()) return;
@@ -100,6 +108,8 @@ void DebugConsole::process_command(DebugAgent& agent, const std::string& cmd_lin
   print_line("Unknown command: " + cmd + " (type 'help' for available commands)");
 }
 
+//! @brief Renders a one-line debug summary to stdout.
+//! @param agent Reference to the debug agent.
 void DebugConsole::render_summary(const DebugAgent& agent) {
   if (!enabled_) return;
   const auto& snap = agent.last_snapshot();
@@ -110,14 +120,21 @@ void DebugConsole::render_summary(const DebugAgent& agent) {
               snap.profiler.last_physics_time_ms);
 }
 
+//! @brief Prints text to stdout.
+//! @param text The text to print.
 void DebugConsole::print(const std::string& text) const {
   std::fputs(text.c_str(), stdout);
 }
 
+//! @brief Prints a line of text to stdout (with newline).
+//! @param text The text to print.
 void DebugConsole::print_line(const std::string& text) const {
   print(text + "\n");
 }
 
+//! @brief Tokenizes a string by whitespace.
+//! @param line The input string.
+//! @return Vector of tokens.
 std::vector<std::string> DebugConsole::tokenize(const std::string& line) const {
   std::vector<std::string> tokens;
   std::string current;
@@ -135,6 +152,7 @@ std::vector<std::string> DebugConsole::tokenize(const std::string& line) const {
   return tokens;
 }
 
+//! @brief Prints help for all registered commands.
 void DebugConsole::print_help_from_registry() const {
   print_line("=== Debug Console Commands ===");
   for (const auto& cmd : commands_) {
@@ -143,10 +161,14 @@ void DebugConsole::print_help_from_registry() const {
   print_line("Usage: <command> [args]");
 }
 
+//! @brief Prints help (wrapper for print_help_from_registry).
+//! @param agent Reference to the debug agent (unused).
 void DebugConsole::print_help(const DebugAgent&) const {
   print_help_from_registry();
 }
 
+//! @brief Prints debug agent status information.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_status(const DebugAgent& agent) const {
   const auto& cfg = agent.config();
   const auto& snap = agent.last_snapshot();
@@ -159,6 +181,8 @@ void DebugConsole::print_status(const DebugAgent& agent) const {
   std::printf("  Logs:          %zu entries\n", agent.logs().size());
 }
 
+//! @brief Prints physics diagnostics.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_physics(const DebugAgent& agent) const {
   const auto& state = agent.last_snapshot().state;
   print_line("=== Physics Diagnostics ===");
@@ -190,6 +214,8 @@ void DebugConsole::print_physics(const DebugAgent& agent) const {
   std::printf("  Engine torque: %.0f Nm\n", state.engine_torque);
 }
 
+//! @brief Prints AI diagnostics.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_ai(const DebugAgent& agent) const {
   const auto& ai_diag = agent.ai()->current_diagnostics();
   print_line("=== AI Diagnostics ===");
@@ -208,6 +234,8 @@ void DebugConsole::print_ai(const DebugAgent& agent) const {
   }
 }
 
+//! @brief Prints network diagnostics.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_network(const DebugAgent& agent) const {
   const auto& net = agent.network()->current_diagnostics();
   print_line("=== Network Diagnostics ===");
@@ -222,6 +250,8 @@ void DebugConsole::print_network(const DebugAgent& agent) const {
   std::printf("  State:         %d\n", static_cast<int>(net.connection_state));
 }
 
+//! @brief Prints performance profiling information.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_profile(const DebugAgent& agent) const {
   const auto& prof = agent.profiler()->snapshot();
   print_line("=== Performance Profile ===");
@@ -236,6 +266,8 @@ void DebugConsole::print_profile(const DebugAgent& agent) const {
   std::printf("  Physics ratio: %.1f%%\n", prof.physics_ratio * 100.0);
 }
 
+//! @brief Prints track information.
+//! @param agent Reference to the debug agent.
 void DebugConsole::print_track(const DebugAgent& agent) const {
   const auto& snap = agent.last_snapshot();
   print_line("=== Track Info ===");
@@ -243,46 +275,62 @@ void DebugConsole::print_track(const DebugAgent& agent) const {
   std::printf("  %s\n", snap.session_info.c_str());
 }
 
+//! @brief Command: Shows help.
 void DebugConsole::cmd_help(DebugAgent&, const std::vector<std::string>&) {
   print_help_from_registry();
 }
 
+//! @brief Command: Shows debug agent status.
 void DebugConsole::cmd_status(DebugAgent& agent, const std::vector<std::string>&) {
   print_status(agent);
 }
 
+//! @brief Command: Shows physics diagnostics.
 void DebugConsole::cmd_physics(DebugAgent& agent, const std::vector<std::string>&) {
   print_physics(agent);
 }
 
+//! @brief Command: Shows AI diagnostics.
 void DebugConsole::cmd_ai(DebugAgent& agent, const std::vector<std::string>&) {
   print_ai(agent);
 }
 
+//! @brief Command: Shows network diagnostics.
 void DebugConsole::cmd_network(DebugAgent& agent, const std::vector<std::string>&) {
   print_network(agent);
 }
 
+//! @brief Command: Shows performance profile.
 void DebugConsole::cmd_profile(DebugAgent& agent, const std::vector<std::string>&) {
   print_profile(agent);
 }
 
+//! @brief Command: Shows track info.
 void DebugConsole::cmd_track(DebugAgent& agent, const std::vector<std::string>&) {
   print_track(agent);
 }
 
+//! @brief Command: Exports telemetry to CSV file.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (optional file path).
 void DebugConsole::cmd_telemetry(DebugAgent& agent, const std::vector<std::string>& args) {
   const std::string path = args.empty() ? "debug_output/telemetry.csv" : args[0];
   agent.export_telemetry_csv(path);
   print_line("Telemetry exported to: " + path);
 }
 
+//! @brief Command: Exports debug snapshot to JSON file.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (optional file path).
 void DebugConsole::cmd_export(DebugAgent& agent, const std::vector<std::string>& args) {
   const std::string path = args.empty() ? "debug_output/snapshot.json" : args[0];
   agent.export_snapshot_json(path);
   print_line("Snapshot exported to: " + path);
 }
 
+//! @brief Command: Shows recent debug logs.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (optional count).
 void DebugConsole::cmd_logs(DebugAgent& agent, const std::vector<std::string>& args) {
   int count = 20;
   if (!args.empty()) count = std::stoi(args[0]);
@@ -303,6 +351,9 @@ void DebugConsole::cmd_logs(DebugAgent& agent, const std::vector<std::string>& a
   }
 }
 
+//! @brief Command: Sets a debug configuration value.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (key, value).
 void DebugConsole::cmd_set(DebugAgent& agent, const std::vector<std::string>& args) {
   if (args.size() < 2) {
     print_line("Usage: set <key> <value>");
@@ -331,24 +382,32 @@ void DebugConsole::cmd_set(DebugAgent& agent, const std::vector<std::string>& ar
   print_line("Set " + key + " = " + val);
 }
 
+//! @brief Command: Requests simulation reset.
 void DebugConsole::cmd_reset(DebugAgent&, const std::vector<std::string>&) {
   print_line("Reset requested");
 }
 
+//! @brief Command: Requests car respawn.
 void DebugConsole::cmd_respawn(DebugAgent&, const std::vector<std::string>&) {
   print_line("Respawn requested");
 }
 
+//! @brief Command: Toggles debug agent enabled state.
+//! @param agent Reference to the debug agent.
 void DebugConsole::cmd_toggle(DebugAgent& agent, const std::vector<std::string>&) {
   agent.toggle_enabled();
   print_line("Debug agent: " + std::string(agent.is_enabled() ? "enabled" : "disabled"));
 }
 
+//! @brief Command: Clears console history.
 void DebugConsole::cmd_clear(DebugAgent&, const std::vector<std::string>&) {
   history_.clear();
   print_line("Console history cleared");
 }
 
+//! @brief Command: Inspects a specific debug value by field name.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (field name).
 void DebugConsole::cmd_inspect(DebugAgent& agent, const std::vector<std::string>& args) {
   if (args.empty()) {
     print_line("Usage: inspect <field>");
@@ -375,6 +434,9 @@ void DebugConsole::cmd_inspect(DebugAgent& agent, const std::vector<std::string>
   else print_line("Unknown field: " + field);
 }
 
+//! @brief Command: Toggles warning detectors on/off.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (on/off, optional type).
 void DebugConsole::cmd_warnings(DebugAgent& agent, const std::vector<std::string>& args) {
   if (args.empty()) {
     print_line("Usage: warnings <on|off> [physics|ai|network|offtrack|collision|spin]");
@@ -402,6 +464,9 @@ void DebugConsole::cmd_warnings(DebugAgent& agent, const std::vector<std::string
   print_line("Warnings " + std::string(on ? "enabled" : "disabled"));
 }
 
+//! @brief Command: Saves debug state to file.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (optional file path).
 void DebugConsole::cmd_save(DebugAgent& agent, const std::vector<std::string>& args) {
   const std::string path = args.empty() ? "debug_output/debug_state.json" : args[0];
   agent.export_snapshot_json(path);
@@ -409,6 +474,9 @@ void DebugConsole::cmd_save(DebugAgent& agent, const std::vector<std::string>& a
   print_line("Debug state saved to: " + path);
 }
 
+//! @brief Command: Loads debug state from file.
+//! @param agent Reference to the debug agent.
+//! @param args Command arguments (file path).
 void DebugConsole::cmd_load(DebugAgent& agent, const std::vector<std::string>& args) {
   if (args.empty()) {
     print_line("Usage: load <path>");

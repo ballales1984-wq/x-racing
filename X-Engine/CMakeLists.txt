@@ -16,7 +16,13 @@ add_library(xe_core STATIC
     core/application.cpp
     platform/win32/win32_window.cpp
     platform/win32/win32_input.cpp
+    platform/win32/win32_mouse.cpp
+    platform/win32/win32_hud.cpp
     rendering/dx12/dx12_renderer.cpp
+    rendering/meshes.cpp
+    rendering/scene.cpp
+    rendering/scene_loader.cpp
+    rendering/texture_cache.cpp
 )
 
 target_include_directories(xe_core PUBLIC
@@ -27,7 +33,7 @@ target_compile_features(xe_core PUBLIC cxx_std_20)
 
 if(WIN32)
     target_compile_definitions(xe_core PUBLIC UNICODE _UNICODE _WIN32_WINNT=0x0600)
-    target_link_libraries(xe_core PUBLIC user32.lib d3d12.lib dxgi.lib)
+    target_link_libraries(xe_core PUBLIC user32.lib d3d12.lib dxgi.lib windowscodecs.lib)
 
     set(XE_SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/rendering/dx12/shaders)
     set(XE_FXC_PATH "C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/fxc.exe")

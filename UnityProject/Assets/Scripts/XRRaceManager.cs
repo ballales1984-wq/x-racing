@@ -75,7 +75,7 @@ namespace Project0.Unity
 
         void UpdateMenu()
         {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+            if (InputCompat.GetKeyDown(KeyCode.Return) || InputCompat.GetKeyDown(KeyCode.Space))
             {
                 StartCountdown();
             }
@@ -149,7 +149,7 @@ namespace Project0.Unity
             totalRaceTime += Time.deltaTime;
             currentLapTime += Time.deltaTime;
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (InputCompat.GetKeyDown(KeyCode.Escape))
             {
                 SetState(GameState.MENU);
             }
@@ -157,7 +157,7 @@ namespace Project0.Unity
 
         void UpdateResults()
         {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+            if (InputCompat.GetKeyDown(KeyCode.Return) || InputCompat.GetKeyDown(KeyCode.Space))
             {
                 SetState(GameState.MENU);
             }

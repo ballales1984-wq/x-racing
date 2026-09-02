@@ -21,6 +21,14 @@ namespace Project0.Unity
             {
                 raceManager = FindAnyObjectByType<XRRaceManager>();
             }
+            if (carController == null)
+            {
+                carController = FindAnyObjectByType<CarController>();
+            }
+            if (carHUD == null)
+            {
+                carHUD = FindAnyObjectByType<CarHUD>();
+            }
 
             if (raceManager != null && carController != null)
             {

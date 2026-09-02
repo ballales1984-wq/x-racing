@@ -34,7 +34,6 @@ struct TrackedFrame {
   double surface_temp = 20.0;
   double rubber = 0.0;
 
-  double sector_time = 0.0;
   double lap_time = 0.0;
 };
 

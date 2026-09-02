@@ -57,13 +57,15 @@ static LRESULT CALLBACK window_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM l
 
 Renderer::Renderer(simulation::Simulation& sim, const RendererConfig& config)
     : sim_(sim), config_(config),
-      lap_system_(sim.track().length(), 0) {}
+      lap_system_(sim.track().length(), 0),
+      bg_brush_(CreateSolidBrush(RGB(30, 30, 30))) {}
 
 Renderer::~Renderer() {
   g_renderer = nullptr;
   if (mem_bitmap_) DeleteObject(mem_bitmap_);
   if (mem_dc_) DeleteDC(mem_dc_);
   if (window_) DestroyWindow(window_);
+  if (bg_brush_) DeleteObject(bg_brush_);
 }
 
 // Initialize the Win32 window and create the back-buffer rendering surface.
@@ -197,6 +199,10 @@ void Renderer::run() {
     if (dt > 0.0 && dt < 0.1) {
       handle_input(input);
       const auto result = sim_.step(input);
+      if (result.state.lap != last_recorded_lap_) {
+        last_recorded_lap_ = result.state.lap;
+        tel.mark_lap(result.state.lap);
+      }
       camera_.update(result.state.position, result.state.heading, result.state.speed, dt);
       tel.record(result.state, dt);
       time_ += dt;
@@ -220,8 +226,7 @@ void Renderer::run() {
       HDC mem_dc = mem_dc_;
 
       RECT fill_rect = {0, 0, config_.width, config_.height};
-      FillRect(mem_dc, &fill_rect,
-               CreateSolidBrush(RGB(30, 30, 30)));
+      FillRect(mem_dc, &fill_rect, bg_brush_);
 
       draw_track(mem_dc);
       draw_box_lane(mem_dc);

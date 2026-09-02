@@ -70,6 +70,39 @@ uintptr_t Win32Window::GetNativeHandle() const {
     return reinterpret_cast<uintptr_t>(hwnd_);
 }
 
+void* Win32Window::GetNativeDC() const {
+    return GetDC(hwnd_);
+}
+
+void Win32Window::SetCursorCapture(bool captured) {
+    if (!hwnd_) return;
+    if (captured == cursor_captured_) return;
+    cursor_captured_ = captured;
+    if (captured) {
+        RECT rc;
+        GetClientRect(hwnd_, &rc);
+        POINT center{ (rc.right - rc.left) / 2, (rc.bottom - rc.top) / 2 };
+        ClientToScreen(hwnd_, &center);
+        SetCursorPos(center.x, center.y);
+        ShowCursor(FALSE);
+        // Capture mouse so we get exclusive deltas
+        SetCapture(hwnd_);
+        // Clip cursor to client area
+        RECT clip = rc;
+        POINT tl{ clip.left, clip.top };
+        POINT br{ clip.right, clip.bottom };
+        ClientToScreen(hwnd_, &tl);
+        ClientToScreen(hwnd_, &br);
+        clip.left = tl.x;   clip.top = tl.y;
+        clip.right = br.x;  clip.bottom = br.y;
+        ClipCursor(&clip);
+    } else {
+        ShowCursor(TRUE);
+        ClipCursor(nullptr);
+        ReleaseCapture();
+    }
+}
+
 LRESULT Win32Window::WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     if (msg == WM_NCCREATE) {
         auto* self = reinterpret_cast<Win32Window*>(
@@ -99,6 +132,20 @@ LRESULT Win32Window::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
                 resize_callback_(w, h);
             }
             return 0;
+
+        case WM_MOUSEMOVE:
+            if (mouse_) {
+                mouse_->OnMouseMove(LOWORD(lparam), HIWORD(lparam));
+            }
+            return 0;
+
+        case WM_LBUTTONDOWN: if (mouse_) mouse_->OnMouseDown(MouseButton::Left);   return 0;
+        case WM_LBUTTONUP:   if (mouse_) mouse_->OnMouseUp(MouseButton::Left);     return 0;
+        case WM_RBUTTONDOWN: if (mouse_) mouse_->OnMouseDown(MouseButton::Right);  return 0;
+        case WM_RBUTTONUP:   if (mouse_) mouse_->OnMouseUp(MouseButton::Right);    return 0;
+        case WM_MBUTTONDOWN: if (mouse_) mouse_->OnMouseDown(MouseButton::Middle); return 0;
+        case WM_MBUTTONUP:   if (mouse_) mouse_->OnMouseUp(MouseButton::Middle);   return 0;
+        case WM_MOUSEWHEEL:  if (mouse_) mouse_->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); return 0;
 
         case WM_DESTROY:
             PostQuitMessage(0);

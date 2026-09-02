@@ -7,11 +7,18 @@ namespace p0::track {
 using p0::race::RaceSessionState;
 using p0::race::PitStopState;
 
+//! @brief Constructs the race manager with track data and race configuration.
+//! @param track Reference to the track data (layout, pit lane, grid).
+//! @param race Reference to the race definition (laps, rules, timing).
 RaceManager::RaceManager(const TrackData& track, const p0::race::RaceDefinition& race)
     : track_(track), race_(race), pit_manager_(race_.track_id == track.track_id
                                                     ? track.pit_lane
                                                     : PitLaneDefinition{}) {}
 
+//! @brief Initializes all race systems: per-car state, checkpoints, standings, and validation.
+//! @param assignments List of car-to-driver assignments for this race.
+//! @param teams List of team definitions for pit box allocation.
+//! @return true if initialization succeeded and validation passed.
 bool RaceManager::initialize(const std::vector<p0::race::CarAssignment>& assignments,
                              const std::vector<p0::race::TeamDefinition>& teams) {
   assignments_ = assignments;
@@ -50,6 +57,7 @@ bool RaceManager::initialize(const std::vector<p0::race::CarAssignment>& assignm
   return is_valid();
 }
 
+//! @brief Transitions the race from PREGAME to GRID state and resets all dynamic data.
 void RaceManager::start_race() {
   if (!initialized_) return;
   session_state_ = RaceSessionState::GRID;
@@ -63,12 +71,20 @@ void RaceManager::start_race() {
   emit_event(p0::race::RaceEventType::FLAG_CHANGED, 0, "GREEN");
 }
 
+//! @brief Activates the countdown timer. Only valid while in GRID state.
 void RaceManager::start_countdown() {
   if (session_state_ != RaceSessionState::GRID) return;
   countdown_active_ = true;
   countdown_start_time_ = race_time_;
 }
 
+//! @brief Main per-frame update orchestrator. Calls all subsystems in dependency order.
+//! @param timestamp Current race time in seconds.
+//! @param car_positions Map of car ID to 2D position (x=longitudinal, y=lateral).
+//! @param car_speeds Map of car ID to current speed (m/s).
+//! @param car_distances Map of car ID to distance along track centerline (m).
+//! @param car_fuel Map of car ID to remaining fuel (liters).
+//! @param car_tires Map of car ID to current tire compound.
 void RaceManager::update(double timestamp,
                          const std::unordered_map<int, Vec2>& car_positions,
                          const std::unordered_map<int, double>& car_speeds,
@@ -99,6 +115,8 @@ void RaceManager::update(double timestamp,
   }
 }
 
+//! @brief Updates the countdown timer. When countdown expires, transitions to FORMATION state.
+//! @param timestamp Current race time in seconds.
 void RaceManager::update_countdown(double timestamp) {
   if (session_state_ != RaceSessionState::GRID || !countdown_active_) return;
 
@@ -117,6 +135,8 @@ void RaceManager::update_countdown(double timestamp) {
   }
 }
 
+//! @brief Updates lap tracking for all cars. Validates laps against checkpoint completion.
+//! @param timestamp Current race time in seconds.
 void RaceManager::update_lap_systems(double timestamp) {
   for (auto& [car_id, lap_system] : car_lap_systems_) {
     auto it = car_last_distance_.find(car_id);
@@ -163,6 +183,10 @@ void RaceManager::update_lap_systems(double timestamp) {
   }
 }
 
+//! @brief Detects off-track violations by checking lateral distance from centerline.
+//!        Issues penalties after accumulating enough strikes.
+//! @param timestamp Current race time in seconds.
+//! @param car_positions Map of car ID to 2D position.
 void RaceManager::update_track_limits(double timestamp, const std::unordered_map<int, Vec2>& car_positions) {
   if (session_state_ != RaceSessionState::GREEN_FLAG_RUNNING) return;
 
@@ -193,6 +217,9 @@ void RaceManager::update_track_limits(double timestamp, const std::unordered_map
   }
 }
 
+//! @brief Detects jump starts (car moving during countdown before GO signal).
+//! @param timestamp Current race time in seconds.
+//! @param car_speeds Map of car ID to current speed.
 void RaceManager::update_jump_start(double timestamp, const std::unordered_map<int, double>& car_speeds) {
   if (session_state_ != RaceSessionState::GRID) return;
   if (!countdown_active_) return;
@@ -205,6 +232,7 @@ void RaceManager::update_jump_start(double timestamp, const std::unordered_map<i
   }
 }
 
+//! @brief Marks penalties as served once they have been applied to a car.
 void RaceManager::update_penalty_serving() {
   for (auto& [car_id, penalties] : car_penalties_) {
     for (const auto& penalty : penalties) {
@@ -219,6 +247,7 @@ void RaceManager::update_penalty_serving() {
   }
 }
 
+//! @brief Synchronizes lap counters from the per-car LapSystem instances.
 void RaceManager::update_lap_counters() {
   for (auto& [car_id, lap_system] : car_lap_systems_) {
     int completed = lap_system->completed_laps();
@@ -228,6 +257,7 @@ void RaceManager::update_lap_counters() {
   }
 }
 
+//! @brief Updates standings tracker and detects car finish conditions.
 void RaceManager::update_standings() {
   standings_tracker_.update(car_finished_times_, car_lap_count_);
 
@@ -248,6 +278,9 @@ void RaceManager::update_standings() {
   }
 }
 
+//! @brief State machine driver for race session progression.
+//!        Handles transitions: FORMATION -> GREEN_FLAG -> GREEN_FLAG_RUNNING -> CHECKERED_FLAG -> POST_RACE.
+//! @param timestamp Current race time in seconds.
 void RaceManager::update_session_state(double timestamp) {
   switch (session_state_) {
     case RaceSessionState::FORMATION:
@@ -301,6 +334,8 @@ void RaceManager::update_session_state(double timestamp) {
   }
 }
 
+//! @brief Placeholder for fuel strategy analysis. Currently a stub.
+//! @param timestamp Current race time in seconds.
 void RaceManager::check_fuel_strategy(double) {
   for (const auto& a : assignments_) {
     double fuel_l = 0.0;
@@ -310,6 +345,13 @@ void RaceManager::check_fuel_strategy(double) {
   }
 }
 
+//! @brief Requests a pit stop for a car with specified service options.
+//! @param car_id The car requesting the pit stop.
+//! @param new_tire Tire compound to fit (default: MEDIUM).
+//! @param refuel Whether to add fuel.
+//! @param change_tires Whether to change tires.
+//! @param repair Whether to repair damage.
+//! @return true if the pit stop was successfully requested.
 bool RaceManager::request_pit_stop(int car_id,
                                    p0::race::TireCompound new_tire,
                                    bool refuel,
@@ -335,10 +377,16 @@ bool RaceManager::request_pit_stop(int car_id,
   return pit_manager_.request_pit_stop(car_id, new_tire, refuel, change_tires, repair);
 }
 
+//! @brief Returns the current pit stop state for a given car.
+//! @param car_id The car to query.
+//! @return Current PitStopState enum value.
 p0::race::PitStopState RaceManager::car_pit_state(int car_id) const {
   return pit_manager_.car_state(car_id);
 }
 
+//! @brief Checks if a car has any active pit lane violations.
+//! @param car_id The car to check.
+//! @return true if the car has pending violations.
 bool RaceManager::car_has_pit_violation(int car_id) const {
   const CarPitState& state = pit_manager_.pit_system().car_state(car_id);
   static CarPitState empty;
@@ -346,15 +394,20 @@ bool RaceManager::car_has_pit_violation(int car_id) const {
   return !state.violations.empty();
 }
 
+//! @brief Retrieves and clears all pending speed violations from pit lane.
+//! @return Vector of SpeedViolation structs.
 std::vector<SpeedViolation> RaceManager::pop_pending_violations() {
   return pit_manager_.pop_served_violations();
 }
 
+//! @brief Runs validation checks on the current race setup.
 void RaceManager::validate_setup() {
   ValidationEngine engine(track_, race_, assignments_);
   validation_issues_ = engine.validate_all();
 }
 
+//! @brief Checks if the race setup passed all validation checks.
+//! @return true if no validation errors exist.
 bool RaceManager::is_valid() const {
   for (const auto& issue : validation_issues_) {
     if (issue.severity == p0::race::ValidationSeverity::Error) return false;
@@ -362,6 +415,10 @@ bool RaceManager::is_valid() const {
   return true;
 }
 
+//! @brief Creates a race event and adds it to the event queue.
+//! @param type The event type.
+//! @param car_id Associated car ID (0 if not car-specific).
+//! @param msg Optional message string.
 void RaceManager::emit_event(p0::race::RaceEventType type, int car_id, const std::string& msg) {
   p0::race::RaceEvent evt;
   evt.type = type;
@@ -371,6 +428,8 @@ void RaceManager::emit_event(p0::race::RaceEventType type, int car_id, const std
   events_.push_back(evt);
 }
 
+//! @brief Drains all pending events from the event queue.
+//! @return Vector of RaceEvent structs.
 std::vector<p0::race::RaceEvent> RaceManager::drain_events() {
   std::vector<p0::race::RaceEvent> result;
   while (!events_.empty()) {
@@ -380,32 +439,49 @@ std::vector<p0::race::RaceEvent> RaceManager::drain_events() {
   return result;
 }
 
+//! @brief Returns the current standings for all cars.
+//! @return Vector of CarStandingsEntry sorted by position.
 std::vector<CarStandingsEntry> RaceManager::current_standings() const {
   return standings_tracker_.current_standings();
 }
 
+//! @brief Returns standings for a specific car.
+//! @param car_id The car to query.
+//! @return CarStandingsEntry for the specified car.
 CarStandingsEntry RaceManager::car_standings(int car_id) const {
   return standings_tracker_.get_car(car_id);
 }
 
+//! @brief Checks if a car's last completed lap was valid.
+//! @param car_id The car to check.
+//! @return true if the last lap was valid.
 bool RaceManager::is_lap_valid(int car_id) const {
   auto it = car_lap_valid_.find(car_id);
   if (it != car_lap_valid_.end()) return it->second;
   return true;
 }
 
+//! @brief Returns all recorded lap times for a car.
+//! @param car_id The car to query.
+//! @return Vector of LapTimeEntry structs.
 std::vector<LapTimeEntry> RaceManager::car_lap_times(int car_id) const {
   auto it = car_lap_times_.find(car_id);
   if (it != car_lap_times_.end()) return it->second;
   return {};
 }
 
+//! @brief Issues a penalty to a car for a rule violation.
+//! @param car_id The car receiving the penalty.
+//! @param type The type of violation.
 void RaceManager::issue_penalty(int car_id, p0::race::ViolationType type) {
   car_penalties_[car_id].push_back(type);
   car_penalty_served_[car_id] = false;
   emit_event(p0::race::RaceEventType::PENALTY_ISSUED, car_id);
 }
 
+//! @brief Checks if a car has any unserved penalties.
+//! @param car_id The car to check.
+//! @return true if the car has active penalties.
 bool RaceManager::car_has_penalty(int car_id) const {
   auto it = car_penalties_.find(car_id);
   if (it == car_penalties_.end()) return false;
@@ -415,12 +491,17 @@ bool RaceManager::car_has_penalty(int car_id) const {
   return false;
 }
 
+//! @brief Returns all active penalties for a car.
+//! @param car_id The car to query.
+//! @return Vector of ViolationType enums.
 std::vector<p0::race::ViolationType> RaceManager::car_active_penalties(int car_id) const {
   auto it = car_penalties_.find(car_id);
   if (it != car_penalties_.end()) return it->second;
   return {};
 }
 
+//! @brief Generates a debug report string with current race state.
+//! @return Multi-line string with session info, lap, time, and per-car status.
 std::string RaceManager::debug_report() const {
   std::ostringstream oss;
   oss << "=== Race Manager Report ===\n";

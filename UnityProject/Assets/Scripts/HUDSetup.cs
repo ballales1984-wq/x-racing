@@ -33,7 +33,7 @@ namespace Project0.Unity
             {
                 GameObject eventSystem = new GameObject("EventSystem");
                 eventSystem.AddComponent<EventSystem>();
-                eventSystem.AddComponent<StandaloneInputModule>();
+                InputCompat.EnsureUIInputModule(eventSystem);
             }
 
             CreateText(canvasObj, "SpeedText", new Vector2(-100, -30), TextAnchor.LowerRight, 32);

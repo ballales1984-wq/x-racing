@@ -66,7 +66,7 @@ void Application::Run() {
         float dt = clock_->Tick();
         input_->Update();
 
-        if (window_->ShouldClose() || input_->IsKeyPressed(Key::Escape)) {
+        if (window_->ShouldClose()) {
             running_ = false;
             break;
         }
@@ -74,7 +74,7 @@ void Application::Run() {
         OnUpdate(dt);
 
         if (renderer_) {
-            renderer_->BeginFrame();
+            renderer_->BeginFrame(clock_->GetTotalTime());
             OnRender(dt);
             renderer_->EndFrame();
         }

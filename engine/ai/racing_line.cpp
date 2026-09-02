@@ -4,10 +4,14 @@
 
 namespace p0::ai {
 
+//! @brief Constructs the racing line optimizer and computes the optimal line.
+//! @param track Reference to the track data.
 RacingLineOptimizer::RacingLineOptimizer(const track::Track& track) : track_(&track) {
   compute();
 }
 
+//! @brief Computes the optimal racing line by calculating lateral offsets
+//!        based on curvature and smoothing the result.
 void RacingLineOptimizer::compute() {
   if (!track_ || track_->sample_count() < 2) return;
 
@@ -48,6 +52,11 @@ void RacingLineOptimizer::compute() {
   }
 }
 
+//! @brief Calculates the optimal lateral offset for a given curvature.
+//!        Higher curvature results in larger offset to straighten the line.
+//! @param curvature Track curvature at the point.
+//! @param width Track width at the point.
+//! @return Lateral offset from centerline (positive = right, negative = left).
 double RacingLineOptimizer::optimal_offset(double curvature, double width) const {
   double half_width = width * 0.5 - 0.3;
   half_width = std::max(half_width, 0.5);
@@ -61,6 +70,11 @@ double RacingLineOptimizer::optimal_offset(double curvature, double width) const
   return std::clamp(offset, -half_width, half_width);
 }
 
+//! @brief Calculates the maximum safe speed for a given curvature.
+//!        Uses the friction circle model: v = sqrt(radius * g * mu).
+//! @param curvature Track curvature (1/radius).
+//! @param friction Surface friction coefficient.
+//! @return Maximum speed in m/s.
 double RacingLineOptimizer::apex_speed(double curvature, double friction) const {
   if (curvature < 0.0001) return 150.0;
 
@@ -73,6 +87,8 @@ double RacingLineOptimizer::apex_speed(double curvature, double friction) const 
   return std::clamp(v, 30.0, 150.0);
 }
 
+//! @brief Converts racing line points to track racing line samples.
+//! @return Vector of RacingLineSample for track integration.
 std::vector<track::RacingLineSample> RacingLineOptimizer::to_racing_line_samples() const {
   std::vector<track::RacingLineSample> samples;
   samples.reserve(points_.size());
@@ -91,6 +107,10 @@ std::vector<track::RacingLineSample> RacingLineOptimizer::to_racing_line_samples
   return samples;
 }
 
+//! @brief Returns the target speed at a given distance along the racing line.
+//!        Uses linear interpolation between computed points.
+//! @param distance Distance along the track centerline.
+//! @return Target speed in m/s.
 double RacingLineOptimizer::target_speed_at(double distance) const {
   if (points_.empty()) return 80.0;
 

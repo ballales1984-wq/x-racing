@@ -1,5 +1,4 @@
-using TMPro;
-using UnityEngine;
+﻿using UnityEngine;
 
 
 namespace TMPro.Examples
@@ -72,4 +71,3 @@ namespace TMPro.Examples
 
     }
 }
-

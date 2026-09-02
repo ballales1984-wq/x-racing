@@ -4,9 +4,18 @@
 
 namespace p0::track {
 
+//! @brief Constructs the pit stop FSM for a single car.
+//! @param car_id The car this FSM controls.
+//! @param pit_system Reference to the pit lane system.
+//! @param psu_manager Optional pointer to the pit service unit manager.
 PitStopFSM::PitStopFSM(int car_id, const PitLaneSystem& pit_system, PitServiceUnitManager* psu_manager)
     : car_id_(car_id), pit_system_(&pit_system), psu_manager_(psu_manager), state_(p0::race::PitStopState::NONE) {}
 
+//! @brief Requests a pit stop. Only valid when in NONE state.
+//! @param new_tire Tire compound to fit.
+//! @param refuel Whether to add fuel.
+//! @param tires Whether to change tires.
+//! @param repair Whether to repair damage.
 void PitStopFSM::request_stop(p0::race::TireCompound new_tire, bool refuel, bool tires, bool repair) {
   if (state_ == p0::race::PitStopState::NONE) {
     state_ = p0::race::PitStopState::REQUESTED;
@@ -25,6 +34,10 @@ void PitStopFSM::request_stop(p0::race::TireCompound new_tire, bool refuel, bool
   }
 }
 
+//! @brief Advances the FSM by one tick. Handles all state transitions.
+//! @param timestamp Current race time in seconds.
+//! @param car_track_pos_m Car's position along the track centerline.
+//! @param car_speed_m_s Car's current speed.
 void PitStopFSM::update(double timestamp, double car_track_pos_m, double car_speed_m_s) {
   if (state_ == p0::race::PitStopState::NONE || state_ == p0::race::PitStopState::COMPLETE ||
       state_ == p0::race::PitStopState::ABANDONED) {
@@ -110,24 +123,33 @@ void PitStopFSM::update(double timestamp, double car_track_pos_m, double car_spe
   }
 }
 
+//! @brief Abandons the current pit stop. Only valid if not already complete or abandoned.
 void PitStopFSM::abandon() {
   if (state_ != p0::race::PitStopState::COMPLETE && state_ != p0::race::PitStopState::ABANDONED) {
     transition_to(p0::race::PitStopState::ABANDONED, 0.0);
   }
 }
 
+//! @brief Checks if the pit stop has finished (complete or abandoned).
+//! @return true if the FSM is in a terminal state.
 bool PitStopFSM::is_complete() const {
   return state_ == p0::race::PitStopState::COMPLETE || state_ == p0::race::PitStopState::ABANDONED;
 }
 
+//! @brief Checks if the pit stop is currently in progress.
+//! @return true if the FSM is active (not NONE and not complete).
 bool PitStopFSM::is_active() const {
   return state_ != p0::race::PitStopState::NONE && !is_complete();
 }
 
+//! @brief Checks if the car has any pit lane violations.
+//! @return true if violations exist.
 bool PitStopFSM::has_violation() const {
   return !car_state_.violations.empty();
 }
 
+//! @brief Returns a human-readable name for the current FSM state.
+//! @return String representation of the state.
 std::string PitStopFSM::state_name() const {
   switch (state_) {
     case p0::race::PitStopState::NONE:                  return "NONE";
@@ -149,6 +171,8 @@ std::string PitStopFSM::state_name() const {
   }
 }
 
+//! @brief Returns a debug string with car ID, state, box, and completed stops.
+//! @return Formatted debug string.
 std::string PitStopFSM::debug_string() const {
   return "car=" + std::to_string(car_id_) +
          " state=" + state_name() +
@@ -156,12 +180,18 @@ std::string PitStopFSM::debug_string() const {
          " stops=" + std::to_string(car_state_.pit_stops_completed);
 }
 
+//! @brief Transitions the FSM to a new state and records the entry timestamp.
+//! @param new_state The state to transition to.
+//! @param timestamp Current race time in seconds.
 void PitStopFSM::transition_to(p0::race::PitStopState new_state, double timestamp) {
   state_ = new_state;
   state_entry_time_ = timestamp;
   car_state_.state = new_state;
 }
 
+//! @brief Checks if the car is aligned with its assigned pit box.
+//! @param timestamp Current race time in seconds.
+//! @param car_track_pos_m Car's position along the track centerline.
 void PitStopFSM::check_box_alignment(double timestamp, double car_track_pos_m) {
   double box_pos = 0.0;
   if (car_state_.assigned_box_id >= 0 &&
@@ -176,6 +206,8 @@ void PitStopFSM::check_box_alignment(double timestamp, double car_track_pos_m) {
   }
 }
 
+//! @brief Checks if service is complete and transitions to release or servicing state.
+//! @param timestamp Current race time in seconds.
 void PitStopFSM::check_release_conditions(double timestamp) {
   if (service_requested_ && service_duration_ > 0.0) {
     transition_to(p0::race::PitStopState::SERVICING, timestamp);
@@ -188,11 +220,19 @@ void PitStopFSM::check_release_conditions(double timestamp) {
   }
 }
 
+//! @brief Activates all PSUs assigned to a pit box for service.
+//! @param box_id The pit box ID.
+//! @param car_id The car being serviced.
+//! @param timestamp Current race time in seconds.
+//! @return true if activation succeeded.
 bool PitStopFSM::activate_box_psus(int box_id, int car_id, double timestamp) {
   if (!psu_manager_) return false;
   return psu_manager_->activate_units_for_service(box_id, car_id, timestamp);
 }
 
+//! @brief Deactivates all PSUs assigned to a pit box after service.
+//! @param box_id The pit box ID.
+//! @param timestamp Current race time in seconds.
 void PitStopFSM::deactivate_box_psus(int box_id, double timestamp) {
   if (!psu_manager_) return;
   psu_manager_->deactivate_units(box_id, timestamp);
@@ -201,18 +241,32 @@ void PitStopFSM::deactivate_box_psus(int box_id, double timestamp) {
 // ---------------------------------------------------------------------------
 // PitStopManager implementation
 // ---------------------------------------------------------------------------
+
+//! @brief Constructs the pit stop manager with a pit lane definition.
+//! @param pit_def The pit lane definition.
 PitStopManager::PitStopManager(const PitLaneDefinition& pit_def)
     : pit_system_(pit_def) {}
 
+//! @brief Registers a car for pit stop tracking.
+//! @param car_id The car to register.
 void PitStopManager::register_car(int car_id) {
   fsm_map_.emplace(car_id, PitStopFSM(car_id, pit_system_, psu_manager_));
 }
 
+//! @brief Unregisters a car and resets its pit state.
+//! @param car_id The car to unregister.
 void PitStopManager::unregister_car(int car_id) {
   pit_system_.reset_car(car_id);
   fsm_map_.erase(car_id);
 }
 
+//! @brief Requests a pit stop for a car with specified service options.
+//! @param car_id The car requesting the pit stop.
+//! @param new_tire Tire compound to fit.
+//! @param refuel Whether to add fuel.
+//! @param change_tires Whether to change tires.
+//! @param repair Whether to repair damage.
+//! @return true if the pit stop was successfully requested.
 bool PitStopManager::request_pit_stop(int car_id,
                                       p0::race::TireCompound new_tire,
                                       bool refuel,
@@ -231,6 +285,10 @@ bool PitStopManager::request_pit_stop(int car_id,
   return true;
 }
 
+//! @brief Updates all active pit stop FSMs.
+//! @param timestamp Current race time in seconds.
+//! @param car_positions Map of car ID to track position.
+//! @param car_speeds Map of car ID to current speed.
 void PitStopManager::update(double timestamp,
                             const std::unordered_map<int, double>& car_positions,
                             const std::unordered_map<int, double>& car_speeds) {
@@ -246,18 +304,26 @@ void PitStopManager::update(double timestamp,
   }
 }
 
+//! @brief Returns the current pit stop state for a car.
+//! @param car_id The car to query.
+//! @return Current PitStopState enum value.
 p0::race::PitStopState PitStopManager::car_state(int car_id) const {
   auto it = fsm_map_.find(car_id);
   if (it == fsm_map_.end()) return p0::race::PitStopState::NONE;
   return it->second.state();
 }
 
+//! @brief Checks if a car has an active pit stop.
+//! @param car_id The car to check.
+//! @return true if the car's pit stop FSM is active.
 bool PitStopManager::is_pit_stop_active(int car_id) const {
   auto it = fsm_map_.find(car_id);
   if (it == fsm_map_.end()) return false;
   return it->second.is_active();
 }
 
+//! @brief Returns the number of currently active pit stops.
+//! @return Count of active pit stops.
 int PitStopManager::active_pit_stops() const {
   int count = 0;
   for (const auto& [id, fsm] : fsm_map_) {
@@ -266,6 +332,8 @@ int PitStopManager::active_pit_stops() const {
   return count;
 }
 
+//! @brief Retrieves and clears all pending speed violations from pit lane.
+//! @return Vector of unserved SpeedViolation structs.
 std::vector<SpeedViolation> PitStopManager::pop_served_violations() {
   auto v = pit_system_.process_speed_violations();
   std::copy(v.begin(), v.end(), std::back_inserter(violations_));

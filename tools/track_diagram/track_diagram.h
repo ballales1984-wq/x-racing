@@ -2,9 +2,11 @@
 
 #include "common.h"
 #include "track/track.h"
+#include "environment/environment_generator.h"
 #include <string>
 #include <sstream>
 #include <cstdint>
+#include <vector>
 
 namespace p0::track_diagram {
 
@@ -49,6 +51,7 @@ public:
     void set_show_curvature_chart(bool show) { show_curvature_chart_ = show; }
     void set_show_legend(bool show) { show_legend_ = show; }
     void set_output_path(const std::string& path) { output_path_ = path; }
+    void set_environment_objects(const std::vector<environment::EnvironmentObject>* objects) { env_objects_ = objects; }
 
     bool export_svg();
 
@@ -64,11 +67,13 @@ private:
     void write_boundary_edges(std::ostringstream& oss);
     void write_pit_boxes(std::ostringstream& oss);
     void write_start_finish(std::ostringstream& oss);
+    void write_environment_objects(std::ostringstream& oss);
     void write_curvature_chart(std::ostringstream& oss);
     void write_legend(std::ostringstream& oss);
 
     track::TrackParams params_;
     const track::Track& track_;
+    const std::vector<environment::EnvironmentObject>* env_objects_ = nullptr;
     int canvas_width_ = 1000;
     int canvas_height_ = 800;
     double margin_ = 80.0;

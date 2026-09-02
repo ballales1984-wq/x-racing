@@ -86,10 +86,10 @@ namespace Project0.Unity.Setup
 
         private static Material CreateDefaultMaterial(Color color)
         {
-            Shader shader = Shader.Find("Standard");
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
             if (shader == null)
             {
-                shader = Shader.Find("Hidden/InternalErrorShader");
+                shader = Shader.Find("Standard");
             }
 
             Material mat = new Material(shader);

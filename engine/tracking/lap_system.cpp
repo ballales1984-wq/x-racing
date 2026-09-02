@@ -6,8 +6,6 @@ LapSystem::LapSystem(double track_length, int total_laps)
     : lap_detector_(track_length, total_laps) {}
 
 void LapSystem::update(const TrackPosition& pos, double timestamp) {
-  if (!pos.on_track) return;
-
   if (!lap_started_) {
     lap_started_ = true;
     lap_start_time_ = timestamp;

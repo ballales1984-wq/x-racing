@@ -78,7 +78,7 @@ TEST(TelemetryV2, CSVExport) {
   state.rear_tire_wear = 0.97;
   tel.record(state, 1.0 / 60.0);
 
-  std::string path = "data/telemetry/test_export.csv";
+  std::string path = "test_telemetry_export.csv";
   tel.save_csv(path);
 
   std::ifstream file(path);
@@ -146,15 +146,16 @@ TEST(TelemetryV2, ZeroDt) {
   EXPECT_DOUBLE_EQ(tel.frames()[0].time, 0.0);
 }
 
-// Telemetry should mark lap transitions
-TEST(TelemetryV2, MarkLapSetsLapNumber) {
+// Telemetry should record lap number from VehicleState
+TEST(TelemetryV2, LapNumberFromState) {
   telemetry::Telemetry tel;
   vehicle::VehicleState state;
   state.speed = 50.0;
+  state.lap = 0;
   tel.record(state, 1.0 / 60.0);
   EXPECT_EQ(tel.frames()[0].lap_number, 0);
 
-  tel.mark_lap(1);
+  state.lap = 1;
   tel.record(state, 1.0 / 60.0);
   EXPECT_EQ(tel.frames()[1].lap_number, 1);
 }
