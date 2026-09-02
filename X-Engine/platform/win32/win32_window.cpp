@@ -139,6 +139,12 @@ LRESULT Win32Window::HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
             }
             return 0;
 
+        case WM_CHAR:
+            if (char_callback_ && wparam >= 0x20) {
+                char_callback_(static_cast<char>(wparam));
+            }
+            return 0;
+
         case WM_LBUTTONDOWN: if (mouse_) mouse_->OnMouseDown(MouseButton::Left);   return 0;
         case WM_LBUTTONUP:   if (mouse_) mouse_->OnMouseUp(MouseButton::Left);     return 0;
         case WM_RBUTTONDOWN: if (mouse_) mouse_->OnMouseDown(MouseButton::Right);  return 0;

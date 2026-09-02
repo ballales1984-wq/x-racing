@@ -1,4 +1,5 @@
 #include "platform/win32/win32_hud.h"
+#include "debug/console.h"
 #include <cassert>
 
 namespace xe {
@@ -89,6 +90,50 @@ void HudOverlay::DrawLine(int x0, int y0, int x1, int y1, COLORREF color) {
     LineTo(mem_dc_, x1, y1);
     SelectObject(mem_dc_, old);
     DeleteObject(pen);
+}
+
+void HudOverlay::DrawRect(int x, int y, int w, int h, COLORREF fill) {
+    if (!mem_dc_) return;
+    HBRUSH brush = CreateSolidBrush(fill);
+    RECT rc{ x, y, x + w, y + h };
+    FillRect(mem_dc_, &rc, brush);
+    DeleteObject(brush);
+}
+
+void HudOverlay::DrawTextA(int x, int y, const std::string& text, COLORREF color) {
+    if (!mem_dc_ || text.empty()) return;
+    SetTextColor(mem_dc_, color);
+    TextOutA(mem_dc_, x, y, text.c_str(), static_cast<int>(text.size()));
+}
+
+void HudOverlay::DrawConsole(Console& console, int screen_w, int screen_h) {
+    if (!console.IsOpen() || !mem_dc_) return;
+
+    const int panel_h = 200;
+    const int padding = 8;
+    const int line_h  = 18;
+
+    DrawRect(0, screen_h - panel_h, screen_w, panel_h, RGB(10, 10, 20));
+    DrawLine(0, screen_h - panel_h, screen_w, screen_h - panel_h, RGB(80, 80, 120));
+
+    // Header
+    DrawTextA(padding, screen_h - panel_h + 4,
+              "X-Engine Console  ('`' to close)", RGB(200, 200, 200));
+
+    // Output (newest at bottom, max ~8 lines)
+    const auto& out = console.OutputLines();
+    int max_lines = (panel_h - 36) / line_h;
+    int start = static_cast<int>(out.size()) > max_lines
+                ? static_cast<int>(out.size()) - max_lines : 0;
+    int y = screen_h - panel_h + 24;
+    for (int i = start; i < static_cast<int>(out.size()); ++i) {
+        DrawTextA(padding, y, out[i], RGB(220, 220, 220));
+        y += line_h;
+    }
+
+    // Input line at the bottom
+    std::string prompt = "> " + console.InputLine() + "_";
+    DrawTextA(padding, screen_h - line_h, prompt, RGB(180, 255, 180));
 }
 
 }  // namespace xe

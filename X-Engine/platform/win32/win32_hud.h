@@ -7,6 +7,8 @@
 
 namespace xe {
 
+class Console;
+
 class HudOverlay {
 public:
     HudOverlay() = default;
@@ -24,6 +26,18 @@ public:
 
     void DrawText(int x, int y, const std::wstring& text, COLORREF color = RGB(255,255,255));
     void DrawLine(int x0, int y0, int x1, int y1, COLORREF color = RGB(255,255,255));
+
+    // Filled rectangle (for console background panel)
+    void DrawRect(int x, int y, int w, int h, COLORREF fill);
+
+    // ASCII text (for console)
+    void DrawTextA(int x, int y, const std::string& text, COLORREF color = RGB(255,255,255));
+
+    // Render a console panel: input line + recent output (top N lines).
+    void DrawConsole(Console& console, int screen_w, int screen_h);
+
+    int Width() const { return width_; }
+    int Height() const { return height_; }
 
 private:
     HWND hwnd_ = nullptr;

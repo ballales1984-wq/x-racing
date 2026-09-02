@@ -4,6 +4,7 @@
 #include <windows.h>
 #include "../window.h"
 #include "../mouse.h"
+#include <functional>
 #include <string>
 
 namespace xe {
@@ -28,6 +29,10 @@ bool Create(const std::string& title, int width, int height) override;
     void SetCursorCapture(bool captured);
     bool IsCursorCaptured() const { return cursor_captured_; }
 
+    // ASCII character received via WM_CHAR (excluding control chars).
+    using CharCallback = std::function<void(char)>;
+    void SetCharCallback(CharCallback cb) { char_callback_ = std::move(cb); }
+
 private:
     static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
     LRESULT HandleMessage(UINT msg, WPARAM wparam, LPARAM lparam);
@@ -37,6 +42,7 @@ private:
     bool should_close_ = false;
     bool cursor_captured_ = false;
     ResizeCallback resize_callback_;
+    CharCallback char_callback_;
     Mouse* mouse_ = nullptr;
 };
 

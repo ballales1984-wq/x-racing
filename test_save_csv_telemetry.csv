@@ -1,2 +1,0 @@
-timestamp,lap_number,s,lateral,speed,heading,latitude,longitude,altitude,gps_speed,gps_heading,gps_accuracy,grip,surface_temp,rubber,lap_time
-1.000000,0,50.000000,1.000000,25.000000,0.200000,45.000000,11.000000,10.000000,25.000000,0.200000,1.000000,0.950000,70.000000,0.300000,0.000000

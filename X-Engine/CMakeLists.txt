@@ -23,6 +23,7 @@ add_library(xe_core STATIC
     rendering/scene.cpp
     rendering/scene_loader.cpp
     rendering/texture_cache.cpp
+    debug/console.cpp
 )
 
 target_include_directories(xe_core PUBLIC
