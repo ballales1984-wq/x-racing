@@ -30,12 +30,15 @@ struct MenuItem {
   bool is_slider = false;
 };
 
+// A single full-screen menu page with a title and selectable items.
 struct MenuScreen {
-  std::string title;
+  std::string title;  // header text rendered at the top of the screen
   std::vector<MenuItem> items;
-  int selected_index = 0;
+  int selected_index = 0;  // currently highlighted item
 };
 
+// Manages a stack of menu screens with keyboard-style navigation.
+// Supports push/pop navigation, slider inputs, and per-screen item management.
 class MenuSystem {
  public:
   MenuSystem();
