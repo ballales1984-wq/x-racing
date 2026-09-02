@@ -24,6 +24,8 @@ int Win32Input::ToNativeKey(Key key) {
         case Key::RightShift: return VK_RSHIFT;
         case Key::LeftCtrl:   return VK_LCONTROL;
         case Key::RightCtrl:  return VK_RCONTROL;
+        case Key::Backquote:  return VK_OEM_3;
+        case Key::Backspace:  return VK_BACK;
         default:              return 0;
     }
 }

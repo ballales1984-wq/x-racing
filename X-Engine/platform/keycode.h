@@ -15,6 +15,8 @@ enum class Key : uint8_t {
     F1, F2, F3, F4,
     LeftShift, RightShift,
     LeftCtrl, RightCtrl,
+    Backquote,
+    Backspace,
     Count
 };
 
