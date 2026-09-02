@@ -1,3 +1,5 @@
+// Project 0 — Audio engine (synthesized engine + spatial sound mixer)
+// Namespace: p0::audio
 #pragma once
 
 #include "audio/sound.h"
@@ -9,6 +11,7 @@
 
 namespace p0::audio {
 
+// Categories of sound effects managed by the audio engine.
 enum class SoundType : uint8_t {
   ENGINE,
   EXHAUST,
@@ -19,35 +22,40 @@ enum class SoundType : uint8_t {
   UI
 };
 
+// Active sound instance with playback state and spatial parameters.
 struct SoundInstance {
   int id = -1;
   SoundType type = SoundType::AMBIENT;
   std::shared_ptr<Sound> sound;
-  double position = 0.0;
-  double volume = 1.0;
-  double pitch = 1.0;
+  double position = 0.0;  // playback cursor (s)
+  double volume = 1.0;  // [0, 1]
+  double pitch = 1.0;  // relative frequency multiplier
   bool playing = false;
   bool looping = false;
   bool spatial = false;
-  double pos_x = 0.0;
+  double pos_x = 0.0;  // world position for spatialization
   double pos_y = 0.0;
   double pos_z = 0.0;
 };
 
+// Parameters controlling synthesized engine sound output.
 struct EngineSoundParams {
   double rpm = 800.0;
   double max_rpm = 8000.0;
-  double load = 0.0;
+  double load = 0.0;  // throttle position [0, 1]
   int cylinders = 8;
-  double base_frequency = 60.0;
-  double volume = 0.5;
+  double base_frequency = 60.0;  // Hz, fundamental engine order
+  double volume = 0.5;  // [0, 1]
 };
 
+// Real-time audio mixer with synthesized engine sound and spatial playback.
+// Manages sound instances, listener position, master volume, and output callback.
 class AudioEngine {
  public:
   AudioEngine();
   ~AudioEngine();
 
+  // Initialize audio output at the given sample rate and channel count.
   bool initialize(uint32_t sample_rate = 44100, uint16_t channels = 2);
   void shutdown();
 
