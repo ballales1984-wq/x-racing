@@ -1,3 +1,5 @@
+// Project 0 — 2D track minimap (world-to-screen projection)
+// Namespace: p0::ui
 #pragma once
 
 #include "common.h"
@@ -6,16 +8,18 @@
 
 namespace p0::ui {
 
+// Visual configuration for the minimap rendering (colors, size, margins).
 struct TrackMapConfig {
-  int width = 200;
-  int height = 200;
-  int margin = 20;
-  double track_color[3] = {0.5, 0.5, 0.5};
-  double car_color[3] = {0.0, 1.0, 0.0};
-  double opponent_color[3] = {1.0, 0.0, 0.0};
-  double player_color[3] = {0.0, 0.0, 1.0};
+  int width = 200;  // pixels
+  int height = 200;  // pixels
+  int margin = 20;  // pixels, padding inside the minimap box
+  double track_color[3] = {0.5, 0.5, 0.5};  // RGB [0,1]
+  double car_color[3] = {0.0, 1.0, 0.0};  // RGB [0,1]
+  double opponent_color[3] = {1.0, 0.0, 0.0};  // RGB [0,1]
+  double player_color[3] = {0.0, 0.0, 1.0};  // RGB [0,1]
 };
 
+// Snapshot of a car's position for minimap rendering.
 struct CarPosition {
   int car_id = -1;
   double distance_along_track = 0.0;
