@@ -12,6 +12,7 @@
 #include "platform/win32/win32_mouse.h"
 #include "platform/win32/win32_hud.h"
 #include "debug/console.h"
+#include "physics/physics_world.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,6 +28,7 @@ public:
     void SetMouse(xe::Mouse* mouse) { mouse_ = mouse; }
     void SetHud(xe::HudOverlay* hud) { hud_ = hud; }
     void SetConsole(xe::Console* c) { console_ = c; }
+    void SetPhysics(xe::PhysicsWorld* p) { physics_ = p; }
 
 protected:
     void OnUpdate(float dt) override {

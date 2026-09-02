@@ -59,24 +59,29 @@ class AudioEngine {
   bool initialize(uint32_t sample_rate = 44100, uint16_t channels = 2);
   void shutdown();
 
+  // Play a sound and return its instance ID (-1 on failure).
   int play_sound(std::shared_ptr<Sound> sound, SoundType type = SoundType::AMBIENT,
                  double volume = 1.0, bool loop = false);
   void stop_sound(int id);
   void stop_all();
   void stop_by_type(SoundType type);
 
-  void set_volume(int id, double volume);
-  void set_pitch(int id, double pitch);
+  void set_volume(int id, double volume);  // [0, 1]
+  void set_pitch(int id, double pitch);  // relative multiplier
   void set_master_volume(double volume) { master_volume_ = volume; }
   double master_volume() const { return master_volume_; }
 
+  // Update synthesized engine sound parameters (call each frame).
   void set_engine_params(const EngineSoundParams& params);
   const EngineSoundParams& engine_params() const { return engine_params_; }
 
+  // Update listener position for spatial audio (world units).
   void set_listener_position(double x, double y, double z);
   void set_listener_orientation(double forward_x, double forward_y, double forward_z);
 
+  // Mix all active sounds into the interleaved int16 output buffer.
   void mix_audio(int16_t* output_buffer, size_t num_frames);
+  // Advance playback timers and process state changes.
   void update(double delta_time);
 
   size_t active_sound_count() const;
