@@ -60,10 +60,13 @@ class Hud {
   void set_config(const HudConfig& config);
   const HudConfig& config() const { return config_; }
 
+  // Update HUD state with the latest race data.
   void update(const HudState& state);
   const HudState& state() const { return state_; }
 
+  // Format a time in seconds to "M:SS.mmm".
   std::string format_time(double seconds) const;
+  // Format a gap in seconds to "+s.mmm" or "-s.mmm".
   std::string format_gap(double seconds) const;
 
  private:
