@@ -3,6 +3,8 @@
 #include "platform/window.h"
 #include "platform/input.h"
 #include <cstring>
+#include <thread>
+#include <chrono>
 
 namespace xe::test {
 
@@ -25,6 +27,7 @@ public:
 
     void PollEvents() override {
         poll_count++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
         if (auto_close_after > 0 && poll_count >= auto_close_after) {
             should_close_ = true;
         }

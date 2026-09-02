@@ -79,6 +79,10 @@ class EnvironmentGenerator {
   int count_of_type(EnvironmentObjectType type) const;
 
  private:
+  void generate_zone_objects();
+  void generate_dynamic_barriers();
+  void generate_braking_signs();
+
   bool is_valid_placement(const Vec2& pos, double min_dist_from_center, double max_dist_from_center) const;
   double distance_to_track_edge(const Vec2& pos) const;
   Vec2 find_placement_position(double min_dist, double max_dist, double current_dist);

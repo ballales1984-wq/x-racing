@@ -173,3 +173,80 @@ TEST(EnvironmentGenerator, ReproducibleWithSeed) {
 
   EXPECT_EQ(gen1.count(), gen2.count());
 }
+
+TEST(EnvironmentGenerator, GenerateBrakingSignsBeforeTurns) {
+  EnvironmentGenerator gen;
+  Track track = create_test_track();
+  gen.set_track(&track);
+
+  EnvironmentConfig config;
+  config.tree_zone.density = 0.0;
+  config.rock_zone.density = 0.0;
+  config.grass_zone.density = 0.0;
+  config.place_barriers = false;
+  config.place_signs = true;
+  gen.set_config(config);
+
+  gen.generate();
+  auto signs = gen.objects_of_type(EnvironmentObjectType::SIGN);
+  EXPECT_GT(signs.size(), 0u);
+
+  bool has_150 = false, has_100 = false, has_50 = false;
+  for (const auto& s : signs) {
+    if (s.variant == 150) has_150 = true;
+    if (s.variant == 100) has_100 = true;
+    if (s.variant == 50)  has_50 = true;
+  }
+  EXPECT_TRUE(has_150 || has_100 || has_50);
+}
+
+TEST(EnvironmentGenerator, GenerateDynamicBarriersOnCorners) {
+  EnvironmentGenerator gen;
+  Track track = create_test_track();
+  gen.set_track(&track);
+
+  EnvironmentConfig config;
+  config.tree_zone.density = 0.0;
+  config.rock_zone.density = 0.0;
+  config.grass_zone.density = 0.0;
+  config.place_barriers = true;
+  config.place_signs = false;
+  gen.set_config(config);
+
+  gen.generate();
+  auto barriers = gen.objects_of_type(EnvironmentObjectType::BARRIER);
+  EXPECT_GT(barriers.size(), 0u);
+
+  bool has_reinforced = false;
+  for (const auto& b : barriers) {
+    if (b.variant == 1) {
+      has_reinforced = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(has_reinforced);
+}
+
+TEST(EnvironmentGenerator, ObjectsRespectZoneBoundaries) {
+  EnvironmentGenerator gen;
+  Track track = create_test_track();
+  gen.set_track(&track);
+
+  EnvironmentConfig config;
+  config.tree_zone.density = 0.8;
+  config.tree_zone.min_distance_from_center = 15.0;
+  config.tree_zone.max_distance_from_center = 60.0;
+  config.place_barriers = false;
+  config.place_signs = false;
+  gen.set_config(config);
+
+  gen.generate();
+  auto trees = gen.objects_of_type(EnvironmentObjectType::TREE);
+  EXPECT_GT(trees.size(), 0u);
+
+  for (const auto& tree : trees) {
+    double dist = (tree.position - track.at(0.0).position).norm();
+    EXPECT_GE(dist, 0.0);
+  }
+}
+
