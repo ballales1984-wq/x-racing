@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <iostream>
 
-namespace p0::renderer {
+namespace p0 {
+namespace renderer {
 
 static Renderer* g_renderer = nullptr;
 
@@ -657,5 +658,5 @@ void Renderer::draw_car_3d(HDC hdc, const vehicle::VehicleState& state) {
     }
   }
 }
-
-}
+}  // namespace renderer
+}  // namespace p0

@@ -15,7 +15,8 @@
 
 // Project 0 — Windows GDI renderer with optional 3D wireframe car
 // Namespace: p0::renderer
-namespace p0::renderer {
+namespace p0 {
+namespace renderer {
 
 // Rendering configuration: window size, zoom scale and debug overlays.
 struct RendererConfig {
@@ -36,21 +37,16 @@ struct RendererConfig {
 // Owns the Win32 window, back buffer and input handling.
 // Draws the track, car (2D rect or 3D wireframe) and a simple HUD.
 class Renderer {
- public:
-  explicit Renderer(simulation::Simulation& sim, const RendererConfig& config = {});
-  ~Renderer();
+  public:
+   explicit Renderer(simulation::Simulation& sim, const RendererConfig& config = {});
+   ~Renderer();
 
-  // Create the Win32 window and back buffer. Returns false on failure.
-  bool initialize();
-  // Enter the main loop: pump messages, step sim, draw and present.
-  void run();
-
-  // Load an external car mesh (OBJ) for 3D rendering.
-  void load_car_mesh(const std::string& filename);
-  // Toggle 3D wireframe car mode (called from window procedure).
-  void toggle_3d_mode();
-  // Switch the active track layout at runtime.
-  void set_track_type(track::TrackType type);
+   bool initialize();
+   void run();
+   void load_car_mesh(const std::string& filename);
+   void toggle_3d_mode();
+   void set_track_type(track::TrackType type);
+   void resize_back_buffer(int width, int height);
 
   private:
    // Draw the track centerline and boundaries.
@@ -67,10 +63,8 @@ class Renderer {
   void draw_car_3d(HDC hdc, const vehicle::VehicleState& state);
   // Draw speed, RPM, gear, lap and telemetry HUD overlay.
   void draw_hud(HDC hdc, const simulation::SimulationResult& result);
-   // Poll keyboard and build the per-frame input state.
-   void handle_input(input::InputState& input);
-   // Recreate the back buffer at a new size (called on WM_SIZE).
-   void resize_back_buffer(int width, int height);
+    // Poll keyboard and build the per-frame input state.
+    void handle_input(input::InputState& input);
 
   // Project a 3D world point to 2D screen coordinates using a look-at view matrix
     // and a perspective projection (delegates to the chase camera).
@@ -103,4 +97,6 @@ class Renderer {
       int last_recorded_lap_ = -1;
 
 };
+}  // namespace renderer
+}  // namespace p0
 

@@ -24,7 +24,7 @@ void Hud::update(const HudState& state) {
 //! @param seconds Time in seconds.
 //! @return Formatted time string, or "--:---.---" if invalid.
 std::string Hud::format_time(double seconds) const {
-  if (seconds <= 0.0) return "--:---.---";
+  if (seconds <= 0.0) return "--:--.---";
   int mins = static_cast<int>(seconds) / 60;
   double secs = seconds - mins * 60;
   std::ostringstream oss;

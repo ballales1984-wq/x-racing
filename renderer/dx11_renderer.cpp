@@ -5,7 +5,8 @@
 #include <iostream>
 #include "engine/input/input.h"
 
-namespace p0::renderer {
+namespace p0 {
+namespace renderer {
 
 namespace {
 
@@ -555,5 +556,5 @@ void DX11Renderer::run() {
     }
   }
 }
-
-}
+}  // namespace renderer
+}  // namespace p0

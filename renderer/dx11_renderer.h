@@ -10,11 +10,13 @@
 #include "simulation/simulation.h"
 #include "input/input.h"
 #include "../engine/assets/gltf_loader.h"
+#include "../engine/camera/camera.h"
 
 // Project 0 — minimal DirectX 11 renderer
 // Renders skinned GLB/GLTF meshes with bone animation and simple lighting.
 // Falls back to GDI renderer if DX11 is unavailable.
-namespace p0::renderer {
+namespace p0 {
+namespace renderer {
 
 struct DX11Config {
   int width = 1280;
@@ -71,18 +73,19 @@ class DX11Renderer {
   ID3D11Buffer* ps_constant_buffer_ = nullptr;
   ID3D11Buffer* bone_buffer_ = nullptr;
 
-  std::vector<float> vertices_;
-  std::vector<uint32_t> indices_;
-  std::vector<float> bone_transforms_;
+   std::vector<float> vertices_;
+   std::vector<uint32_t> indices_;
+   std::vector<float> bone_transforms_;
+   p0::assets::GLTFSkinnedMesh skinned_mesh_;
 
-  p0::camera::ChaseCamera camera_;
+   p0::camera::ChaseCamera camera_;
   bool has_animation_ = false;
   float anim_time_ = 0.0f;
   int current_animation_ = 0;
 
   bool running_ = false;
   float time_ = 0.0f;
-  HWND window_ = nullptr;
+   HWND window_ = nullptr;
 };
-
-}
+}  // namespace renderer
+}  // namespace p0
