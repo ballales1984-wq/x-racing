@@ -23,9 +23,13 @@ if(PROJECT0_BUILD_EXPERIMENTS)
   add_executable(tracking_demo tracking_demo.cpp)
   target_link_libraries(tracking_demo PRIVATE project0_experiments)
 
+  add_executable(brake_measure brake_measure.cpp)
+  target_link_libraries(brake_measure PRIVATE project0_experiments)
+
   if(PROJECT0_BUILD_ASSIMP)
     deploy_assimp_dll(track_analysis)
     deploy_assimp_dll(track_svg)
     deploy_assimp_dll(track_blueprint)
+    deploy_assimp_dll(brake_measure)
   endif()
 endif()

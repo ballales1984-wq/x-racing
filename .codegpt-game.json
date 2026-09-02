@@ -1,14 +1,17 @@
 {
-  "name": "x-racing",
-  "engine": "generic",
-  "build": { "cmd": "cmake --build build --config Release --parallel" },
+  "name": "x-racing-unity",
+  "engine": "unity",
+  "build": { "cmd": "echo", "args": ["unity-editor-launch"] },
   "install": [],
-  "launch": { "cmd": "build\\game\\Release\\project0_gameplay_exe.exe", "args": [] },
-  "log": { "format": "generic", "stdout": true, "paths": [] },
-  "ready": "",
-  "window": "",
+  "launch": {
+    "cmd": "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Unity.exe",
+    "args": ["-projectPath", "${PROJECT_DIR}\\UnityProject", "-logFile", "${PROJECT_DIR}\\unity-build.log"]
+  },
+  "log": { "format": "unity", "stdout": true, "paths": ["unity-build.log", "UnityProject\\Logs\\*.log"] },
+  "ready": "Display.*connected",
+  "window": "Unity",
   "rcon": null,
   "reload": "",
-  "sourceRoots": ["engine", "game", "tests", "X-Engine"],
-  "vars": {}
+  "sourceRoots": ["UnityProject/Assets/Scripts", "X-Engine"],
+  "vars": { "PROJECT_DIR": "D:\\x-racing" }
 }

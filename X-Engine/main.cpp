@@ -181,6 +181,7 @@ int main() {
     XE_LOG_INFO("X-Engine V0.9");
 
     auto window   = std::make_unique<xe::Win32Window>();
+    xe::Win32Window* raw_window = window.get();
     auto input    = std::make_unique<xe::Win32Input>();
     auto mouse    = std::make_unique<xe::Win32Mouse>();
     auto renderer = std::make_unique<xe::DX12Renderer>();
@@ -200,7 +201,6 @@ int main() {
     xe::Console console;
 
     // Register default commands
-    console.Register("help", "List all available commands", [](auto&) {});
     console.Register("fps",  "Print current FPS", [&app, &console](auto&) {
         std::ostringstream o; o << "FPS: " << app.GetClock().GetFPS();
         console.PrintLn(o.str());
@@ -209,8 +209,6 @@ int main() {
         console.ClearOutput();
     });
     console.Register("objects", "Print scene object count", [&app, &console](auto&) {
-        xe::Console* c = &console;
-        (void)c;
         auto* r = dynamic_cast<xe::DX12Renderer*>(app.GetRenderer());
         if (r) {
             std::ostringstream o; o << "Scene stats: draw_calls=" << 0;
@@ -234,10 +232,8 @@ int main() {
     });
 
     // Wire ascii char handler
-    auto* win = static_cast<xe::Win32Window*>(
-        reinterpret_cast<void*>(app.GetWindow().GetNativeHandle()));
-    if (win) {
-        win->SetCharCallback([&console](char c) {
+    if (raw_window) {
+        raw_window->SetCharCallback([&console](char c) {
             if (console.IsOpen()) console.AppendChar(c);
         });
     }

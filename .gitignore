@@ -11,6 +11,7 @@ build_ninja/
 buildx/
 build_old/
 build_phase1/
+build_*/
 
 # IDE
 .vscode/
@@ -89,6 +90,23 @@ UnityProject/Assets/*.fbx.meta
 # Test artifacts
 Testing/
 test_tracked_header.csv
+test_*_csv_telemetry.csv
+test_empty_*.csv
+test_save_*.csv
+test_results*.log
+test_results*.txt
+ctest*.log
+ctest*.txt
+build_*.log
+build_*.txt
+unity-build.log
+cmake*.log
+cmake*.txt
+*.obj
+*.exe
+
+# Logs directory (one-off build/test logs)
+logs/
 
 # Temp directory
 temp/
