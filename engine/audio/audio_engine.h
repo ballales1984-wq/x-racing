@@ -84,16 +84,20 @@ class AudioEngine {
   // Advance playback timers and process state changes.
   void update(double delta_time);
 
+  // Number of currently active (playing) sound instances.
   size_t active_sound_count() const;
 
+  // Optional callback for writing mixed audio to an external buffer.
   using AudioCallback = std::function<void(int16_t*, size_t)>;
   void set_output_callback(AudioCallback cb) { output_callback_ = cb; }
 
- private:
-  void mix_sound(SoundInstance& instance, int16_t* output, size_t frames, uint16_t channels);
-  void synthesize_engine(int16_t* output, size_t frames, uint16_t channels);
-  void apply_spatial_attenuation(SoundInstance& instance);
+  private:
+   // --- Mixing ---
+   void mix_sound(SoundInstance& instance, int16_t* output, size_t frames, uint16_t channels);
+   void synthesize_engine(int16_t* output, size_t frames, uint16_t channels);
+   void apply_spatial_attenuation(SoundInstance& instance);
 
+  // --- Output config ---
   uint32_t sample_rate_ = 44100;
   uint16_t channels_ = 2;
   double master_volume_ = 1.0;
