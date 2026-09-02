@@ -66,14 +66,18 @@ class MenuSystem {
   int selected_index() const { return current_screen_.selected_index; }
   void set_selected_index(int index);  // clamp to [0, items.size())
 
+  // True when any menu is currently visible.
   bool is_active() const { return current_state_ != MenuState::NONE; }
+  // Show a specific menu state (pushes current state onto the stack).
   void show(MenuState state);
+  // Hide the current menu and return to NONE.
   void hide();
 
- private:
-  MenuState current_state_ = MenuState::NONE;
-  MenuScreen current_screen_;
-  std::vector<MenuState> navigation_stack_;
+  private:
+   MenuState current_state_ = MenuState::NONE;
+   MenuScreen current_screen_;
+   // Stack of previous states for back-navigation.
+   std::vector<MenuState> navigation_stack_;
 };
 
 }
