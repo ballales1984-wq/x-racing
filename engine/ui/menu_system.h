@@ -59,11 +59,12 @@ class MenuSystem {
   void add_item(const MenuItem& item);
   void clear_items();
 
+  // Access the currently active screen (const and mutable).
   const MenuScreen& current_screen() const { return current_screen_; }
   MenuScreen& current_screen() { return current_screen_; }
 
   int selected_index() const { return current_screen_.selected_index; }
-  void set_selected_index(int index);
+  void set_selected_index(int index);  // clamp to [0, items.size())
 
   bool is_active() const { return current_state_ != MenuState::NONE; }
   void show(MenuState state);
