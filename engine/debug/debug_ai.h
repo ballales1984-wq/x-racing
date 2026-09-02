@@ -1,3 +1,5 @@
+// Project 0 — AI driver diagnostics (snapshot + trend analysis)
+// Namespace: p0::debug
 #pragma once
 
 #include "common.h"
@@ -9,21 +11,23 @@
 
 namespace p0::debug {
 
+// Frozen snapshot of an AI driver's internal state at a point in time.
+// Used for rendering AI debug overlays and comparing against targets.
 struct AIDriverSnapshot {
   int car_id = -1;
-  double current_speed = 0.0;
-  double target_speed = 0.0;
-  double speed_error = 0.0;
-  double steer_input = 0.0;
-  double throttle_input = 0.0;
-  double brake_input = 0.0;
+  double current_speed = 0.0;  // m/s
+  double target_speed = 0.0;  // m/s
+  double speed_error = 0.0;  // m/s, target - current
+  double steer_input = 0.0;  // [-1, 1]
+  double throttle_input = 0.0;  // [0, 1]
+  double brake_input = 0.0;  // [0, 1]
   int current_gear = 1;
-  double lookahead_distance = 30.0;
+  double lookahead_distance = 30.0;  // m
   double steering_gain = 1.0;
   double speed_error_gain = 0.5;
   double max_throttle = 1.0;
   double max_brake = 1.0;
-  double reaction_delay = 0.0;
+  double reaction_delay = 0.0;  // s, input lag
   double error_amplitude = 0.0;
   double corner_entry_speed_factor = 0.85;
   double gear_shift_rpm_up = 6800.0;
@@ -36,11 +40,12 @@ struct AIDriverSnapshot {
   double speed_variance = 0.0;
   double steering_jitter = 0.0;
   double defense_willingness = 0.5;
-  double lap_time = 0.0;
-  double sector_time = 0.0;
+  double lap_time = 0.0;  // s
+  double sector_time = 0.0;  // s
   int difficulty = 1;
 };
 
+// Aggregated AI health metrics across all active drivers.
 struct AIDiagnostics {
   int active_driver_count = 0;
   std::unordered_map<int, AIDriverSnapshot> driver_info;

@@ -84,6 +84,7 @@ class DebugConsole {
   void cmd_save(DebugAgent& agent, const std::vector<std::string>& args);
   void cmd_load(DebugAgent& agent, const std::vector<std::string>& args);
 
+  // --- State ---
   bool enabled_ = true;
   std::vector<ConsoleCommand> commands_;
   std::vector<std::string> history_;
