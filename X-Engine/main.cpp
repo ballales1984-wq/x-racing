@@ -300,7 +300,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.9 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.10 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

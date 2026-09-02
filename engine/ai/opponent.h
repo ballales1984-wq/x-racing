@@ -75,16 +75,17 @@ class OpponentManager {
   const Opponent* get(int car_id) const;
   Opponent* get(int car_id);
 
+  // All opponents currently managed by this instance.
   std::vector<const Opponent*> opponents() const;
   int count() const { return static_cast<int>(opponents_.size()); }
 
   void clear();
 
- private:
-  const track::Track* track_ = nullptr;
-  std::vector<track::RacingLineSample> racing_line_;
-  std::vector<Opponent> opponents_;
-  int next_id_ = 1;
+  private:
+   const track::Track* track_ = nullptr;
+   std::vector<track::RacingLineSample> racing_line_;
+   std::vector<Opponent> opponents_;
+   int next_id_ = 1;  // next car ID to assign
 };
 
 }
