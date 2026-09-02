@@ -60,17 +60,19 @@ TEST(ApplicationTest, ShouldCloseBreaksLoop) {
     app.Shutdown();
 }
 
-TEST(ApplicationTest, EscapeKeyBreaksLoop) {
+TEST(ApplicationTest, EscapeKeyNoLongerBreaksLoop) {
     auto window = std::make_unique<test::FakeWindow>();
     auto input = std::make_unique<test::FakeInput>();
-    test::FakeInput* input_ptr = input.get();
+    test::FakeWindow* window_ptr = window.get();
     input->SimulateKeyPressOnFrame(Key::Escape, 3);
+    window->auto_close_after = 5;
     Application app(std::move(window), std::move(input));
 
     ASSERT_TRUE(app.Create("Test", 800, 600));
     app.Run();
 
-    EXPECT_EQ(input_ptr->update_count, 3);
+    // ESC should NOT break the loop; the auto-close-after should.
+    EXPECT_EQ(window_ptr->poll_count, 5);
 
     app.Shutdown();
 }

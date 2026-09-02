@@ -456,6 +456,11 @@ void DX12Renderer::BeginFrame(float total_time) {
         }
 
         stat_draw_calls_ = 0;
+
+        if (texture_cache_.GetHeap()) {
+            texture_cache_.SetActive(command_list_.Get());
+        }
+
         for (size_t i = 0; i < per_object_world_.size() && i < scene_->objects.size(); ++i) {
             const auto& obj = scene_->objects[i];
             const SubMesh* sm = nullptr;
@@ -471,15 +476,18 @@ void DX12Renderer::BeginFrame(float total_time) {
                 command_list_->SetGraphicsRootConstantBufferView(1, light_buffer_->GetGPUVirtualAddress());
             }
 
-// Bind texture (or skip table if no texture) — load lazily.
-            if (!obj.instance.texture_path.empty() && texture_cache_.GetHeap()) {
-                texture_cache_.SetActive(command_list_.Get());
-                auto td = texture_cache_.Load(obj.instance.texture_path);
-                if (td.valid && td.slot >= 0) {
-                    auto gpu = texture_cache_.GetHeap()->GetGPUDescriptorHandleForHeapStart();
-                    gpu.ptr += static_cast<UINT64>(td.slot) * texture_cache_.GetDescriptorSize();
-                    command_list_->SetGraphicsRootDescriptorTable(2, gpu);
+            if (texture_cache_.GetHeap()) {
+                int slot = texture_cache_.GetDefaultSlot();
+                if (slot < 0) slot = 0;
+                if (!obj.instance.texture_path.empty()) {
+                    auto td = texture_cache_.Load(obj.instance.texture_path);
+                    if (td.valid && td.slot >= 0) {
+                        slot = td.slot;
+                    }
                 }
+                auto gpu = texture_cache_.GetHeap()->GetGPUDescriptorHandleForHeapStart();
+                gpu.ptr += static_cast<UINT64>(slot) * texture_cache_.GetDescriptorSize();
+                command_list_->SetGraphicsRootDescriptorTable(2, gpu);
             }
 
             command_list_->DrawIndexedInstanced(

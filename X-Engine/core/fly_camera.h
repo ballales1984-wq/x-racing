@@ -37,14 +37,14 @@ public:
     }
 
     Vec3 GetRight() const {
-        // World up × forward, with yaw only
-        const float cp = std::cos(pitch_);
-        Vec3 fwd{ cp * std::sin(yaw_), std::sin(pitch_), -cp * std::cos(yaw_) };
+        // World up × forward (right-handed), with pitch-free right for fps-style.
+        Vec3 fwd = GetForward();
         Vec3 world_up{ 0.0f, 1.0f, 0.0f };
+        // right = fwd × up, normalized
         Vec3 r{
-            world_up.y * fwd.z - world_up.z * fwd.y,
-            world_up.z * fwd.x - world_up.x * fwd.z,
-            world_up.x * fwd.y - world_up.y * fwd.x,
+            fwd.y * world_up.z - fwd.z * world_up.y,
+            fwd.z * world_up.x - fwd.x * world_up.z,
+            fwd.x * world_up.y - fwd.y * world_up.x,
         };
         float rl = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z);
         if (rl > 1e-6f) { r.x /= rl; r.y /= rl; r.z /= rl; }

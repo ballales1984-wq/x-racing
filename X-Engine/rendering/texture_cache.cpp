@@ -188,6 +188,102 @@ void TextureCache::Initialize(ID3D12Device* device) {
     s.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
     s.MaxLOD = D3D12_FLOAT32_MAX;
     device_->CreateSampler(&s, sampler_heap_->GetCPUDescriptorHandleForHeapStart());
+
+    // Allocate a 1x1 white fallback texture at slot 0.
+    uint32_t white = 0xFFFFFFFF;
+    D3D12_RESOURCE_DESC td = {};
+    td.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    td.Width = 1; td.Height = 1;
+    td.DepthOrArraySize = 1; td.MipLevels = 1;
+    td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc.Count = 1;
+    td.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    td.Flags = D3D12_RESOURCE_FLAG_NONE;
+    D3D12_HEAP_PROPERTIES hp = {};
+    hp.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> white_tex;
+    if (SUCCEEDED(device_->CreateCommittedResource(
+            &hp, D3D12_HEAP_FLAG_NONE, &td,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+            IID_PPV_ARGS(&white_tex)))) {
+        D3D12_SUBRESOURCE_DATA srd = {};
+        srd.pData = reinterpret_cast<const BYTE*>(&white);
+        srd.RowPitch = 4;
+        srd.SlicePitch = 4;
+
+        Microsoft::WRL::ComPtr<ID3D12Resource> upload;
+        D3D12_RESOURCE_DESC ub = {};
+        ub.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        ub.Width = 4; ub.Height = 1;
+        ub.MipLevels = 1; ub.DepthOrArraySize = 1;
+        ub.SampleDesc.Count = 1;
+        ub.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ub.Flags = D3D12_RESOURCE_FLAG_NONE;
+        hp.Type = D3D12_HEAP_TYPE_UPLOAD;
+        if (SUCCEEDED(device_->CreateCommittedResource(
+                &hp, D3D12_HEAP_FLAG_NONE, &ub,
+                D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+                IID_PPV_ARGS(&upload)))) {
+            void* mapped = nullptr;
+            D3D12_RANGE no_read = {0,0};
+            if (SUCCEEDED(upload->Map(0, &no_read, &mapped))) {
+                std::memcpy(mapped, &white, 4);
+                upload->Unmap(0, nullptr);
+            }
+
+            D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout = {};
+            layout.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            layout.Footprint.Width = 1; layout.Footprint.Height = 1;
+            layout.Footprint.Depth = 1; layout.Footprint.RowPitch = 4;
+
+            D3D12_TEXTURE_COPY_LOCATION src = {};
+            src.pResource = upload.Get();
+            src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+            src.PlacedFootprint = layout;
+            D3D12_TEXTURE_COPY_LOCATION dst = {};
+            dst.pResource = white_tex.Get();
+            dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+            dst.SubresourceIndex = 0;
+
+            Microsoft::WRL::ComPtr<ID3D12CommandAllocator> alloc;
+            Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> cmd;
+            Microsoft::WRL::ComPtr<ID3D12CommandQueue> q;
+            Microsoft::WRL::ComPtr<ID3D12Fence> fence;
+            device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
+            device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc.Get(), nullptr, IID_PPV_ARGS(&cmd));
+            cmd->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+            D3D12_RESOURCE_BARRIER b = {};
+            b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            b.Transition.pResource = white_tex.Get();
+            b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+            b.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+            b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            cmd->ResourceBarrier(1, &b);
+            cmd->Close();
+            D3D12_COMMAND_QUEUE_DESC qd = {};
+            qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            device_->CreateCommandQueue(&qd, IID_PPV_ARGS(&q));
+            ID3D12CommandList* lists[] = { cmd.Get() };
+            q->ExecuteCommandLists(1, lists);
+            device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+            HANDLE evt = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+            q->Signal(fence.Get(), 1);
+            fence->SetEventOnCompletion(1, evt);
+            WaitForSingleObject(evt, INFINITE);
+            CloseHandle(evt);
+        }
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu = heap_->GetCPUDescriptorHandleForHeapStart();
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+    srv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srv.Texture2D.MipLevels = 1;
+    if (white_tex) device_->CreateShaderResourceView(white_tex.Get(), &srv, cpu);
+
+    default_slot_ = 0;
+    next_slot_ = 1;
 }
 
 void TextureCache::Shutdown() {

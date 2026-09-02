@@ -6,6 +6,7 @@
 #include <d3d12.h>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace xe {
 
@@ -41,6 +42,9 @@ public:
 
     [[nodiscard]] UINT GetLoadedCount() const { return next_slot_; }
 
+    // Slot of the default 1x1 white fallback texture.
+    [[nodiscard]] int GetDefaultSlot() const { return default_slot_; }
+
 private:
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> heap_;
@@ -48,6 +52,7 @@ private:
     UINT descriptor_size_ = 0;
     UINT sampler_descriptor_size_ = 0;
     UINT next_slot_ = 0;
+    int default_slot_ = -1;
     static constexpr UINT kMaxTextures = 64;
 
     struct CacheEntry {
