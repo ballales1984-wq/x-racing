@@ -1,3 +1,5 @@
+// Project 0 — AI opponent wrapper (AIDriver + state management)
+// Namespace: p0::ai
 #pragma once
 
 #include "common.h"
@@ -10,18 +12,21 @@
 
 namespace p0::ai {
 
+// Runtime state snapshot for an AI opponent (exposed to race manager).
 struct OpponentState {
   int car_id = -1;
   std::string name;
   AIDifficulty difficulty = AIDifficulty::MEDIUM;
-  double distance_along_track = 0.0;
+  double distance_along_track = 0.0;  // m
   double speed_m_s = 0.0;
   int lap = 0;
   bool finished = false;
-  double total_time = 0.0;
-  double best_lap_time = 0.0;
+  double total_time = 0.0;  // s
+  double best_lap_time = 0.0;  // s
 };
 
+// Wraps an AIDriver with opponent-specific state.
+// Produces InputState each frame for injection into the simulation.
 class Opponent {
  public:
   explicit Opponent(const AIDriverParams& params = {}, const std::string& name = "AI");
