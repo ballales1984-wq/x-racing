@@ -87,14 +87,23 @@ protected:
             scene.camera_up = { 0.0f, 1.0f, 0.0f };
 
             if (scene.objects.size() >= 3) {
-                for (int i = 0; i < 3 && i < static_cast<int>(scene.objects.size()); ++i) {
-                    const float a = t * 0.7f + i * 2.094f;
-                    scene.objects[i].instance.position = {
-                        1.6f * std::cos(a),
-                        std::sin(t * 1.3f + i) * 0.4f,
-                        1.6f * std::sin(a),
-                    };
-                    scene.objects[i].instance.rotation_rad = { t * 0.5f + i, t * 0.7f, 0.0f };
+                if (physics_ && physics_->IsEnabled() && physics_->Size() >= 3) {
+                    physics_->Step(dt);
+                    for (int i = 0; i < 3 && i < static_cast<int>(scene.objects.size()); ++i) {
+                        const auto& body = physics_->Get(i);
+                        scene.objects[i].instance.position = body.position;
+                        scene.objects[i].instance.rotation_rad = { t * 0.5f + i, t * 0.7f, 0.0f };
+                    }
+                } else {
+                    for (int i = 0; i < 3 && i < static_cast<int>(scene.objects.size()); ++i) {
+                        const float a = t * 0.7f + i * 2.094f;
+                        scene.objects[i].instance.position = {
+                            1.6f * std::cos(a),
+                            std::sin(t * 1.3f + i) * 0.4f,
+                            1.6f * std::sin(a),
+                        };
+                        scene.objects[i].instance.rotation_rad = { t * 0.5f + i, t * 0.7f, 0.0f };
+                    }
                 }
             }
 
@@ -173,6 +182,7 @@ private:
     xe::Mouse* mouse_ = nullptr;
     xe::HudOverlay* hud_ = nullptr;
     xe::Console* console_ = nullptr;
+    xe::PhysicsWorld* physics_ = nullptr;
     bool cursor_captured_ = true;
 };
 
