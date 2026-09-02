@@ -51,14 +51,17 @@ struct AIDiagnostics {
   std::unordered_map<int, AIDriverSnapshot> driver_info;
   bool any_driver_off_track = false;
   bool any_driver_spinning = false;
-  double avg_target_speed = 0.0;
-  double avg_speed_error = 0.0;
+  double avg_target_speed = 0.0;  // m/s
+  double avg_speed_error = 0.0;  // m/s
 };
 
+// Records and analyzes AI driver inputs each frame to produce AIDiagnostics.
+// Tracks speed errors, steering jitter, off-track incidents, and spins.
 class DebugAI {
  public:
   DebugAI() = default;
 
+  // Reset internal state (call at session start).
   void initialize();
   void shutdown();
 
