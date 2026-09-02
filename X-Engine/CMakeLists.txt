@@ -24,6 +24,7 @@ add_library(xe_core STATIC
     rendering/scene_loader.cpp
     rendering/texture_cache.cpp
     debug/console.cpp
+    physics/physics_world.cpp
 )
 
 target_include_directories(xe_core PUBLIC
