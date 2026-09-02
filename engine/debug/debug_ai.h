@@ -65,24 +65,28 @@ class DebugAI {
   void initialize();
   void shutdown();
 
+  // Record raw input + AI params for a car in the current frame.
   void record_input(int car_id, const input::InputState& input,
                     const ai::AIDriverParams& params);
+  // Recompute aggregated diagnostics from recorded frame data.
   void update_analysis();
+  // Clear all accumulated data.
   void reset();
 
   const AIDiagnostics& current_diagnostics() const { return diagnostics_; }
+  // True if a specific AI car is being actively debugged.
   bool has_active_driver() const { return active_car_id_ >= 0; }
   int active_car_id() const { return active_car_id_; }
   void set_active_car_id(int id) { active_car_id_ = id; }
 
- private:
-  AIDiagnostics diagnostics_;
-  int active_car_id_ = -1;
-  double last_speed_ = 0.0;
-  double last_yaw_rate_ = 0.0;
-  bool was_on_track_ = true;
-  double off_track_timer_ = 0.0;
-  double spin_timer_ = 0.0;
+  private:
+   AIDiagnostics diagnostics_;
+   int active_car_id_ = -1;
+   double last_speed_ = 0.0;
+   double last_yaw_rate_ = 0.0;
+   bool was_on_track_ = true;
+   double off_track_timer_ = 0.0;  // s, accumulated off-track time
+   double spin_timer_ = 0.0;  // s, accumulated spin duration
 };
 
 }
