@@ -57,7 +57,8 @@ struct InputPacket {
   bool downshift = false;
   bool reset = false;
   bool enter_exit_box = false;
-  uint8_t padding[3] = {};
+  bool reverse = false;
+  uint8_t padding[2] = {};
 };
 
 inline void pack_input(const input::InputState& input, int car_id, uint32_t seq, double ts, InputPacket& out) {
@@ -70,7 +71,8 @@ inline void pack_input(const input::InputState& input, int car_id, uint32_t seq,
   out.upshift = input.upshift;
   out.downshift = input.downshift;
   out.reset = input.reset;
-  out.enter_exit_box = input.enter_exit_box;
+   out.enter_exit_box = input.enter_exit_box;
+   out.reverse = input.reverse;
 }
 
 inline void unpack_input(const InputPacket& packet, input::InputState& out) {
@@ -80,7 +82,8 @@ inline void unpack_input(const InputPacket& packet, input::InputState& out) {
   out.upshift = packet.upshift;
   out.downshift = packet.downshift;
   out.reset = packet.reset;
-  out.enter_exit_box = packet.enter_exit_box;
+   out.enter_exit_box = packet.enter_exit_box;
+   out.reverse = packet.reverse;
 }
 
 inline void pack_snapshot(const vehicle::VehicleState& state, int car_id, WorldSnapshot& out) {

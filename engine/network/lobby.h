@@ -66,9 +66,9 @@ class Lobby {
  private:
   LobbyConfig config_;
   std::vector<LobbySlot> slots_;
-  std::unique_ptr<NetworkSession> session_;
-  std::unique_ptr<ai::AIDriver> ai_driver_;
-  simulation::SimulationWorld sim_world_;
+   std::unique_ptr<NetworkSession> session_;
+   std::unordered_map<int, std::unique_ptr<ai::AIDriver>> ai_drivers_;
+   simulation::SimulationWorld sim_world_;
   const track::Track* track_ = nullptr;
   bool race_started_ = false;
 

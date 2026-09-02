@@ -56,9 +56,9 @@ inline void combined_slip_force(double sigma_x, double alpha, double fz,
                                  double b_long, double b_lat,
                                  double c, double e,
                                  double& fx, double& fy) {
-  // Pure slip forces from Pacejka
-  const double fx_pure = mu_x * fz * pacejka_tire_model(sigma_x, 1.0, b_long, c, e);
-  const double fy_pure = mu_y * fz * pacejka_tire_model(alpha, 1.0, b_lat, c, e);
+  // Pure slip forces from Pacejka (normalized shape × peak force D = mu * Fz)
+  const double fx_pure = mu_x * fz * pacejka_tire_model(sigma_x, b_long, c, e);
+  const double fy_pure = mu_y * fz * pacejka_tire_model(alpha, b_lat, c, e);
 
   // Friction ellipse combination with extended grip
   // Using a weighted ellipse that allows more combined grip than pure circle

@@ -11,7 +11,7 @@ namespace p0::telemetry {
 // dt is the timestep since the last frame (used for cumulative time).
 void Telemetry::record(const vehicle::VehicleState& state, double dt) {
   TelemetryFrame frame;
-  frame.lap_number = current_lap_;
+  frame.lap_number = state.lap;
   frame.distance = state.distance_along_track;
   frame.speed = state.speed;
   frame.rpm = state.rpm;
@@ -27,8 +27,8 @@ void Telemetry::record(const vehicle::VehicleState& state, double dt) {
   frame.heading = state.heading;
   frame.front_tire_temp = state.front_tire_temp;
   frame.rear_tire_temp = state.rear_tire_temp;
-  frame.front_tire_wear = state.front_tire_wear;
-  frame.rear_tire_wear = state.rear_tire_wear;
+   frame.front_tire_wear = state.front_tire_wear;
+   frame.rear_tire_wear = state.rear_tire_wear;
 
   if (frames_.empty()) {
     frame.time = 0.0;

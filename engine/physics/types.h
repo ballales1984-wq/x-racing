@@ -6,12 +6,14 @@
 // Namespace: p0::physics
 namespace p0::physics {
 
-// Pacejka Magic Formula tire model (simplified, single coefficient)
+// Pacejka Magic Formula tire model (simplified).
+// Returns the normalized force shape in [-1, +1]. Callers multiply by D = mu * Fz
+// to obtain the physical force. The `mu` parameter was removed because it was
+// double-applied: callers in tire_model.h already multiply by (mu * Fz).
 // sigma: slip ratio or slip angle
-// mu: peak friction coefficient
-// b, c, e: shape parameters
-inline double pacejka_tire_model(double sigma, double mu, double b, double c, double e) {
-  return mu * std::sin(c * std::atan(b * sigma - e * (b * sigma - std::atan(b * sigma))));
+// b, c, e: shape parameters (stiffness, shape, curvature)
+inline double pacejka_tire_model(double sigma, double b, double c, double e) {
+  return std::sin(c * std::atan(b * sigma - e * (b * sigma - std::atan(b * sigma))));
 }
 
 // Project vector v onto onto (parallel component)
@@ -32,11 +34,12 @@ inline double cross2(const Vec2& a, const Vec2& b) {
 }
 
 // Centripetal force directed toward the center of curvature.
-// For a path with signed curvature kappa and track normal n (pointing to the
-// right of travel), the force vector is: -m * v^2 * kappa * n
+// Track normal points leftward (90° CCW from tangent). For a left turn
+// (positive curvature), the center of curvature is to the left, so the force
+// is in the +normal direction: F = m * v^2 * kappa * n.
 inline Vec2 centripetal_force(double mass, double speed, double curvature, const Vec2& normal) {
   if (speed < kEpsilon) return Vec2::Zero();
-  return -mass * speed * speed * curvature * normal;
+  return mass * speed * speed * curvature * normal;
 }
 
 // Centrifugal force (inertial reaction, opposite to centripetal).

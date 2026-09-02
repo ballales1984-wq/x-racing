@@ -18,6 +18,7 @@ TEST(InputPacket, PackUnpackRoundTrip) {
   in.downshift = false;
   in.reset = true;
   in.enter_exit_box = false;
+  in.reverse = true;
 
   InputPacket packet;
   pack_input(in, 7, 42, 1234.5, packet);
@@ -32,6 +33,7 @@ TEST(InputPacket, PackUnpackRoundTrip) {
   EXPECT_FALSE(packet.downshift);
   EXPECT_TRUE(packet.reset);
   EXPECT_FALSE(packet.enter_exit_box);
+  EXPECT_TRUE(packet.reverse);
 
   InputState out;
   unpack_input(packet, out);
@@ -43,6 +45,7 @@ TEST(InputPacket, PackUnpackRoundTrip) {
   EXPECT_FALSE(out.downshift);
   EXPECT_TRUE(out.reset);
   EXPECT_FALSE(out.enter_exit_box);
+  EXPECT_TRUE(out.reverse);
 }
 
 TEST(InputPacket, ClampsValues) {

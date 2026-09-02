@@ -72,6 +72,7 @@ bool Lobby::join_game(const std::string& host_address) {
 
 void Lobby::leave_game() {
   session_.reset();
+  ai_drivers_.clear();
   slots_.clear();
   slots_.resize(config_.max_players);
   for (int i = 0; i < config_.max_players; ++i) {
@@ -112,16 +113,18 @@ void Lobby::start_race() {
 
   if (on_race_start_) on_race_start_();
 
-  RaceStartPacket start;
-  start.timestamp = 0.0;
-  start.countdown_duration = 3.0;
-  start.track_seed = 12345;
+   RaceStartPacket start;
+   start.timestamp = 0.0;
+   start.countdown_duration = 3.0;
+   start.track_seed = session_->track_seed();
 
   uint8_t buffer[sizeof(RaceStartPacket) + 1];
   buffer[0] = static_cast<uint8_t>(PacketType::RACE_START);
   std::memcpy(buffer + 1, &start, sizeof(start));
 
-  session_->broadcast_snapshot(WorldSnapshot{});
+  if (session_->is_host()) {
+    session_->send_packet_to_all(buffer, sizeof(buffer));
+  }
 }
 
 void Lobby::update(double delta_time) {
@@ -135,16 +138,17 @@ void Lobby::update(double delta_time) {
 }
 
 void Lobby::handle_ai_inputs(double delta_time) {
-  if (!ai_driver_) {
-    ai_driver_ = std::make_unique<ai::AIDriver>();
-    if (track_) ai_driver_->set_track(*track_);
-  }
-
   for (auto& [car_id, car] : sim_world_.cars()) {
     if (car.driver_type == simulation::DriverType::AI) {
+      auto it = ai_drivers_.find(car_id);
+      if (it == ai_drivers_.end()) {
+        auto driver = std::make_unique<ai::AIDriver>();
+        if (track_) driver->set_track(*track_);
+        it = ai_drivers_.emplace(car_id, std::move(driver)).first;
+      }
       const auto& state = car.simulation->state();
-      ai_driver_->update(state, delta_time);
-      input::InputState ai_input = ai_driver_->poll();
+      it->second->update(state, delta_time);
+      input::InputState ai_input = it->second->poll();
       sim_world_.set_ai_input(car_id, ai_input);
     }
   }

@@ -7,35 +7,32 @@ using namespace p0;
 
 // Pacejka tire model should return 0 at zero slip
 TEST(Pacejka, ZeroSlipReturnsZero) {
-  double mu = 1.2;
   double b = 11.0;
   double c = 1.9;
   double e = 0.97;
-  EXPECT_DOUBLE_EQ(physics::pacejka_tire_model(0.0, mu, b, c, e), 0.0);
+  EXPECT_DOUBLE_EQ(physics::pacejka_tire_model(0.0, b, c, e), 0.0);
 }
 
 // Pacejka should peak near optimal slip
 TEST(Pacejka, PeaksNearOptimalSlip) {
-  double mu = 1.0;
   double b = 10.0;
   double c = 1.7;
   double e = 0.97;
 
-  double val_zero = physics::pacejka_tire_model(0.0, mu, b, c, e);
-  double val_peak = physics::pacejka_tire_model(0.15, mu, b, c, e);
+  double val_zero = physics::pacejka_tire_model(0.0, b, c, e);
+  double val_peak = physics::pacejka_tire_model(0.15, b, c, e);
 
   EXPECT_GT(val_peak, val_zero);
 }
 
 // Pacejka should be symmetric-ish for small slip angles
 TEST(Pacejka, SymmetricForSmallSlip) {
-  double mu = 1.0;
   double b = 10.0;
   double c = 1.7;
   double e = 0.97;
 
-  double pos = physics::pacejka_tire_model(0.1, mu, b, c, e);
-  double neg = physics::pacejka_tire_model(-0.1, mu, b, c, e);
+  double pos = physics::pacejka_tire_model(0.1, b, c, e);
+  double neg = physics::pacejka_tire_model(-0.1, b, c, e);
   EXPECT_NEAR(pos, -neg, 0.01);
 }
 

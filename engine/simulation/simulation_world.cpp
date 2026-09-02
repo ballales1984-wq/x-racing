@@ -213,10 +213,11 @@ WorldUpdateResult SimulationWorld::update_with_race_manager(
     std::unordered_map<int, race::TireCompound> tires;
 
     for (const auto& [car_id, car] : cars_) {
-      positions[car_id] = car.last_state.position;
-      speeds[car_id] = car.last_state.speed;
-      fuel[car_id] = 100.0;
-      tires[car_id] = race::TireCompound::MEDIUM;
+       positions[car_id] = car.last_state.position;
+       speeds[car_id] = car.last_state.speed;
+       fuel[car_id] = car.last_state.current_fuel_l;
+       tires[car_id] = static_cast<race::TireCompound>(
+         std::clamp(car.last_state.tire_compound, 0, static_cast<int>(race::TireCompound::COUNT) - 1));
     }
 
     race_update_cb(timestamp, positions, speeds, fuel, tires);

@@ -38,13 +38,15 @@ class NetworkSession {
   NetworkSession();
   ~NetworkSession();
 
-  bool initialize_host(int port = kServerPort);
-  bool initialize_client(const std::string& host_address, int port = kServerPort);
-  void shutdown();
+   bool initialize_host(int port = kServerPort);
+   bool initialize_client(const std::string& host_address, int port = kServerPort);
+   void disconnect();
+   void shutdown();
 
-  void send_input(const input::InputState& input, int car_id, uint32_t sequence, double timestamp);
-  void broadcast_snapshot(const WorldSnapshot& snapshot);
-  void send_snapshot_to_client(int player_id, const WorldSnapshot& snapshot);
+   void send_input(const input::InputState& input, int car_id, uint32_t sequence, double timestamp);
+   void broadcast_snapshot(const WorldSnapshot& snapshot);
+   void send_snapshot_to_client(int player_id, const WorldSnapshot& snapshot);
+   void send_packet_to_all(const void* data, int len);
 
   void update(double delta_time);
 
@@ -56,7 +58,10 @@ class NetworkSession {
   bool is_connected() const { return state_ == ConnectionState::CONNECTED || state_ == ConnectionState::READY || state_ == ConnectionState::RACING; }
   ConnectionState state() const { return state_; }
 
-  const std::unordered_map<int, PlayerInfo>& players() const { return players_; }
+   const std::unordered_map<int, PlayerInfo>& players() const { return players_; }
+
+   uint32_t track_seed() const { return track_seed_; }
+   void set_track_seed(uint32_t seed) { track_seed_ = seed; }
 
   void set_on_snapshot(OnSnapshotReceived cb) { on_snapshot_ = cb; }
   void set_on_player_joined(OnPlayerJoined cb) { on_player_joined_ = cb; }
@@ -78,9 +83,13 @@ class NetworkSession {
   ConnectionState state_ = ConnectionState::DISCONNECTED;
   int local_car_id_ = 0;
   int local_player_id_ = -1;
-  char session_id_[16] = {};
+   char session_id_[16] = {};
+   uint32_t track_seed_ = 12345;
 
-  std::unordered_map<int, PlayerInfo> players_;
+   std::unordered_map<int, PlayerInfo> players_;
+   std::unordered_map<int, sockaddr_in> client_addresses_;
+   sockaddr_in server_address_{};
+   bool has_server_address_ = false;
 
   OnSnapshotReceived on_snapshot_;
   OnPlayerJoined on_player_joined_;
@@ -89,7 +98,7 @@ class NetworkSession {
   OnLobbyUpdate on_lobby_update_;
   OnDisconnect on_disconnect_;
 
-  int socket_fd_ = -1;
+  SOCKET socket_fd_ = INVALID_SOCKET;
   std::vector<Packet> pending_packets_;
   double last_timeout_check_ = 0.0;
 };
