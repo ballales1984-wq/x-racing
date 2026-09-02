@@ -43,14 +43,19 @@ class MenuSystem {
  public:
   MenuSystem();
 
+  // Switch to a new top-level menu state (clears current screen).
   void set_state(MenuState state);
   MenuState state() const { return current_state_; }
 
+  // Navigate the selection highlight.
   void navigate_up();
   void navigate_down();
+  // Activate the currently selected item.
   void select();
+  // Return to the previous menu in the navigation stack.
   void go_back();
 
+  // Add an item to the current screen.
   void add_item(const MenuItem& item);
   void clear_items();
 
