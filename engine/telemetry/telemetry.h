@@ -12,6 +12,8 @@ namespace p0::telemetry {
 struct TelemetryFrame {
   double time = 0.0;                     // s, cumulative time
   int lap_number = 0;                    // current lap number
+  double lap_time = 0.0;                 // s, time within the current lap
+  double last_lap_time = 0.0;            // s, duration of the most recently completed lap
   double distance = 0.0;                 // m, distance along track
   double speed = 0.0;                     // m/s
   double rpm = 0.0;                       // engine RPM
@@ -38,14 +40,25 @@ struct TelemetryFrame {
 class Telemetry {
  public:
   void record(const vehicle::VehicleState& state, double dt);
-  void mark_lap(int lap_number) { current_lap_ = lap_number; }
+  void mark_lap(int lap_number) { pending_lap_number_ = lap_number; }
   const std::vector<TelemetryFrame>& frames() const { return frames_; }
-  void clear() { frames_.clear(); current_lap_ = 0; }
+  void clear() {
+    frames_.clear();
+    current_lap_ = 0;
+    current_lap_time_ = 0.0;
+    last_lap_time_ = 0.0;
+    pending_lap_number_ = 0;
+  }
   void save_csv(const std::string& path) const;
 
  private:
   std::vector<TelemetryFrame> frames_;
   int current_lap_ = 0;
+  double current_lap_time_ = 0.0;
+  double last_lap_time_ = 0.0;
+  // Lap number announced by the caller via mark_lap() but not yet committed
+  // to the current_lap_ counter; the next record() call promotes it.
+  int pending_lap_number_ = 0;
 };
 
 }

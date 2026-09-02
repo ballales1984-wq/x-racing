@@ -435,13 +435,13 @@ void DX12Renderer::BeginFrame(float total_time) {
                 lc.color[0] = light_->color[0];
                 lc.color[1] = light_->color[1];
                 lc.color[2] = light_->color[2];
-                lc.color[3] = light_->Ambient()[0];  // ambient strength in alpha
+                lc.color[3] = 1.0f;  // full ambient term
                 dl = std::sqrt(light_->direction.x * light_->direction.x +
                                light_->direction.y * light_->direction.y +
                                light_->direction.z * light_->direction.z);
             } else {
                 lc.direction[3] = 1.0f;
-                lc.color[3] = 0.1f;
+                lc.color[3] = 1.0f;
             }
             (void)dl;
             lc.camera[0] = camera_pos_[0];
@@ -471,6 +471,8 @@ void DX12Renderer::BeginFrame(float total_time) {
 
             Mat4 wvp = Mat4::Multiply(proj, Mat4::Multiply(view, per_object_world_[i]));
             std::memcpy(constant_buffer_mapped_, wvp.m.data(), sizeof(wvp.m));
+            std::memcpy(static_cast<uint8_t*>(constant_buffer_mapped_) + sizeof(wvp.m),
+                        obj.instance.tint.data(), sizeof(obj.instance.tint));
             command_list_->SetGraphicsRootConstantBufferView(0, constant_buffer_->GetGPUVirtualAddress());
             if (light_buffer_) {
                 command_list_->SetGraphicsRootConstantBufferView(1, light_buffer_->GetGPUVirtualAddress());
@@ -567,6 +569,9 @@ void DX12Renderer::UpdateConstantBuffer(float total_time) {
     Mat4 wvp   = Mat4::Multiply(proj, Mat4::Multiply(view, world));
 
     std::memcpy(constant_buffer_mapped_, wvp.m.data(), sizeof(wvp.m));
+    std::array<float, 4> white_tint{1.0f, 1.0f, 1.0f, 1.0f};
+    std::memcpy(static_cast<uint8_t*>(constant_buffer_mapped_) + sizeof(wvp.m),
+                white_tint.data(), sizeof(white_tint));
 }
 
 void DX12Renderer::SetClearColor(float r, float g, float b, float a) {

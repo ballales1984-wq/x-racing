@@ -150,7 +150,7 @@ private:
         xe::SceneObject o4;
         o4.name = "ground"; o4.instance.position = { 0.0f, -1.0f, 0.0f };
         o4.instance.scale = { 4.0f, 0.1f, 4.0f };
-        o4.instance.tint = { 0.6f, 0.6f, 0.65f, 1.0f };
+        o4.instance.tint = { 0.3f, 0.7f, 0.3f, 1.0f };
         s.objects.push_back(o4);
 
         // Textured sprite — if texture exists, it'll show; otherwise still draws

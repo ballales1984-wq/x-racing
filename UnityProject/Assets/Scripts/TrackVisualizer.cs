@@ -24,7 +24,7 @@ namespace Project0.Unity
         private Color colorSegmentEnd = Color.red;
         private Color colorWaypoint = Color.yellow;
         private Color colorApex = Color.cyan;
-        private Color colorBrakePoint = Color.magenta;
+        private Color colorBrakePoint = Color.gray;
         private Color colorPitEntry = Color.yellow;
         private Color colorPitExit = new Color(1.0f, 0.5f, 0.0f);
         private Color colorArrow = Color.white;

@@ -145,7 +145,7 @@ namespace XRacing.Debug
 
         private void DrawRacingLine(List<RacingLineSample> line)
         {
-            Gizmos.color = Color.magenta;
+            Gizmos.color = Color.gray;
             for (int i = 0; i < line.Count - 1; i++)
             {
                 Vector3 a = new Vector3(line[i].transform.position.x, 0.05f, line[i].transform.position.y);

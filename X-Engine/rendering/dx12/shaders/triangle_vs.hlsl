@@ -15,6 +15,7 @@ struct VS_OUTPUT {
 
 cbuffer TransformBuffer : register(b0) {
     float4x4 worldViewProj;
+    float4 tint;
 };
 
 cbuffer LightBuffer : register(b1) {
@@ -27,7 +28,7 @@ cbuffer LightBuffer : register(b1) {
 VS_OUTPUT main(VS_INPUT input) {
     VS_OUTPUT output;
     output.pos = mul(float4(input.pos, 1.0f), worldViewProj);
-    output.color = input.color;
+    output.color = input.color * tint;
     output.normal = input.normal;
     output.world_pos = input.pos;
     output.uv = input.uv;
