@@ -1,3 +1,5 @@
+// Project 0 — Console menu system (navigable menu stack)
+// Namespace: p0::ui
 #pragma once
 
 #include <string>
@@ -6,6 +8,7 @@
 
 namespace p0::ui {
 
+// Top-level menu states in the game flow.
 enum class MenuState : uint8_t {
   MAIN_MENU,
   RACE_SETUP,
@@ -15,13 +18,15 @@ enum class MenuState : uint8_t {
   NONE
 };
 
+// Single actionable item inside a menu screen. Supports static actions
+// and slider-style numeric inputs.
 struct MenuItem {
-  std::string label;
-  std::function<void()> action;
+  std::string label;  // displayed text
+  std::function<void()> action;  // invoked on select
   bool enabled = true;
-  int value = 0;
-  int min_value = 0;
-  int max_value = 100;
+  int value = 0;  // current value (for sliders)
+  int min_value = 0;  // slider minimum
+  int max_value = 100;  // slider maximum
   bool is_slider = false;
 };
 

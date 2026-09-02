@@ -103,13 +103,16 @@ class AudioEngine {
   double master_volume_ = 1.0;
   bool initialized_ = false;
 
+  // --- Sound instances ---
   std::vector<SoundInstance> sounds_;
   int next_id_ = 1;
 
+  // --- Engine synthesis ---
   EngineSoundParams engine_params_;
-  double engine_phase_ = 0.0;
+  double engine_phase_ = 0.0;  // rad, phase accumulator for oscillator
   bool engine_playing_ = false;
 
+  // --- Listener ---
   double listener_x_ = 0.0;
   double listener_y_ = 0.0;
   double listener_z_ = 0.0;
