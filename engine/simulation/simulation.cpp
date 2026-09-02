@@ -43,6 +43,10 @@ void Simulation::reset(const vehicle::VehicleState& initial_state) {
   state_.body_pitch = 0.0;
   state_.weather_grip_factor = 1.0;
   state_.track_temp = 305.0;
+  state_.front_tire_temp = vehicle_params_.ambient_temperature;
+  state_.rear_tire_temp = vehicle_params_.ambient_temperature;
+  state_.front_tire_wear = 1.0;
+  state_.rear_tire_wear = 1.0;
   state_.front_slip_angle_relaxed = 0.0;
   state_.rear_slip_angle_relaxed = 0.0;
   state_.front_camber = 0.0;
@@ -84,9 +88,9 @@ SimulationResult Simulation::step(const input::InputState& input) {
     reversing_ = true;
   }
 
-  for (int sub = 0; sub < static_cast<int>(params_.substeps); ++sub) {
+  for (int sub = 0; sub < params_.substeps; ++sub) {
     state_.acceleration = Vec2::Zero();
-    state_.steer_angle = input.steering * vehicle_params_.max_steer_angle;
+    state_.steer_angle = clamp(input.steering, -1.0, 1.0) * vehicle_params_.max_steer_angle;
     state_.throttle = clamp(input.throttle, 0.0, 1.0);
     state_.brake = clamp(input.brake, 0.0, 1.0);
 
@@ -99,8 +103,8 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
     if (params_.use_abs && state_.brake > kEpsilon && state_.speed > kEpsilon) {
       const double abs_threshold = 0.15;
-      if (std::abs(prev_slip_ratio_) > abs_threshold) {
-        const double slip_excess = std::abs(prev_slip_ratio_) - abs_threshold;
+      if (std::abs(state_.slip_ratio) > abs_threshold) {
+        const double slip_excess = std::abs(state_.slip_ratio) - abs_threshold;
         const double reduction = slip_excess / (1.0 - abs_threshold);
         state_.brake = std::max(0.0, state_.brake * (1.0 - reduction));
       }
@@ -108,8 +112,8 @@ SimulationResult Simulation::step(const input::InputState& input) {
 
     if (params_.use_tcs && state_.throttle > kEpsilon && state_.speed > kEpsilon) {
       const double tcs_threshold = 0.15;
-      if (std::abs(prev_slip_ratio_) > tcs_threshold) {
-        const double slip_excess = std::abs(prev_slip_ratio_) - tcs_threshold;
+      if (std::abs(state_.slip_ratio) > tcs_threshold) {
+        const double slip_excess = std::abs(state_.slip_ratio) - tcs_threshold;
         const double reduction = slip_excess / (1.0 - tcs_threshold);
         state_.throttle = std::max(0.0, state_.throttle * (1.0 - reduction));
       }
@@ -353,9 +357,10 @@ void Simulation::update_weather() {
   // Wind effect on speed
   const double wind_speed = vehicle_params_.wind_speed;
   if (wind_speed > kEpsilon) {
+    const double wind_dir = vehicle_params_.wind_direction;
+    const Vec2 wind_vector(std::cos(wind_dir), std::sin(wind_dir));
     const double wind_effect = vehicle_params_.wind_effect_on_speed * wind_speed;
-    state_.speed += wind_effect * (params_.dt / params_.substeps);
-    state_.speed = clamp(state_.speed, 0.0, 150.0);
+    state_.acceleration += wind_vector * wind_effect / vehicle_params_.mass;
   }
 }
 
@@ -727,11 +732,8 @@ void Simulation::integrate(double dt) {
   if (track_) {
     const double track_len = track_->length();
     state_.distance_along_track += new_long_speed * dt;
-    // Wrap distance into [0, L); detect start/finish line crossings.
-    while (state_.distance_along_track >= track_len) {
-      state_.distance_along_track -= track_len;
-    }
-    while (state_.distance_along_track < 0.0) {
+    state_.distance_along_track = std::fmod(state_.distance_along_track, track_len);
+    if (state_.distance_along_track < 0.0) {
       state_.distance_along_track += track_len;
     }
     if (lap_detector_.update(state_.distance_along_track)) {

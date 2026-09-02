@@ -74,13 +74,13 @@ namespace Project0.Unity
 
         void Update()
         {
-            if (Input.GetKeyDown(toggleCameraKey))
+            if (InputCompat.GetKeyDown(toggleCameraKey))
             {
                 firstPersonView = !firstPersonView;
                 UpdateCameraMode();
             }
 
-            if (Input.GetKeyDown(KeyCode.R))
+            if (InputCompat.GetKeyDown(KeyCode.R))
             {
                 ResetCarPosition();
             }
@@ -151,14 +151,14 @@ namespace Project0.Unity
             float brake = 0f;
             float steer = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle = 1f;
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) brake = 1f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steer = 1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steer = -1f;
+            if (InputCompat.GetKey(KeyCode.W) || InputCompat.GetKey(KeyCode.UpArrow)) throttle = 1f;
+            if (InputCompat.GetKey(KeyCode.S) || InputCompat.GetKey(KeyCode.DownArrow)) brake = 1f;
+            if (InputCompat.GetKey(KeyCode.A) || InputCompat.GetKey(KeyCode.LeftArrow)) steer = 1f;
+            if (InputCompat.GetKey(KeyCode.D) || InputCompat.GetKey(KeyCode.RightArrow)) steer = -1f;
 
             var state = SimPlugin.Update(Time.deltaTime, throttle, brake, steer);
             transform.position = new Vector3((float)state.x, 0.6f, (float)state.y);
-            float unityHeading = Mathf.Repeat((float)state.heading * Mathf.Rad2Deg + 270f, 360f);
+            float unityHeading = Mathf.Repeat(90f - (float)state.heading * Mathf.Rad2Deg, 360f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             currentSpeed = (float)state.speed;
@@ -174,10 +174,10 @@ namespace Project0.Unity
             float brake = 0f;
             float steerInput = 0f;
 
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) throttle = 1f;
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) brake = 1f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) steerInput = 1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) steerInput = -1f;
+            if (InputCompat.GetKey(KeyCode.W) || InputCompat.GetKey(KeyCode.UpArrow)) throttle = 1f;
+            if (InputCompat.GetKey(KeyCode.S) || InputCompat.GetKey(KeyCode.DownArrow)) brake = 1f;
+            if (InputCompat.GetKey(KeyCode.A) || InputCompat.GetKey(KeyCode.LeftArrow)) steerInput = 1f;
+            if (InputCompat.GetKey(KeyCode.D) || InputCompat.GetKey(KeyCode.RightArrow)) steerInput = -1f;
 
             if (throttle > 0f)
             {
@@ -210,7 +210,8 @@ namespace Project0.Unity
                 currentSteerAngle += steerChange;
                 currentSteerAngle = Mathf.Clamp(currentSteerAngle, -maxSteerAngle * Mathf.Deg2Rad, maxSteerAngle * Mathf.Deg2Rad);
                 float effectiveSteer = currentSteerAngle * (1f - steerFactor * 0.7f);
-                currentHeading -= effectiveSteer * Time.deltaTime * Mathf.Sign(currentSpeed);
+                float speedSign = Mathf.Sign(Mathf.Abs(currentSpeed) > 0.01f ? currentSpeed : 1f);
+                currentHeading -= effectiveSteer * Time.deltaTime * speedSign;
             }
             else if (steerInput == 0f)
             {
@@ -263,7 +264,7 @@ namespace Project0.Unity
 
             var frame = frames[currentIndex];
             transform.position = new Vector3((float)frame.posX, 0.5f, (float)frame.posY);
-            float unityHeading = Mathf.Repeat(frame.heading * Mathf.Rad2Deg + 270f, 360f);
+            float unityHeading = Mathf.Repeat(90f - frame.heading * Mathf.Rad2Deg, 360f);
             transform.eulerAngles = new Vector3(0f, unityHeading, 0f);
 
             CheckProximityCheckpoints();
@@ -327,15 +328,22 @@ namespace Project0.Unity
             {
                 if (distFromStart <= startLineThreshold && allCheckpointsPassed)
                 {
-                    bool valid = true;
-                    if (carHUD != null)
+                    Vector3 carForward = transform.forward;
+                    float forwardAlignment = Vector3.Dot(carForward, Vector3.right);
+                    bool movingForward = forwardAlignment > 0.3f;
+
+                    if (movingForward)
                     {
-                        carHUD.EndLap(valid);
+                        bool valid = true;
+                        if (carHUD != null)
+                        {
+                            carHUD.EndLap(valid);
+                        }
+                        lapStarted = false;
+                        allCheckpointsPassed = false;
+                        lastCheckpoint = -1;
+                        checkpointsPassed = 0;
                     }
-                    lapStarted = false;
-                    allCheckpointsPassed = false;
-                    lastCheckpoint = -1;
-                    checkpointsPassed = 0;
                 }
             }
         }

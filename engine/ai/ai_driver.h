@@ -143,8 +143,8 @@ class AIDriver : public input::InputManager {
 
   // --- Track geometry helpers --------------------------------------------
   // Sample the track at the vehicle's position and return a target speed
-  // based on curvature and surface friction.
-  double get_track_target_speed(const Vec2& position) const;
+  // based on curvature. Scans only forward from the given track distance.
+  double get_track_target_speed(const Vec2& position, double track_distance) const;
 
   // Return the curve radius at a given track distance (1/curvature).
   double curve_radius(const Vec2& pos, double distance) const;

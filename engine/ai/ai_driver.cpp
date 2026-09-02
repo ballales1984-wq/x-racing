@@ -8,6 +8,9 @@ namespace p0::ai {
 //  Difficulty presets
 // ---------------------------------------------------------------------------
 
+//! @brief Returns AI driver parameters tuned for the specified difficulty level.
+//! @param diff The difficulty tier (EASY, MEDIUM, HARD).
+//! @return AIDriverParams configured for the given difficulty.
 AIDriverParams AIDriver::difficulty_preset(AIDifficulty diff) {
   AIDriverParams p;
   switch (diff) {
@@ -84,6 +87,8 @@ AIDriverParams AIDriver::difficulty_preset(AIDifficulty diff) {
 //  Construction & configuration
 // ---------------------------------------------------------------------------
 
+//! @brief Constructs an AI driver with the given parameters.
+//! @param params The AI driver configuration.
 AIDriver::AIDriver(const AIDriverParams& params) : params_(params) {
   last_input_ = input::InputState{};
 
@@ -94,25 +99,35 @@ AIDriver::AIDriver(const AIDriverParams& params) : params_(params) {
   rng_.seed(rd());
 }
 
+//! @brief Sets the track reference for path planning.
+//! @param track The track data.
 void AIDriver::set_track(const track::Track& track) {
   track_ = &track;
   has_target_ = false;
 }
 
+//! @brief Sets the precomputed racing line samples.
+//! @param samples Vector of racing line samples.
 void AIDriver::set_racing_line(const std::vector<track::RacingLineSample>& samples) {
   racing_line_ = samples;
   use_racing_line_ = !samples.empty();
 }
 
+//! @brief Re-applies a difficulty preset, resetting all parameters.
+//! @param difficulty The new difficulty level.
 void AIDriver::set_difficulty(AIDifficulty difficulty) {
   params_ = difficulty_preset(difficulty);
 }
 
+//! @brief Sets the corner-entry speed factor (clamped to 0.5-1.0).
+//! @param factor The speed factor as a fraction of optimal.
 void AIDriver::set_target_speed_factor(double factor) {
   // Clamp to a sane range: 50 % to 100 % of the pre-computed corner speed.
   params_.corner_entry_speed_factor = std::clamp(factor, 0.5, 1.0);
 }
 
+//! @brief Sets the list of nearby cars for traffic-aware decisions.
+//! @param cars Vector of vehicle states for other cars on track.
 void AIDriver::set_nearby_cars(const std::vector<vehicle::VehicleState>& cars) {
   nearby_cars_ = cars;
 }
@@ -121,6 +136,10 @@ void AIDriver::set_nearby_cars(const std::vector<vehicle::VehicleState>& cars) {
 //  Update pipeline
 // ---------------------------------------------------------------------------
 
+//! @brief Main update entry point. Computes all control inputs for this tick.
+//!        Runs traffic detection, path planning, and control computation.
+//! @param state Current vehicle state.
+//! @param delta_time Time elapsed since last update in seconds.
 void AIDriver::update(const vehicle::VehicleState& state, double delta_time) {
   if (!track_) return;
 
@@ -153,6 +172,9 @@ void AIDriver::update(const vehicle::VehicleState& state, double delta_time) {
 //  Racing-line lookup
 // ---------------------------------------------------------------------------
 
+//! @brief Finds the nearest racing-line sample to the given position.
+//! @param position The world position to search from.
+//! @return Pointer to the nearest sample, or nullptr if no racing line is set.
 const track::RacingLineSample* AIDriver::lookup_racing_line(const Vec2& position) const {
   if (!use_racing_line_ || racing_line_.empty()) return nullptr;
 
@@ -175,6 +197,9 @@ const track::RacingLineSample* AIDriver::lookup_racing_line(const Vec2& position
 //  Target computation
 // ---------------------------------------------------------------------------
 
+//! @brief Computes the target position and speed for the AI to follow.
+//!        Uses racing line if available, otherwise samples track geometry.
+//! @param state Current vehicle state.
 void AIDriver::compute_target(const vehicle::VehicleState& state) {
   if (!track_) return;
 
@@ -215,7 +240,7 @@ void AIDriver::compute_target(const vehicle::VehicleState& state) {
 
     const auto& tp = track_->at(wrapped);
     double curvature = std::abs(tp.curvature);
-    double target_speed = get_track_target_speed(tp.position);
+      double target_speed = get_track_target_speed(tp.position, d);
 
     // Apply corner-entry speed factor in curves.
     if (curvature > 0.01) {
@@ -266,6 +291,9 @@ void AIDriver::compute_target(const vehicle::VehicleState& state) {
 //  Steering computation
 // ---------------------------------------------------------------------------
 
+//! @brief Computes steering input based on heading error to the target.
+//!        Reduces steering authority at high speed and in sharp curves.
+//! @param state Current vehicle state.
 void AIDriver::compute_steering(const vehicle::VehicleState& state) {
   if (!has_target_) return;
 
@@ -299,9 +327,13 @@ void AIDriver::compute_steering(const vehicle::VehicleState& state) {
   double steer = heading_error * params_.steering_gain * curvature_factor / speed_factor;
   steer = std::clamp(steer, -1.0, 1.0);
 
-  // At very low speed the car needs extra help turning.
+  // At very low speed the kinematic bicycle model is poorly approximated by
+  // heading error alone: the car has lots of authority but no centrifugal load
+  // to settle the heading. Apply a small extra gain to compensate, while
+  // still clamping to [-1, +1] above.
   if (state.speed < 2.0) {
-    steer *= 0.5;
+    steer *= 1.25;
+    steer = std::clamp(steer, -1.0, 1.0);
   }
 
   last_input_.steering = steer;
@@ -311,6 +343,10 @@ void AIDriver::compute_steering(const vehicle::VehicleState& state) {
 //  Throttle & brake computation
 // ---------------------------------------------------------------------------
 
+//! @brief Computes throttle and brake based on speed error.
+//!        Includes corner anticipation braking.
+//! @param state Current vehicle state.
+//! @param delta_time Time elapsed since last update.
 void AIDriver::compute_throttle_brake(const vehicle::VehicleState& state, double delta_time) {
   // Start from the racing-line target speed, then reduce for any car
   // that is too close ahead (collision avoidance).
@@ -365,6 +401,8 @@ void AIDriver::compute_throttle_brake(const vehicle::VehicleState& state, double
 //  Gear shifting
 // ---------------------------------------------------------------------------
 
+//! @brief Determines whether to upshift or downshift based on current RPM.
+//! @param state Current vehicle state.
 void AIDriver::compute_gears(const vehicle::VehicleState& state) {
   last_input_.upshift = false;
   last_input_.downshift = false;
@@ -383,29 +421,40 @@ void AIDriver::compute_gears(const vehicle::VehicleState& state) {
 //  Track geometry helpers
 // ---------------------------------------------------------------------------
 
-double AIDriver::get_track_target_speed(const Vec2& position) const {
+//! @brief Returns a target speed for a position based on nearby curvature.
+//!        Scans only forward from track_distance to avoid reacting to curves
+//!        that have already been passed.
+//! @param position The world position to evaluate.
+//! @param track_distance Distance along the track centerline at the position.
+//! @return Target speed in m/s (30-150).
+double AIDriver::get_track_target_speed(const Vec2& position, double track_distance) const {
   if (!track_) return 80.0;
 
   double best_speed = 80.0;
   double min_curvature = 0.0;
+  double track_len = track_->length();
 
-  // Scan 30 m ahead/behind the position for the tightest curve.
-  for (double d = 0.0; d < track_->length(); d += 5.0) {
-    const auto& tp = track_->at(d);
-    double dist = (tp.position - position).norm();
-    if (dist < 30.0) {
-      double curvature = std::abs(tp.curvature);
-      double speed = 120.0 / (1.0 + curvature * 80.0);
-      if (curvature > min_curvature) {
-        best_speed = speed;
-        min_curvature = curvature;
-      }
+  // Scan 30 m ahead for the tightest curve.
+  for (double d = track_distance; d < track_distance + 30.0; d += 5.0) {
+    double wrapped = std::fmod(d, track_len);
+    if (wrapped < 0.0) wrapped += track_len;
+
+    const auto& tp = track_->at(wrapped);
+    double curvature = std::abs(tp.curvature);
+    double speed = 120.0 / (1.0 + curvature * 80.0);
+    if (curvature > min_curvature) {
+      best_speed = speed;
+      min_curvature = curvature;
     }
   }
 
   return std::clamp(best_speed, 30.0, 150.0);
 }
 
+//! @brief Returns the curve radius at a given track distance.
+//! @param pos The position (unused, kept for API compatibility).
+//! @param distance Distance along the track centerline.
+//! @return Curve radius in meters.
 double AIDriver::curve_radius(const Vec2& pos, double distance) const {
   if (!track_) return 100.0;
 
@@ -421,6 +470,10 @@ double AIDriver::curve_radius(const Vec2& pos, double distance) const {
 //  Traffic detection & adaptation
 // ---------------------------------------------------------------------------
 
+//! @brief Inspects nearby cars and updates traffic state.
+//!        Tracks stuck-behind timer and overtake urgency.
+//! @param state Current vehicle state.
+//! @param delta_time Time elapsed since last update.
 void AIDriver::detect_traffic(const vehicle::VehicleState& state, double delta_time) {
   if (nearby_cars_.empty() || !track_) {
     // No traffic to evaluate — decay overtake urgency back to zero.
@@ -463,6 +516,10 @@ void AIDriver::detect_traffic(const vehicle::VehicleState& state, double delta_t
   }
 }
 
+//! @brief Returns a speed reduction for collision avoidance.
+//!        Applied when a slower car is directly ahead.
+//! @param state Current vehicle state.
+//! @return Speed reduction in m/s.
 double AIDriver::traffic_speed_adjustment(const vehicle::VehicleState& state) const {
   // When a slower car is directly ahead within the safety envelope,
   // reduce the target speed to avoid a collision.
@@ -493,6 +550,12 @@ double AIDriver::traffic_speed_adjustment(const vehicle::VehicleState& state) co
 //  Overtaking adjustment
 // ---------------------------------------------------------------------------
 
+//! @brief Adjusts the target position for overtaking maneuvers.
+//!        Only active on straights with slower cars ahead.
+//! @param target The original target position.
+//! @param state Current vehicle state.
+//! @param curvature Current track curvature.
+//! @return Adjusted target position.
 Vec2 AIDriver::adjust_for_overtaking(const Vec2& target, const vehicle::VehicleState& state, double curvature) {
   // Guard: overtaking only when enabled and cars are present.
   if (!params_.overtake_enabled || nearby_cars_.empty() || !track_) return target;
@@ -546,6 +609,12 @@ Vec2 AIDriver::adjust_for_overtaking(const Vec2& target, const vehicle::VehicleS
 //  Defense adjustment
 // ---------------------------------------------------------------------------
 
+//! @brief Adjusts the target position to defend against attackers.
+//!        Only active in corners with cars alongside.
+//! @param target The original target position.
+//! @param state Current vehicle state.
+//! @param curvature Current track curvature.
+//! @return Adjusted target position.
 Vec2 AIDriver::adjust_for_defense(const Vec2& target, const vehicle::VehicleState& state, double curvature) {
   // Guard: defense only when enabled and cars are present.
   if (!params_.enable_defense || nearby_cars_.empty() || !track_) return target;
@@ -590,6 +659,10 @@ Vec2 AIDriver::adjust_for_defense(const Vec2& target, const vehicle::VehicleStat
 //  Human error simulation
 // ---------------------------------------------------------------------------
 
+//! @brief Blends current input with previous output to simulate reaction delay.
+//! @param out The output input state (modified in place).
+//! @param previous The previous frame's input state.
+//! @param delta_time Time elapsed since last update.
 void AIDriver::apply_reaction_delay(input::InputState& out, const input::InputState& previous, double delta_time) {
   // If no reaction delay is configured, the computed input passes through unchanged.
   if (params_.reaction_delay <= 0.0 || delta_time <= 0.0) return;
@@ -605,6 +678,8 @@ void AIDriver::apply_reaction_delay(input::InputState& out, const input::InputSt
   out.brake = std::clamp(p0::lerp(previous.brake, out.brake, rate), 0.0, 1.0);
 }
 
+//! @brief Adds random steering jitter and throttle variance for realism.
+//! @param out The output input state (modified in place).
 void AIDriver::apply_human_errors(input::InputState& out) {
   // Random steering jitter — small noise that mimics hand tremor.
   if (params_.steering_jitter > 0.0) {
@@ -626,10 +701,15 @@ void AIDriver::apply_human_errors(input::InputState& out) {
 //  Input polling
 // ---------------------------------------------------------------------------
 
+//! @brief Returns the last computed input state.
+//! @return The current InputState.
 input::InputState AIDriver::poll() {
   return last_input_;
 }
 
+//! @brief AI driver never generates key events.
+//! @param key_code Unused.
+//! @return Always false.
 bool AIDriver::is_key_down(int key_code) {
   // AI never generates key events.
   (void)key_code;
