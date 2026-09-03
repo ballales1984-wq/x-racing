@@ -127,10 +127,46 @@ protected:
                 }
             }
 
+            // Apply selection highlight (tint) to scene objects linked to bodies 0..N-1.
+            if (physics_) {
+                int sel = physics_->Selected();
+                for (int i = 0; i < physics_->Size() && i < static_cast<int>(scene.objects.size()); ++i) {
+                    if (i == sel) {
+                        scene.objects[i].instance.tint = { 1.0f, 0.9f, 0.2f, 1.0f };  // yellow highlight
+                    } else {
+                        scene.objects[i].instance.tint = { 1.0f, 1.0f, 1.0f, 1.0f };
+                    }
+                }
+            }
+
+            // Left-click picking (when cursor is captured, mousedown event means click).
+            if (physics_ && mouse_) {
+                const auto& mstate = mouse_->GetState();
+                if (mstate.WasPressed(xe::MouseButton::Left) && cursor_captured_) {
+                    auto fwd = controller_.GetForward();
+                    xe::Ray r;
+                    r.origin = { px, py, pz };
+                    r.dir = { fwd.x, fwd.y, fwd.z };
+                    auto hit = physics_->RayCast(r, 200.0f);
+                    physics_->SetSelected(hit.body);
+                    if (console_) {
+                        if (hit.body >= 0) {
+                            const auto& b = physics_->Get(hit.body);
+                            std::ostringstream o; o << "Picked body " << hit.body
+                                                    << " t=" << hit.t
+                                                    << " pos=(" << b.position.x << "," << b.position.y << "," << b.position.z << ")";
+                            console_->PrintLn(o.str());
+                        } else {
+                            console_->PrintLn("Picked: (nothing)");
+                        }
+                    }
+                }
+            }
+
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.11  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.12  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -190,7 +226,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.11");
+    XE_LOG_INFO("X-Engine V0.12");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -200,7 +236,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.11 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.12 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -308,6 +344,29 @@ int main() {
                                 << ax << "," << ay << "," << az << ") rad/s";
         console.PrintLn(o.str());
     });
+    console.Register("pick", "Select body N (or 'clear') for highlight",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage: pick <idx>|clear");
+            return;
+        }
+        if (args[1] == "clear") {
+            physics.SetSelected(-1);
+            console.PrintLn("Selection cleared.");
+            return;
+        }
+        int idx = std::stoi(args[1]);
+        if (idx < 0 || idx >= physics.Size()) {
+            console.PrintLn("Invalid body index.");
+            return;
+        }
+        physics.SetSelected(idx);
+        const auto& b = physics.Get(idx);
+        std::ostringstream o; o << "Selected body " << idx
+                                << " pos=(" << b.position.x << "," << b.position.y << "," << b.position.z << ")"
+                                << " vel=(" << b.velocity.x << "," << b.velocity.y << "," << b.velocity.z << ")";
+        console.PrintLn(o.str());
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -330,7 +389,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.11 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.12 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

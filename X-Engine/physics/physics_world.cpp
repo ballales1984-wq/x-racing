@@ -236,14 +236,30 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
         IntegrateOrientation(b.orientation, b.angVel, dt);
     }
 
-    // 2. Collision detection.
+    // 1b. Refresh AABBs for broadphase.
+    aabbs_.clear();
+    aabbs_.reserve(bodies_.size());
+    for (const auto& b : bodies_) {
+        if (b.shape == ShapeKind::Sphere) {
+            aabbs_.push_back(AABB::FromSphere(b.position, b.radius));
+        } else {
+            Vec3 axes[3] = {
+                b.orientation.Rotate({ 1, 0, 0 }),
+                b.orientation.Rotate({ 0, 1, 0 }),
+                b.orientation.Rotate({ 0, 0, 1 })
+            };
+            aabbs_.push_back(AABB::FromOBB(b.position, axes, b.halfExtents));
+        }
+    }
+
+    // 2. Collision detection using AABB broadphase.
     int resolved = 0;
-    const int n = static_cast<int>(bodies_.size());
-    for (int i = 0; i < n; ++i) {
-        for (int j = i + 1; j < n; ++j) {
-            RigidBody& A = bodies_[i];
-            RigidBody& B = bodies_[j];
-            if (!A.dynamic && !B.dynamic) continue;
+    auto pairs = ComputeBroadphasePairs();
+    for (const auto& p : pairs) {
+        int i = p.first, j = p.second;
+        RigidBody& A = bodies_[i];
+        RigidBody& B = bodies_[j];
+        if (!A.dynamic && !B.dynamic) continue;
 
             SatHit hit{ false, {0,1,0}, 0.0f, (A.position+B.position)*0.5f };
             if (A.shape == ShapeKind::Sphere && B.shape == ShapeKind::Sphere) {
@@ -319,9 +335,141 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
 
             collisions_.push_back(info);
             resolved++;
-        }
     }
     return resolved;
 }
 
+// --- Broadphase, picking, selection ----------------------------------------
+
+AABB PhysicsWorld::GetAABB(int i) const {
+    if (i < 0 || i >= static_cast<int>(bodies_.size())) return {};
+    const RigidBody& b = bodies_[i];
+    if (b.shape == ShapeKind::Sphere) return AABB::FromSphere(b.position, b.radius);
+    Vec3 axes[3] = {
+        b.orientation.Rotate({ 1, 0, 0 }),
+        b.orientation.Rotate({ 0, 1, 0 }),
+        b.orientation.Rotate({ 0, 0, 1 })
+    };
+    return AABB::FromOBB(b.position, axes, b.halfExtents);
+}
+
+std::vector<std::pair<int,int>> PhysicsWorld::ComputeBroadphasePairs() const {
+    std::vector<std::pair<int,int>> pairs;
+    const int n = static_cast<int>(bodies_.size());
+    if (n < 2) return pairs;
+
+    // Build AABBs on the fly if Step hasn't run yet.
+    std::vector<AABB> local;
+    const AABB* aabbs = aabbs_.data();
+    size_t aabbCount = aabbs_.size();
+    if (aabbCount != bodies_.size()) {
+        local.reserve(n);
+        for (const auto& b : bodies_) {
+            if (b.shape == ShapeKind::Sphere) {
+                local.push_back(AABB::FromSphere(b.position, b.radius));
+            } else {
+                Vec3 axes[3] = {
+                    b.orientation.Rotate({ 1, 0, 0 }),
+                    b.orientation.Rotate({ 0, 1, 0 }),
+                    b.orientation.Rotate({ 0, 0, 1 })
+                };
+                local.push_back(AABB::FromOBB(b.position, axes, b.halfExtents));
+            }
+        }
+        aabbs = local.data();
+        aabbCount = local.size();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j < n; ++j) {
+            if (aabbs[i].Overlaps(aabbs[j])) {
+                pairs.push_back({ i, j });
+            }
+        }
+    }
+    return pairs;
+}
+
+void PhysicsWorld::SetSelected(int idx) {
+    if (idx >= -1 && idx < static_cast<int>(bodies_.size())) selected_ = idx;
+}
+
+namespace {
+
+// Ray vs sphere: returns nearest t >= 0 or -1.
+float Ray_Sphere(const Ray& r, const Vec3& c, float radius) {
+    Vec3 oc = r.origin - c;
+    float b = Dot(oc, r.dir);
+    float cc = Dot(oc, oc) - radius * radius;
+    float disc = b * b - cc;
+    if (disc < 0.0f) return -1.0f;
+    float t = -b - std::sqrt(disc);
+    return (t >= 0.0f) ? t : -1.0f;
+}
+
+// Ray vs OBB (slab method in local space).
+float Ray_OBB(const Ray& r, const Vec3& center, const Vec3 axes[3], const Vec3& half) {
+    // Transform ray to OBB local space.
+    Vec3 d_local{
+        Dot(r.dir, axes[0]),
+        Dot(r.dir, axes[1]),
+        Dot(r.dir, axes[2])
+    };
+    Vec3 oc = r.origin - center;
+    Vec3 o_local{
+        Dot(oc, axes[0]),
+        Dot(oc, axes[1]),
+        Dot(oc, axes[2])
+    };
+    float tmin = -1e30f, tmax = 1e30f;
+    for (int i = 0; i < 3; ++i) {
+        float o = (&o_local.x)[i];
+        float d = (&d_local.x)[i];
+        float h = (&half.x)[i];
+        if (std::fabs(d) < 1e-6f) {
+            if (o < -h || o > h) return -1.0f;
+        } else {
+            float t1 = (-h - o) / d;
+            float t2 = ( h - o) / d;
+            if (t1 > t2) std::swap(t1, t2);
+            if (t1 > tmin) tmin = t1;
+            if (t2 < tmax) tmax = t2;
+            if (tmin > tmax) return -1.0f;
+        }
+    }
+    if (tmin < 0.0f) tmin = 0.0f;
+    return tmin;
+}
+
+}  // namespace
+
+RayHit PhysicsWorld::RayCast(const Ray& r, float maxDist) const {
+    RayHit best;
+    best.t = maxDist;
+    for (int i = 0; i < static_cast<int>(bodies_.size()); ++i) {
+        const RigidBody& b = bodies_[i];
+        float t = -1.0f;
+        if (b.shape == ShapeKind::Sphere) {
+            t = Ray_Sphere(r, b.position, b.radius);
+        } else {
+            Vec3 axes[3] = {
+                b.orientation.Rotate({ 1, 0, 0 }),
+                b.orientation.Rotate({ 0, 1, 0 }),
+                b.orientation.Rotate({ 0, 0, 1 })
+            };
+            t = Ray_OBB(r, b.position, axes, b.halfExtents);
+        }
+        if (t >= 0.0f && t < best.t) {
+            best.body = i;
+            best.t    = t;
+            best.point = r.origin + r.dir * t;
+        }
+    }
+    if (best.body < 0) {
+        best.t = 0.0f;
+    }
+    return best;
+}
+
 }  // namespace xe
+
