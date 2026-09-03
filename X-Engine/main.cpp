@@ -12,6 +12,7 @@
 #include "platform/win32/win32_mouse.h"
 #include "platform/win32/win32_hud.h"
 #include "debug/console.h"
+#include "debug/debug_drawer.h"
 #include "physics/physics_world.h"
 
 #include <algorithm>
@@ -29,6 +30,7 @@ public:
     void SetHud(xe::HudOverlay* hud) { hud_ = hud; }
     void SetConsole(xe::Console* c) { console_ = c; }
     void SetPhysics(xe::PhysicsWorld* p) { physics_ = p; }
+    void SetDebug(xe::DebugDrawer* d)   { debug_   = d; }
 
 protected:
     void OnUpdate(float dt) override {
@@ -41,6 +43,9 @@ protected:
                 cursor_captured_ = false;
                 GetWindow().SetCursorCapture(false);
             }
+        }
+        if (inp.IsKeyPressed(xe::Key::F1) && debug_) {
+            debug_->SetVisible(!debug_->Visible());
         }
         if (inp.IsKeyPressed(xe::Key::Escape)) {
             if (console_->IsOpen()) {
@@ -253,7 +258,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.19  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.20  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -296,6 +301,34 @@ protected:
                     hud_->DrawText(10, 110, ss.str(), RGB(180, 200, 220));
                 }
                 hud_->EndDraw();
+
+                // Project + draw debug lines.
+                if (debug_ && physics_) {
+                    int sw, sh;
+                    GetWindow().GetSize(sw, sh);
+                    xe::Mat4 view = scene.GetViewMatrix();
+                    xe::Mat4 proj = scene.GetProjectionMatrix(static_cast<float>(sw) / static_cast<float>(sh > 0 ? sh : 1));
+                    xe::Mat4 vp = xe::Mat4::Multiply(proj, view);
+                    debug_->Rebuild(*physics_, vp);
+                    for (const auto& line : debug_->Lines()) {
+                        // Transform world point to clip space (column-major effect: we read m[col][row]).
+                        auto project = [&](xe::Vec3 p) -> std::pair<float,float> {
+                            float x = vp.m[0][0]*p.x + vp.m[0][1]*p.y + vp.m[0][2]*p.z + vp.m[0][3];
+                            float y = vp.m[1][0]*p.x + vp.m[1][1]*p.y + vp.m[1][2]*p.z + vp.m[1][3];
+                            float w = vp.m[3][0]*p.x + vp.m[3][1]*p.y + vp.m[3][2]*p.z + vp.m[3][3];
+                            if (std::fabs(w) < 1e-6f) return { -1e9f, -1e9f };
+                            x /= w; y /= w;
+                            float sx = (x * 0.5f + 0.5f) * sw;
+                            float sy = (1.0f - (y * 0.5f + 0.5f)) * sh;
+                            return { sx, sy };
+                        };
+                        auto pa = project(line.a);
+                        auto pb = project(line.b);
+                        if (pa.first < -1e8f || pb.first < -1e8f) continue;
+                        COLORREF c = RGB((int)(line.color.x*255), (int)(line.color.y*255), (int)(line.color.z*255));
+                        hud_->DrawLine((int)pa.first, (int)pa.second, (int)pb.first, (int)pb.second, c);
+                    }
+                }
             }
         }
 
@@ -335,6 +368,7 @@ private:
     xe::HudOverlay* hud_ = nullptr;
     xe::Console* console_ = nullptr;
     xe::PhysicsWorld* physics_ = nullptr;
+    xe::DebugDrawer* debug_ = nullptr;
     bool cursor_captured_ = true;
     float drag_plane_dist_ = 0.0f;
     int   rot_drag_body_ = -1;     // body being rotated via RMB drag
@@ -344,7 +378,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.19");
+    XE_LOG_INFO("X-Engine V0.20");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -354,7 +388,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.19 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.20 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -365,6 +399,8 @@ int main() {
     hud.Initialize(hwnd);
 
     xe::Console console;
+    xe::DebugDrawer debug;
+    debug.SetShowTriggers(true);   // show triggers by default
 
     // Register default commands
     console.Register("fps",  "Print current FPS", [&app, &console](auto&) {
@@ -734,11 +770,55 @@ int main() {
             console.PrintLn(o.str());
         }
     });
+    console.Register("echo", "Print text to the console (echo <text...>)",
+                     [&console](const auto& args) {
+        if (args.size() < 2) { console.PrintLn(""); return; }
+        std::string s;
+        for (size_t i = 1; i < args.size(); ++i) {
+            if (i > 1) s += " ";
+            s += args[i];
+        }
+        console.PrintLn(s);
+    });
+    console.Register("demo", "Load the bundled demo.xescript",
+                     [&console](auto&) {
+        int n = console.RunScriptFile("data/demo.xescript");
+        if (n < 0) {
+            console.PrintLn("[err] data/demo.xescript not found.");
+        }
+    });
+    console.Register("dbg", "Toggle debug visualization: aabb|joint|trigger|contact|vel|all",
+                     [&debug, &console](const auto& args) {
+        if (args.size() < 2) {
+            std::ostringstream o; o << "dbg: aabb=" << debug.ShowAABBs()
+                                    << " joints=" << debug.ShowJoints()
+                                    << " triggers=" << debug.ShowTriggers()
+                                    << " contacts=" << debug.ShowContacts()
+                                    << " vel=" << debug.ShowVelocity();
+            console.PrintLn(o.str());
+            return;
+        }
+        std::string k = args[1];
+        bool v = (args.size() >= 3) ? (args[2] == "on" || args[2] == "1") : true;
+        if (k == "aabb")     debug.SetShowAABBs(v);
+        else if (k == "joint")   debug.SetShowJoints(v);
+        else if (k == "trigger") debug.SetShowTriggers(v);
+        else if (k == "contact") debug.SetShowContacts(v);
+        else if (k == "vel")     debug.SetShowVelocity(v);
+        else if (k == "all")     debug.SetShowAABBs(v), debug.SetShowJoints(v),
+                                  debug.SetShowTriggers(v), debug.SetShowContacts(v),
+                                  debug.SetShowVelocity(v);
+        else if (k == "off") debug.SetVisible(false);
+        else if (k == "on")  debug.SetVisible(true);
+        else { console.PrintLn("Usage: dbg [aabb|joint|trigger|contact|vel|all|on|off] [on|off]"); return; }
+        console.PrintLn("OK");
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
     app.SetConsole(&console);
     app.SetPhysics(&physics);
+    app.SetDebug(&debug);
 
     // Register help with full closure now that we have context
     console.Register("help", "List all available commands", [&console](auto&) {
@@ -756,7 +836,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.19 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.20 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

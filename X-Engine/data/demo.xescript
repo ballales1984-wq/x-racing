@@ -1,0 +1,21 @@
+# X-Engine V0.20 demo script
+# Builds a small scene with: floor, two stacked boxes, a swinging pendulum (rope),
+# and a trigger sensor that detects the pendulum bob.
+#
+# Run with:  run demo.xescript
+
+# Floor (static box).
+spawn ground 0 -2 0 8 0.25 8
+
+# Two stacked dynamic boxes.
+spawn box  0 0 0 0.5 0.5 0.5 1
+spawn box  0 1.2 0 0.5 0.5 0.5 1
+
+# Hanging rope (20 beads).
+spawn rope 3 6 0 20 0.25 0.1
+
+# A trigger sphere that detects when something enters.
+spawn sphere 4 4 0 0.8
+
+# Print summary.
+echo Demo scene loaded.  Type 'triggers' to watch events.
