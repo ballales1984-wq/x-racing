@@ -227,7 +227,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.15  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.16  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -265,7 +265,8 @@ protected:
                     ss.str(L"");
                     ss << L"Sleep: " << (physics_->SleepingEnabled() ? L"ON " : L"OFF")
                        << L"  sleeping=" << physics_->SleepingCount() << L"/" << physics_->Size()
-                       << L"  constraints=" << physics_->NumConstraints();
+                       << L"  constraints=" << physics_->NumConstraints()
+                       << L"  joints=" << (physics_->NumBallJoints() + physics_->NumHingeJoints());
                     hud_->DrawText(10, 110, ss.str(), RGB(180, 200, 220));
                 }
                 hud_->EndDraw();
@@ -317,7 +318,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.15");
+    XE_LOG_INFO("X-Engine V0.16");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -327,7 +328,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.15 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.16 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -544,6 +545,64 @@ int main() {
         std::ostringstream o; o << "Removed " << n << " constraint(s).";
         console.PrintLn(o.str());
     });
+    console.Register("pin", "Pin two bodies with a ball joint (pin A B)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 3) {
+            console.PrintLn("Usage: pin <a> <b>");
+            return;
+        }
+        int a = std::stoi(args[1]);
+        int b = std::stoi(args[2]);
+        if (a < 0 || a >= physics.Size() || b < 0 || b >= physics.Size()) {
+            console.PrintLn("Invalid body index.");
+            return;
+        }
+        xe::BallJoint j;
+        j.a = a; j.b = b;
+        j.localA = { 0, 0, 0 };
+        j.localB = { 0, 0, 0 };
+        j.stiffness = 1.0f;
+        int id = physics.AddBallJoint(j);
+        std::ostringstream o; o << "Pinned " << a << " <-> " << b
+                                << "  ball joint id=" << id;
+        console.PrintLn(o.str());
+    });
+    console.Register("hinge", "Hinge two bodies about a local axis (hinge A B [ax ay az])",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 3) {
+            console.PrintLn("Usage: hinge <a> <b> [ax ay az]   (default axis = +Z)");
+            return;
+        }
+        int a = std::stoi(args[1]);
+        int b = std::stoi(args[2]);
+        if (a < 0 || a >= physics.Size() || b < 0 || b >= physics.Size()) {
+            console.PrintLn("Invalid body index.");
+            return;
+        }
+        xe::HingeJoint j;
+        j.a = a; j.b = b;
+        j.localA = { 0, 0, 0 };
+        j.localB = { 0, 0, 0 };
+        if (args.size() >= 6) {
+            j.localAxisA = { std::stof(args[3]), std::stof(args[4]), std::stof(args[5]) };
+        } else {
+            j.localAxisA = { 0, 0, 1 };
+        }
+        j.stiffness = 1.0f;
+        int id = physics.AddHingeJoint(j);
+        std::ostringstream o; o << "Hinged " << a << " <-> " << b
+                                << " axis=(" << j.localAxisA.x << "," << j.localAxisA.y << "," << j.localAxisA.z << ")"
+                                << "  id=" << id;
+        console.PrintLn(o.str());
+    });
+    console.Register("unpin", "Remove all joints",
+                     [&physics, &console](auto&) {
+        int nb = physics.NumBallJoints();
+        int nh = physics.NumHingeJoints();
+        physics.ClearJoints();
+        std::ostringstream o; o << "Removed " << (nb + nh) << " joint(s).";
+        console.PrintLn(o.str());
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -566,7 +625,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.15 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.16 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

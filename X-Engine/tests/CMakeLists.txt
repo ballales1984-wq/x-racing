@@ -31,6 +31,7 @@ add_executable(xe_tests
     drag_test.cpp
     gravity_test.cpp
     constraint_test.cpp
+    joint_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

@@ -401,6 +401,86 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
         }
     }
 
+    // 3b. Solve ball joints (4 iterations, position-based, with break force).
+    for (int iter = 0; iter < 4; ++iter) {
+        for (auto& j : ballJoints_) {
+            if (j.broken) continue;
+            if (j.a < 0 || j.b < 0) continue;
+            if (j.a >= static_cast<int>(bodies_.size())) continue;
+            if (j.b >= static_cast<int>(bodies_.size())) continue;
+            RigidBody& A = bodies_[j.a];
+            RigidBody& B = bodies_[j.b];
+            Vec3 wa = A.position + A.orientation.Rotate(j.localA);
+            Vec3 wb = B.position + B.orientation.Rotate(j.localB);
+            Vec3 delta = wb - wa;
+            float dist = std::sqrt(delta.x*delta.x + delta.y*delta.y + delta.z*delta.z);
+            // Break check: corrective displacement per step * mass ~= force.
+            if (j.maxForce > 0.0f) {
+                float f = dist * (A.mass + B.mass) / std::max(dt, 1e-6f);
+                if (f > j.maxForce) { j.broken = true; continue; }
+            }
+            if (dist < 1e-6f) continue;
+            float invMa = A.dynamic ? 1.0f / A.mass : 0.0f;
+            float invMb = B.dynamic ? 1.0f / B.mass : 0.0f;
+            float invSum = invMa + invMb;
+            if (invSum <= 0.0f) continue;
+            float k = j.stiffness;
+            A.position = A.position + delta * (k * invMa / invSum);
+            B.position = B.position - delta * (k * invMb / invSum);
+            A.awake = true; B.awake = true;
+        }
+    }
+
+    // 3c. Solve hinge joints: ball constraint + rotation lock about axis.
+    for (int iter = 0; iter < 4; ++iter) {
+        for (auto& j : hingeJoints_) {
+            if (j.broken) continue;
+            if (j.a < 0 || j.b < 0) continue;
+            if (j.a >= static_cast<int>(bodies_.size())) continue;
+            if (j.b >= static_cast<int>(bodies_.size())) continue;
+            RigidBody& A = bodies_[j.a];
+            RigidBody& B = bodies_[j.b];
+            Vec3 wa = A.position + A.orientation.Rotate(j.localA);
+            Vec3 wb = B.position + B.orientation.Rotate(j.localB);
+            Vec3 delta = wb - wa;
+            float dist = std::sqrt(delta.x*delta.x + delta.y*delta.y + delta.z*delta.z);
+            if (j.maxTorque > 0.0f) {
+                float f = dist * (A.mass + B.mass) / std::max(dt, 1e-6f);
+                if (f > j.maxTorque) { j.broken = true; continue; }
+            }
+            if (dist < 1e-6f) continue;
+            float invMa = A.dynamic ? 1.0f / A.mass : 0.0f;
+            float invMb = B.dynamic ? 1.0f / B.mass : 0.0f;
+            float invSum = invMa + invMb;
+            if (invSum <= 0.0f) continue;
+            float k = j.stiffness;
+            A.position = A.position + delta * (k * invMa / invSum);
+            B.position = B.position - delta * (k * invMb / invSum);
+
+            // Rotation lock: align world axis A with world axis B.
+            Vec3 axisA_world = A.orientation.Rotate(j.localAxisA);
+            Vec3 axisB_world = B.orientation.Rotate(j.localAxisA);  // use A's local axis on B too
+            // Make them parallel.
+            float dot = axisA_world.x*axisB_world.x + axisA_world.y*axisB_world.y + axisA_world.z*axisB_world.z;
+            if (dot < 0.999f) {
+                // Build the smallest rotation that takes axisA -> axisB.
+                Vec3 cross = { axisA_world.y*axisB_world.z - axisA_world.z*axisB_world.y,
+                               axisA_world.z*axisB_world.x - axisA_world.x*axisB_world.z,
+                               axisA_world.x*axisB_world.y - axisA_world.y*axisB_world.x };
+                float cl = std::sqrt(cross.x*cross.x + cross.y*cross.y + cross.z*cross.z);
+                if (cl > 1e-6f) {
+                    float angle = std::acos(std::clamp(dot, -1.0f, 1.0f));
+                    Vec3 axis = { cross.x / cl, cross.y / cl, cross.z / cl };
+                    Quat q = Quat::FromAxisAngle(axis, angle * 0.5f * k);
+                    if (A.dynamic) A.orientation = q * A.orientation;
+                    // Note: not adjusting B's rotation; in practice the hinge
+                    // is between a free body and a static "world" handle.
+                }
+            }
+            A.awake = true; B.awake = true;
+        }
+    }
+
     // 4. Sleeping state: bodies below threshold accumulate sleep time.
     if (sleepEnabled_) {
         if (sleepAccum_.size() != bodies_.size()) sleepAccum_.assign(bodies_.size(), 0.0f);
@@ -614,6 +694,32 @@ int PhysicsWorld::AddConstraint(const DistanceConstraint& c) {
 void PhysicsWorld::RemoveConstraint(int cid) {
     if (cid < 0 || cid >= static_cast<int>(constraints_.size())) return;
     constraints_.erase(constraints_.begin() + cid);
+}
+
+int PhysicsWorld::AddBallJoint(const BallJoint& j) {
+    if (j.a < 0 || j.b < 0) return -1;
+    if (j.a >= static_cast<int>(bodies_.size())) return -1;
+    if (j.b >= static_cast<int>(bodies_.size())) return -1;
+    ballJoints_.push_back(j);
+    return static_cast<int>(ballJoints_.size()) - 1;
+}
+
+int PhysicsWorld::AddHingeJoint(const HingeJoint& j) {
+    if (j.a < 0 || j.b < 0) return -1;
+    if (j.a >= static_cast<int>(bodies_.size())) return -1;
+    if (j.b >= static_cast<int>(bodies_.size())) return -1;
+    hingeJoints_.push_back(j);
+    return static_cast<int>(hingeJoints_.size()) - 1;
+}
+
+void PhysicsWorld::RemoveBallJoint(int id) {
+    if (id < 0 || id >= static_cast<int>(ballJoints_.size())) return;
+    ballJoints_.erase(ballJoints_.begin() + id);
+}
+
+void PhysicsWorld::RemoveHingeJoint(int id) {
+    if (id < 0 || id >= static_cast<int>(hingeJoints_.size())) return;
+    hingeJoints_.erase(hingeJoints_.begin() + id);
 }
 
 }  // namespace xe

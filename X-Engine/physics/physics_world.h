@@ -99,6 +99,31 @@ struct DistanceConstraint {
     float stiffness  = 1.0f;  // 0 = no pull, 1 = rigid
 };
 
+// Ball joint: pins a local point on body A to a local point on body B.
+// Equivalent to a distance-0 distance constraint plus a no-separation
+// condition, with both anchors expressed in each body's local frame.
+struct BallJoint {
+    int  a      = -1;
+    int  b      = -1;
+    Vec3 localA{ 0, 0, 0 };   // anchor point in body A's local space
+    Vec3 localB{ 0, 0, 0 };   // anchor point in body B's local space
+    float stiffness = 1.0f;
+    float maxForce  = 0.0f;   // 0 = unbreakable; >0 = break threshold
+    bool  broken    = false;
+};
+
+// Hinge joint: a ball joint plus a rotation lock about a local axis on A.
+struct HingeJoint {
+    int  a      = -1;
+    int  b      = -1;
+    Vec3 localA{ 0, 0, 0 };
+    Vec3 localB{ 0, 0, 0 };
+    Vec3 localAxisA{ 0, 0, 1 };   // rotation axis in body A local space
+    float stiffness = 1.0f;
+    float maxTorque = 0.0f;
+    bool  broken    = false;
+};
+
 class PhysicsWorld {
 public:
     PhysicsWorld() = default;
@@ -176,6 +201,17 @@ public:
     int  NumConstraints() const { return static_cast<int>(constraints_.size()); }
     const DistanceConstraint& GetConstraint(int cid) const { return constraints_[cid]; }
 
+    // ---- Joints (V0.16) ------------------------------------------------
+    int  AddBallJoint(const BallJoint& j);
+    int  AddHingeJoint(const HingeJoint& j);
+    void RemoveBallJoint(int id);
+    void RemoveHingeJoint(int id);
+    void ClearJoints() { ballJoints_.clear(); hingeJoints_.clear(); }
+    int  NumBallJoints()  const { return static_cast<int>(ballJoints_.size()); }
+    int  NumHingeJoints() const { return static_cast<int>(hingeJoints_.size()); }
+    const BallJoint&  GetBallJoint(int id)  const { return ballJoints_[id]; }
+    const HingeJoint& GetHingeJoint(int id) const { return hingeJoints_[id]; }
+
     RigidBody&       Get(int idx)       { return bodies_[idx]; }
     const RigidBody& Get(int idx) const { return bodies_[idx]; }
     int Size() const { return static_cast<int>(bodies_.size()); }
@@ -219,6 +255,8 @@ private:
     bool  sleepEnabled_ = true;
     std::vector<float>     sleepAccum_;   // per-body time below threshold
     std::vector<DistanceConstraint> constraints_;
+    std::vector<BallJoint>          ballJoints_;
+    std::vector<HingeJoint>         hingeJoints_;
 };
 
 }  // namespace xe
