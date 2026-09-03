@@ -227,7 +227,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.14  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.15  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -262,6 +262,11 @@ protected:
                        << physics_->Gravity().z << L")";
                     hud_->DrawText(10, 90, ss.str(),
                                    physics_->GravityEnabled() ? RGB(255, 200, 100) : RGB(150, 150, 170));
+                    ss.str(L"");
+                    ss << L"Sleep: " << (physics_->SleepingEnabled() ? L"ON " : L"OFF")
+                       << L"  sleeping=" << physics_->SleepingCount() << L"/" << physics_->Size()
+                       << L"  constraints=" << physics_->NumConstraints();
+                    hud_->DrawText(10, 110, ss.str(), RGB(180, 200, 220));
                 }
                 hud_->EndDraw();
             }
@@ -312,7 +317,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.14");
+    XE_LOG_INFO("X-Engine V0.15");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -322,7 +327,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.14 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.15 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -479,6 +484,66 @@ int main() {
         }
         console.PrintLn("Usage: gravity [on|off|set <x> <y> <z>]");
     });
+    console.Register("sleep", "Sleep/wake bodies (on|off|all|list|listall)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            std::ostringstream o; o << "Sleep: "
+                                    << (physics.SleepingEnabled() ? "ON" : "OFF")
+                                    << "  sleeping=" << physics.SleepingCount()
+                                    << "/" << physics.Size();
+            console.PrintLn(o.str());
+            return;
+        }
+        if (args[1] == "on")  { physics.SetSleepingEnabled(true);  console.PrintLn("Sleep ON");  return; }
+        if (args[1] == "off") { physics.SetSleepingEnabled(false); console.PrintLn("Sleep OFF"); return; }
+        if (args[1] == "all") {
+            for (int i = 0; i < physics.Size(); ++i) physics.SleepBody(i);
+            std::ostringstream o; o << "All bodies sleeping: " << physics.SleepingCount();
+            console.PrintLn(o.str());
+            return;
+        }
+        if (args[1] == "list" || args[1] == "listall") {
+            for (int i = 0; i < physics.Size(); ++i) {
+                std::ostringstream o; o << "  body " << i << ": "
+                                        << (physics.Get(i).awake ? "awake" : "sleeping");
+                console.PrintLn(o.str());
+            }
+            return;
+        }
+        console.PrintLn("Usage: sleep [on|off|all|list|listall]");
+    });
+    console.Register("link", "Link two bodies with distance constraint (link A B [L])",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 3) {
+            console.PrintLn("Usage: link <body_a> <body_b> [rest_length]");
+            return;
+        }
+        int a = std::stoi(args[1]);
+        int b = std::stoi(args[2]);
+        if (a < 0 || a >= physics.Size() || b < 0 || b >= physics.Size()) {
+            console.PrintLn("Invalid body index.");
+            return;
+        }
+        const auto& A = physics.Get(a);
+        const auto& B = physics.Get(b);
+        float dx = B.position.x - A.position.x;
+        float dy = B.position.y - A.position.y;
+        float dz = B.position.z - A.position.z;
+        float L = (args.size() >= 4) ? std::stof(args[3]) : std::sqrt(dx*dx + dy*dy + dz*dz);
+        xe::DistanceConstraint c;
+        c.a = a; c.b = b; c.restLength = L; c.stiffness = 1.0f;
+        int id = physics.AddConstraint(c);
+        std::ostringstream o; o << "Linked " << a << " <-> " << b
+                                << " rest=" << L << "  constraint id=" << id;
+        console.PrintLn(o.str());
+    });
+    console.Register("unlink", "Remove all constraints",
+                     [&physics, &console](auto&) {
+        int n = physics.NumConstraints();
+        physics.ClearConstraints();
+        std::ostringstream o; o << "Removed " << n << " constraint(s).";
+        console.PrintLn(o.str());
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -501,7 +566,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.14 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.15 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

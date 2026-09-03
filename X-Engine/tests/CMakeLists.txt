@@ -30,6 +30,7 @@ add_executable(xe_tests
     broadphase_test.cpp
     drag_test.cpp
     gravity_test.cpp
+    constraint_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

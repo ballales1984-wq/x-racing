@@ -230,6 +230,7 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
     // 1. Integrate (semi-implicit Euler) with damping.
     for (auto& b : bodies_) {
         if (!b.dynamic) continue;
+        if (sleepEnabled_ && !b.awake) continue;  // sleeping bodies skip integration
         // Apply gravity as acceleration.
         if (gravityEnabled_) {
             b.velocity.x += gravity_.x * dt;
@@ -374,6 +375,52 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
             collisions_.push_back(info);
             resolved++;
     }
+
+    // 3. Solve distance constraints (4 iterations, position-based).
+    for (int iter = 0; iter < 4; ++iter) {
+        for (const auto& c : constraints_) {
+            if (c.a < 0 || c.b < 0) continue;
+            if (c.a >= static_cast<int>(bodies_.size())) continue;
+            if (c.b >= static_cast<int>(bodies_.size())) continue;
+            RigidBody& A = bodies_[c.a];
+            RigidBody& B = bodies_[c.b];
+            Vec3 delta = B.position - A.position;
+            float dist = std::sqrt(delta.x*delta.x + delta.y*delta.y + delta.z*delta.z);
+            if (dist < 1e-6f) continue;
+            float diff = (dist - c.restLength) / dist;
+            Vec3 corr = delta * diff;
+            float invMa = A.dynamic ? 1.0f / A.mass : 0.0f;
+            float invMb = B.dynamic ? 1.0f / B.mass : 0.0f;
+            float invSum = invMa + invMb;
+            if (invSum <= 0.0f) continue;
+            float k = c.stiffness;
+            A.position = A.position + corr * (k * invMa / invSum);
+            B.position = B.position - corr * (k * invMb / invSum);
+            // Wake up sleeping bodies.
+            A.awake = true; B.awake = true;
+        }
+    }
+
+    // 4. Sleeping state: bodies below threshold accumulate sleep time.
+    if (sleepEnabled_) {
+        if (sleepAccum_.size() != bodies_.size()) sleepAccum_.assign(bodies_.size(), 0.0f);
+        for (size_t i = 0; i < bodies_.size(); ++i) {
+            RigidBody& b = bodies_[i];
+            if (!b.dynamic) continue;
+            float lin2 = b.velocity.x*b.velocity.x + b.velocity.y*b.velocity.y + b.velocity.z*b.velocity.z;
+            float ang2 = b.angVel.x*b.angVel.x + b.angVel.y*b.angVel.y + b.angVel.z*b.angVel.z;
+            bool quiet = (lin2 < sleepLinear_*sleepLinear_) &&
+                         (ang2 < sleepAngular_*sleepAngular_);
+            if (quiet) {
+                sleepAccum_[i] += dt;
+                if (sleepAccum_[i] >= sleepTime_) b.awake = false;
+            } else {
+                sleepAccum_[i] = 0.0f;
+                b.awake = true;
+            }
+        }
+    }
+
     return resolved;
 }
 
@@ -530,6 +577,43 @@ RayHit PhysicsWorld::RayCast(const Ray& r, float maxDist) const {
         best.t = 0.0f;
     }
     return best;
+}
+
+// --- Sleeping / constraints -----------------------------------------------
+
+int PhysicsWorld::SleepBody(int idx) {
+    if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return -1;
+    bodies_[idx].awake = false;
+    bodies_[idx].velocity = { 0, 0, 0 };
+    bodies_[idx].angVel   = { 0, 0, 0 };
+    if (idx < static_cast<int>(sleepAccum_.size())) sleepAccum_[idx] = sleepTime_;
+    return 0;
+}
+
+int PhysicsWorld::WakeBody(int idx) {
+    if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return -1;
+    bodies_[idx].awake = true;
+    if (idx < static_cast<int>(sleepAccum_.size())) sleepAccum_[idx] = 0.0f;
+    return 0;
+}
+
+int PhysicsWorld::SleepingCount() const {
+    int n = 0;
+    for (const auto& b : bodies_) if (!b.awake) ++n;
+    return n;
+}
+
+int PhysicsWorld::AddConstraint(const DistanceConstraint& c) {
+    if (c.a < 0 || c.b < 0) return -1;
+    if (c.a >= static_cast<int>(bodies_.size())) return -1;
+    if (c.b >= static_cast<int>(bodies_.size())) return -1;
+    constraints_.push_back(c);
+    return static_cast<int>(constraints_.size()) - 1;
+}
+
+void PhysicsWorld::RemoveConstraint(int cid) {
+    if (cid < 0 || cid >= static_cast<int>(constraints_.size())) return;
+    constraints_.erase(constraints_.begin() + cid);
 }
 
 }  // namespace xe

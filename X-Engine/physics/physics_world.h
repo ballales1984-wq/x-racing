@@ -23,7 +23,7 @@ struct RigidBody {
 
     float mass     = 1.0f;
     bool  dynamic  = true;
-    bool  awake    = true;
+    bool  awake    = true;   // false = sleeping (not integrated)
     int   tag      = 0;                  // user-defined id (e.g. scene-object index)
 };
 
@@ -91,6 +91,14 @@ struct RayHit {
     Vec3  point{ 0.0f, 0.0f, 0.0f };
 };
 
+// Distance constraint: keeps two bodies at a target rest length.
+struct DistanceConstraint {
+    int   a      = -1;
+    int   b      = -1;
+    float restLength = 0.0f;
+    float stiffness  = 1.0f;  // 0 = no pull, 1 = rigid
+};
+
 class PhysicsWorld {
 public:
     PhysicsWorld() = default;
@@ -100,6 +108,19 @@ public:
 
     // Step the simulation. Returns number of collisions resolved.
     int Step(float dt, float damping = 0.999f, float restitution = 0.5f);
+
+    // ---- Sleeping (V0.15) ---------------------------------------------
+    void   SetSleepLinearThreshold(float t)  { sleepLinear_  = t; }
+    void   SetSleepAngularThreshold(float t) { sleepAngular_ = t; }
+    void   SetSleepTimeRequired(float s)     { sleepTime_    = s; }
+    float  SleepLinearThreshold() const      { return sleepLinear_; }
+    float  SleepAngularThreshold() const     { return sleepAngular_; }
+    float  SleepTimeRequired() const         { return sleepTime_; }
+    bool   SleepingEnabled() const           { return sleepEnabled_; }
+    void   SetSleepingEnabled(bool e)        { sleepEnabled_ = e; }
+    int    SleepBody(int idx);
+    int    WakeBody(int idx);
+    int    SleepingCount() const;
 
     // Apply linear impulse.
     void Kick(int idx, Vec3 impulse);
@@ -144,9 +165,16 @@ public:
     // (the body's velocity already follows the anchor's velocity each step).
     void EndDrag();
 
-    bool IsDragging() const  { return drag_.active; }
-    int  DragIndex() const   { return drag_.body; }
-    Vec3 DragAnchor() const  { return drag_.anchor; }
+    bool   IsDragging() const  { return drag_.active; }
+    int    DragIndex() const   { return drag_.body; }
+    Vec3   DragAnchor() const  { return drag_.anchor; }
+
+    // ---- Constraints (V0.15) -------------------------------------------
+    int  AddConstraint(const DistanceConstraint& c);
+    void RemoveConstraint(int cid);
+    void ClearConstraints() { constraints_.clear(); }
+    int  NumConstraints() const { return static_cast<int>(constraints_.size()); }
+    const DistanceConstraint& GetConstraint(int cid) const { return constraints_[cid]; }
 
     RigidBody&       Get(int idx)       { return bodies_[idx]; }
     const RigidBody& Get(int idx) const { return bodies_[idx]; }
@@ -185,6 +213,12 @@ private:
     Drag drag_;
     Vec3 gravity_       = { 0, 0, 0 };
     bool gravityEnabled_ = false;
+    float sleepLinear_  = 0.05f;
+    float sleepAngular_ = 0.10f;
+    float sleepTime_    = 0.5f;
+    bool  sleepEnabled_ = true;
+    std::vector<float>     sleepAccum_;   // per-body time below threshold
+    std::vector<DistanceConstraint> constraints_;
 };
 
 }  // namespace xe
