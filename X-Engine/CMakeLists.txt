@@ -26,6 +26,7 @@ add_library(xe_core STATIC
     debug/console.cpp
     debug/debug_drawer.cpp
     physics/physics_world.cpp
+    physics/vehicle.cpp
 )
 
 target_include_directories(xe_core PUBLIC

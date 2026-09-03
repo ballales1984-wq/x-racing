@@ -36,6 +36,7 @@ add_executable(xe_tests
     serialize_test.cpp
     trigger_test.cpp
     debug_drawer_test.cpp
+    vehicle_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

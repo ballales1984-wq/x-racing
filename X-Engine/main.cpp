@@ -14,6 +14,7 @@
 #include "debug/console.h"
 #include "debug/debug_drawer.h"
 #include "physics/physics_world.h"
+#include "physics/vehicle.h"
 
 #include <algorithm>
 #include <cmath>
@@ -258,7 +259,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.20  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.22  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -378,7 +379,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.20");
+    XE_LOG_INFO("X-Engine V0.22");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -388,7 +389,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.20 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.22 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -787,7 +788,21 @@ int main() {
             console.PrintLn("[err] data/demo.xescript not found.");
         }
     });
-    console.Register("dbg", "Toggle debug visualization: aabb|joint|trigger|contact|vel|all",
+    console.Register("car", "Spawn a drivable vehicle (car [x y z])",
+                     [&physics, &console](const auto& args) {
+        xe::Vehicle v;
+        xe::Vec3 pos = { 0, 1.5f, 0 };
+        if (args.size() >= 5) {
+            pos = { std::stof(args[2]), std::stof(args[3]), std::stof(args[4]) };
+        }
+        v.Build(physics, pos);
+        std::ostringstream o; o << "Car spawned: chassis=" << v.chassisIdx
+                                << " wheels=[" << v.wheelIdx[0] << ","
+                                << v.wheelIdx[1] << "," << v.wheelIdx[2] << ","
+                                << v.wheelIdx[3] << "]";
+        console.PrintLn(o.str());
+        console.PrintLn("Drive with W (gas) / S (brake) / A/D (steer).");
+    });    console.Register("dbg", "Toggle debug visualization: aabb|joint|trigger|contact|vel|all",
                      [&debug, &console](const auto& args) {
         if (args.size() < 2) {
             std::ostringstream o; o << "dbg: aabb=" << debug.ShowAABBs()
@@ -836,7 +851,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.20 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.22 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();
