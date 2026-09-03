@@ -213,6 +213,15 @@ void PhysicsWorld::Spin(int idx, Vec3 axisRadiansPerSec) {
     bodies_[idx].awake = true;
 }
 
+void PhysicsWorld::AddAngVel(int idx, Vec3 delta) {
+    if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return;
+    if (!bodies_[idx].dynamic) return;
+    bodies_[idx].angVel.x += delta.x;
+    bodies_[idx].angVel.y += delta.y;
+    bodies_[idx].angVel.z += delta.z;
+    bodies_[idx].awake = true;
+}
+
 int PhysicsWorld::Step(float dt, float damping, float restitution) {
     if (!enabled_) return 0;
     if (restitution >= 0.0f) restitution_ = restitution;
@@ -221,6 +230,12 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
     // 1. Integrate (semi-implicit Euler) with damping.
     for (auto& b : bodies_) {
         if (!b.dynamic) continue;
+        // Apply gravity as acceleration.
+        if (gravityEnabled_) {
+            b.velocity.x += gravity_.x * dt;
+            b.velocity.y += gravity_.y * dt;
+            b.velocity.z += gravity_.z * dt;
+        }
         b.position.x += b.velocity.x * dt;
         b.position.y += b.velocity.y * dt;
         b.position.z += b.velocity.z * dt;

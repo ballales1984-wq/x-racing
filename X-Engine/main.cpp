@@ -179,12 +179,55 @@ protected:
                     }
                     physics_->EndDrag();
                 }
+
+                // RMB rotation drag: pick a body, then drag to spin it.
+                if (mstate.WasPressed(xe::MouseButton::Right) && cursor_captured_) {
+                    auto fwd2 = controller_.GetForward();
+                    xe::Ray r2;
+                    r2.origin = { px, py, pz };
+                    r2.dir = { fwd2.x, fwd2.y, fwd2.z };
+                    auto hit = physics_->RayCast(r2, 200.0f);
+                    if (hit.body >= 0 && hit.body < physics_->Size()) {
+                        const auto& b = physics_->Get(hit.body);
+                        if (b.dynamic) {
+                            rot_drag_body_ = hit.body;
+                            physics_->SetSelected(hit.body);
+                            if (console_) {
+                                std::ostringstream o; o << "Rot-drag begin: body " << hit.body;
+                                console_->PrintLn(o.str());
+                            }
+                        }
+                    }
+                }
+                if (rot_drag_body_ >= 0 && mstate.IsDown(xe::MouseButton::Right)) {
+                    // Map mouse delta to world Y and right axes (camera-relative).
+                    // dx -> spin about world up; dy -> spin about camera right.
+                    float sensitivity = 6.0f;
+                    auto fwd2 = controller_.GetForward();
+                    xe::Vec3 right = { -fwd2.z, 0, fwd2.x };
+                    float rl = std::sqrt(right.x*right.x + right.y*right.y + right.z*right.z);
+                    if (rl > 1e-6f) { right.x /= rl; right.y /= rl; right.z /= rl; }
+                    xe::Vec3 up = { 0, 1, 0 };
+                    xe::Vec3 dAngVel = {
+                        up.x * (ms.dy * sensitivity) + right.x * (-ms.dx * sensitivity),
+                        up.y * (ms.dy * sensitivity) + right.y * (-ms.dx * sensitivity),
+                        up.z * (ms.dy * sensitivity) + right.z * (-ms.dx * sensitivity),
+                    };
+                    physics_->AddAngVel(rot_drag_body_, dAngVel);
+                }
+                if (mstate.WasReleased(xe::MouseButton::Right) && rot_drag_body_ >= 0) {
+                    if (console_) {
+                        std::ostringstream o; o << "Rot-drag end: body " << rot_drag_body_;
+                        console_->PrintLn(o.str());
+                    }
+                    rot_drag_body_ = -1;
+                }
             }
 
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.13  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.14  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -201,11 +244,24 @@ protected:
                     ss.str(L"");
                     ss << L"DRAGGING body " << physics_->DragIndex();
                     hud_->DrawText(10, 70, ss.str(), RGB(255, 100, 100));
+                } else if (rot_drag_body_ >= 0) {
+                    ss.str(L"");
+                    ss << L"ROT-DRAGGING body " << rot_drag_body_;
+                    hud_->DrawText(10, 70, ss.str(), RGB(255, 200, 100));
                 } else if (physics_) {
                     ss.str(L"");
                     ss << L"Selected: " << physics_->Selected()
-                       << L"   |  LMB-drag a body  |  `=console  ESC=release";
+                       << L"   |  LMB=move  RMB=rotate  `=console  ESC=release";
                     hud_->DrawText(10, 70, ss.str(), RGB(180, 180, 220));
+                }
+                if (physics_) {
+                    ss.str(L"");
+                    ss << L"Gravity: " << (physics_->GravityEnabled() ? L"ON " : L"OFF")
+                       << L" (" << physics_->Gravity().x << L","
+                       << physics_->Gravity().y << L","
+                       << physics_->Gravity().z << L")";
+                    hud_->DrawText(10, 90, ss.str(),
+                                   physics_->GravityEnabled() ? RGB(255, 200, 100) : RGB(150, 150, 170));
                 }
                 hud_->EndDraw();
             }
@@ -249,13 +305,14 @@ private:
     xe::PhysicsWorld* physics_ = nullptr;
     bool cursor_captured_ = true;
     float drag_plane_dist_ = 0.0f;
+    int   rot_drag_body_ = -1;     // body being rotated via RMB drag
 };
 
 }  // namespace
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.13");
+    XE_LOG_INFO("X-Engine V0.14");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -265,7 +322,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.13 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.14 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -316,6 +373,8 @@ int main() {
     physics.Add(ground);
     physics.SetEnabled(false);  // off by default; toggle via console
     physics.CaptureInitialState();
+    physics.SetGravity({ 0, -9.81f, 0 });
+    physics.SetGravityEnabled(false);  // off by default; toggle via console
 
     console.Register("physics", "Enable/disable physics simulation (on|off|toggle)",
                      [&physics, &console](const auto& args) {
@@ -396,6 +455,30 @@ int main() {
                                 << " vel=(" << b.velocity.x << "," << b.velocity.y << "," << b.velocity.z << ")";
         console.PrintLn(o.str());
     });
+    console.Register("gravity", "Toggle gravity (on|off) or set value (set y)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            std::ostringstream o; o << "Gravity: "
+                                    << (physics.GravityEnabled() ? "ON" : "OFF")
+                                    << "  (" << physics.Gravity().x << ","
+                                    << physics.Gravity().y << ","
+                                    << physics.Gravity().z << ")";
+            console.PrintLn(o.str());
+            return;
+        }
+        if (args[1] == "on")  { physics.SetGravityEnabled(true);  console.PrintLn("Gravity ON");  return; }
+        if (args[1] == "off") { physics.SetGravityEnabled(false); console.PrintLn("Gravity OFF"); return; }
+        if (args[1] == "set" && args.size() >= 4) {
+            float gx = std::stof(args[2]);
+            float gy = std::stof(args[3]);
+            float gz = (args.size() >= 5) ? std::stof(args[4]) : 0.0f;
+            physics.SetGravity({ gx, gy, gz });
+            std::ostringstream o; o << "Gravity set to (" << gx << "," << gy << "," << gz << ")";
+            console.PrintLn(o.str());
+            return;
+        }
+        console.PrintLn("Usage: gravity [on|off|set <x> <y> <z>]");
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -418,7 +501,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.13 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.14 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

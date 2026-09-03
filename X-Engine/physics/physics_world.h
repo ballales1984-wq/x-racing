@@ -108,6 +108,9 @@ public:
     // Apply angular impulse (tweak angVel directly — for the "spin" demo).
     void Spin(int idx, Vec3 axisRadiansPerSec);
 
+    // Add to existing angular velocity (for interactive rotation drag).
+    void AddAngVel(int idx, Vec3 delta);
+
     // Reset all body positions/velocities to their initial state.
     void ResetAll();
 
@@ -159,6 +162,12 @@ public:
     void SetRestitution(float r) { restitution_ = r; }
     float Restitution() const    { return restitution_; }
 
+    // Gravity (acceleration applied to dynamic bodies each step). Default = (0,0,0).
+    void   SetGravity(Vec3 g) { gravity_ = g; }
+    Vec3   Gravity() const    { return gravity_; }
+    void   SetGravityEnabled(bool e) { gravityEnabled_ = e; }
+    bool   GravityEnabled() const    { return gravityEnabled_; }
+
 private:
     struct Drag {
         bool  active  = false;
@@ -174,6 +183,8 @@ private:
     float restitution_ = 0.5f;
     int  selected_  = -1;
     Drag drag_;
+    Vec3 gravity_       = { 0, 0, 0 };
+    bool gravityEnabled_ = false;
 };
 
 }  // namespace xe
