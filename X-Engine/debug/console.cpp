@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 namespace xe {
 
@@ -93,6 +94,27 @@ void Console::SubmitInput() {
     input_.clear();
     history_cursor_ = -1;
     Execute(line);
+}
+
+int Console::RunScriptFile(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open()) {
+        PrintLn("[err] cannot open " + path);
+        return -1;
+    }
+    int n = 0;
+    std::string line;
+    while (std::getline(f, line)) {
+        // Strip CR (Windows files) and leading/trailing whitespace.
+        while (!line.empty() && (line.back() == '\r')) line.pop_back();
+        size_t a = 0;
+        while (a < line.size() && (line[a] == ' ' || line[a] == '\t')) ++a;
+        if (a == line.size()) continue;     // blank
+        if (line[a] == '#') continue;        // comment
+        Execute(line.substr(a));
+        ++n;
+    }
+    return n;
 }
 
 }  // namespace xe

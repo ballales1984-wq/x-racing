@@ -357,6 +357,66 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
     // 2. Collision detection using AABB broadphase.
     int resolved = 0;
     auto pairs = ComputeBroadphasePairs();
+
+    // 2a. Trigger overlap detection (run BEFORE impulse so triggers don't
+    // push other bodies back).
+    {
+        std::vector<std::pair<int,int>> triggerOverlaps;
+        for (const auto& p : pairs) {
+            int i = p.first, j = p.second;
+            const RigidBody& A = bodies_[i];
+            const RigidBody& B = bodies_[j];
+            if (!A.isTrigger && !B.isTrigger) continue;
+            SatHit hit{ false, {0,1,0}, 0.0f, (A.position+B.position)*0.5f };
+            if (A.shape == ShapeKind::Sphere && B.shape == ShapeKind::Sphere) {
+                Vec3 d = B.position - A.position;
+                float d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+                float r = A.radius + B.radius;
+                if (d2 >= r*r) continue;
+                hit.hit = true;
+            } else if (A.shape == ShapeKind::Box && B.shape == ShapeKind::Box) {
+                if (OBB_vs_OBB(MakeOBB(A), MakeOBB(B)).hit) hit.hit = true;
+            } else if (A.shape == ShapeKind::Sphere) {
+                if (OBB_vs_Sphere(MakeOBB(B), A.position, A.radius).hit) hit.hit = true;
+            } else {
+                if (OBB_vs_Sphere(MakeOBB(A), B.position, B.radius).hit) hit.hit = true;
+            }
+            if (hit.hit) {
+                int lo = i < j ? i : j;
+                int hi = i < j ? j : i;
+                triggerOverlaps.push_back({ lo, hi });
+            }
+        }
+        std::vector<std::tuple<int,int,bool>> newState;
+        for (const auto& op : triggerOverlaps) {
+            newState.push_back({ op.first, op.second, true });
+        }
+        for (const auto& ts : triggerState_) {
+            int a = std::get<0>(ts);
+            int b = std::get<1>(ts);
+            bool stillActive = false;
+            for (const auto& ns : newState) {
+                if (std::get<0>(ns) == a && std::get<1>(ns) == b) { stillActive = true; break; }
+            }
+            if (!stillActive) {
+                TriggerEvent ev; ev.a = a; ev.b = b; ev.enter = false;
+                triggerEvents_.push_back(ev);
+            }
+        }
+        for (const auto& ns : newState) {
+            int a = std::get<0>(ns);
+            int b = std::get<1>(ns);
+            bool wasActive = false;
+            for (const auto& ts : triggerState_) {
+                if (std::get<0>(ts) == a && std::get<1>(ts) == b) { wasActive = true; break; }
+            }
+            if (!wasActive) {
+                TriggerEvent ev; ev.a = a; ev.b = b; ev.enter = true;
+                triggerEvents_.push_back(ev);
+            }
+        }
+        triggerState_ = std::move(newState);
+    }
     for (const auto& p : pairs) {
         int i = p.first, j = p.second;
         RigidBody& A = bodies_[i];
@@ -395,6 +455,14 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
             info.normal      = hit.axis;
             info.penetration = hit.depth;
             info.contact     = hit.contact;
+
+            // Triggers: still record the contact, but no positional/impulse
+            // correction (the trigger must not push other bodies back).
+            if (A.isTrigger || B.isTrigger) {
+                collisions_.push_back(info);
+                resolved++;
+                continue;
+            }
 
             // Inverse masses.
             float invMa = A.dynamic ? 1.0f / A.mass : 0.0f;
@@ -783,6 +851,17 @@ void PhysicsWorld::RemoveBallJoint(int id) {
 void PhysicsWorld::RemoveHingeJoint(int id) {
     if (id < 0 || id >= static_cast<int>(hingeJoints_.size())) return;
     hingeJoints_.erase(hingeJoints_.begin() + id);
+}
+
+bool PhysicsWorld::IsOverlapping(int a, int b) const {
+    int lo = a < b ? a : b;
+    int hi = a < b ? b : a;
+    for (const auto& ts : triggerState_) {
+        if (std::get<0>(ts) == lo && std::get<1>(ts) == hi) {
+            return std::get<2>(ts);
+        }
+    }
+    return false;
 }
 
 int PhysicsWorld::SpawnSphereAt(Vec3 pos, float radius, float mass) {

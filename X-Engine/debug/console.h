@@ -23,6 +23,10 @@ public:
     // command, invokes handler. Output goes to the output buffer.
     void Execute(const std::string& line);
 
+    // Run a batch script file: one command per line. Returns number of
+    // lines executed (skipped blank/comment lines not counted).
+    int  RunScriptFile(const std::string& path);
+
     // Append raw output text (no newline added).
     void Print(const std::string& text);
 

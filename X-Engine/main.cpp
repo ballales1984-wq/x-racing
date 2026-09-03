@@ -253,7 +253,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.18  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.19  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -344,7 +344,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.18");
+    XE_LOG_INFO("X-Engine V0.19");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -354,7 +354,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.18 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.19 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -710,6 +710,30 @@ int main() {
             console.PrintLn("Load failed (bad path or file format).");
         }
     });
+    console.Register("run", "Run a batch script of console commands (run <path>)",
+                     [&console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage: run <path>   (# = comment, blank = ignored)");
+            return;
+        }
+        int n = console.RunScriptFile(args[1]);
+        if (n < 0) {
+            // Error already printed by RunScriptFile.
+        } else {
+            std::ostringstream o; o << "Executed " << n << " command(s) from " << args[1];
+            console.PrintLn(o.str());
+        }
+    });
+    console.Register("triggers", "Print last step's trigger enter/exit events",
+                     [&physics, &console](auto&) {
+        const auto& evs = physics.LastTriggerEvents();
+        if (evs.empty()) { console.PrintLn("No trigger events."); return; }
+        for (const auto& e : evs) {
+            std::ostringstream o; o << "  " << (e.enter ? "enter" : "exit ")
+                                    << " bodies " << e.a << " & " << e.b;
+            console.PrintLn(o.str());
+        }
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -732,7 +756,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.18 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.19 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

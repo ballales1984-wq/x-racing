@@ -3,6 +3,7 @@
 #include "core/math.h"
 #include <vector>
 #include <string>
+#include <tuple>
 
 namespace xe {
 
@@ -25,6 +26,7 @@ struct RigidBody {
     float mass     = 1.0f;
     bool  dynamic  = true;
     bool  awake    = true;   // false = sleeping (not integrated)
+    bool  isTrigger = false; // true = sensor: detects but doesn't push back
     int   tag      = 0;                  // user-defined id (e.g. scene-object index)
 };
 
@@ -225,8 +227,17 @@ public:
     const BallJoint&  GetBallJoint(int id)  const { return ballJoints_[id]; }
     const HingeJoint& GetHingeJoint(int id) const { return hingeJoints_[id]; }
 
+    // ---- Triggers (V0.19) ---------------------------------------------
+    // A trigger body is detected by collisions but doesn't push back.
+    // Each Step() detects (enter) and (exit) trigger overlaps and stores
+    // them for inspection.  A pair appears in "enter" the step after it
+    // first overlaps, and in "exit" the step after it stops overlapping.
+    struct TriggerEvent { int a = -1; int b = -1; bool enter = true; };
+    const std::vector<TriggerEvent>& LastTriggerEvents() const { return triggerEvents_; }
+    void ClearTriggerEvents() { triggerEvents_.clear(); }
+    bool IsOverlapping(int a, int b) const;
+
     // ---- Serialization (V0.18) -----------------------------------------
-    // Serialize the entire world (bodies + constraints + joints) to a
     // human-readable text format.  Parse with Deserialize.
     std::string Serialize() const;
     bool        Deserialize(const std::string& text);
@@ -284,6 +295,10 @@ private:
     std::vector<DistanceConstraint> constraints_;
     std::vector<BallJoint>          ballJoints_;
     std::vector<HingeJoint>         hingeJoints_;
+    std::vector<TriggerEvent>       triggerEvents_;
+    // For tracking which (a,b) pairs are currently overlapping (a or b trigger).
+    // We store a sorted pair (min,max) and bool active.
+    std::vector<std::tuple<int,int,bool>> triggerState_;
 };
 
 }  // namespace xe
