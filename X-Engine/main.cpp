@@ -92,7 +92,7 @@ protected:
                     for (int i = 0; i < 3 && i < static_cast<int>(scene.objects.size()); ++i) {
                         const auto& body = physics_->Get(i);
                         scene.objects[i].instance.position = body.position;
-                        scene.objects[i].instance.rotation_rad = { t * 0.5f + i, t * 0.7f, 0.0f };
+                        scene.objects[i].instance.rotation_rad = body.orientation.ToEulerXYZ();
                     }
                 } else {
                     for (int i = 0; i < 3 && i < static_cast<int>(scene.objects.size()); ++i) {
@@ -130,7 +130,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.10  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.11  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -190,7 +190,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.10");
+    XE_LOG_INFO("X-Engine V0.11");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -200,7 +200,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.10 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.11 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -231,16 +231,26 @@ int main() {
         app.Shutdown();
     });
 
-    // Physics world — 3 sphere bodies for the orbiting cubes.
+    // Physics world — 3 OBB bodies matching the orbiting cubes.
     xe::PhysicsWorld physics;
     for (int i = 0; i < 3; ++i) {
         xe::RigidBody b;
+        b.shape = xe::ShapeKind::Box;
         b.position = { 1.6f * std::cos(i * 2.094f), 0.0f, 1.6f * std::sin(i * 2.094f) };
-        b.radius = 0.55f;
+        b.halfExtents = { 0.5f, 0.5f, 0.5f };  // 1m cube
         b.mass   = 1.0f;
+        b.orientation = xe::Quat::FromAxisAngle({0,1,0}, i * 0.4f);
         physics.Add(b);
     }
+    // Static ground plane approximated as a big static box.
+    xe::RigidBody ground;
+    ground.shape = xe::ShapeKind::Box;
+    ground.position = { 0, -2.0f, 0 };
+    ground.halfExtents = { 10, 0.25f, 10 };
+    ground.dynamic = false;
+    physics.Add(ground);
     physics.SetEnabled(false);  // off by default; toggle via console
+    physics.CaptureInitialState();
 
     console.Register("physics", "Enable/disable physics simulation (on|off|toggle)",
                      [&physics, &console](const auto& args) {
@@ -278,6 +288,26 @@ int main() {
         std::ostringstream o; o << "Last collisions: " << physics.LastCollisionCount();
         console.PrintLn(o.str());
     });
+    console.Register("reset", "Reset all bodies to their initial state",
+                     [&physics, &console](auto&) {
+        physics.ResetAll();
+        console.PrintLn("Physics: bodies reset to initial state.");
+    });
+    console.Register("spin", "Set angular velocity of body N (ax ay az rad/s)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 5) {
+            console.PrintLn("Usage: spin <body_idx> <ax> <ay> <az>");
+            return;
+        }
+        int idx = std::stoi(args[1]);
+        float ax = std::stof(args[2]);
+        float ay = std::stof(args[3]);
+        float az = std::stof(args[4]);
+        physics.Spin(idx, { ax, ay, az });
+        std::ostringstream o; o << "Body " << idx << " angVel=("
+                                << ax << "," << ay << "," << az << ") rad/s";
+        console.PrintLn(o.str());
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -300,7 +330,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.10 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.11 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

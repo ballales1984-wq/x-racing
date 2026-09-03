@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <array>
+#include <algorithm>
 
 namespace xe {
 
@@ -12,6 +13,80 @@ struct Vec3 {
 
     constexpr Vec3() = default;
     constexpr Vec3(float x_, float y_, float z_) : x(x_), y(y_), z(z_) {}
+};
+
+inline Vec3 Cross(const Vec3& a, const Vec3& b) {
+    return { a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x };
+}
+inline float Dot(const Vec3& a, const Vec3& b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+inline Vec3 operator-(const Vec3& a, const Vec3& b) { return { a.x-b.x, a.y-b.y, a.z-b.z }; }
+inline Vec3 operator+(const Vec3& a, const Vec3& b) { return { a.x+b.x, a.y+b.y, a.z+b.z }; }
+inline Vec3 operator*(const Vec3& a, float s)       { return { a.x*s,   a.y*s,   a.z*s   }; }
+inline float Length(const Vec3& a) { return std::sqrt(a.x*a.x + a.y*a.y + a.z*a.z); }
+
+struct Quat {
+    float x = 0.0f;
+    float y = 0.0f;
+    float z = 0.0f;
+    float w = 1.0f;
+
+    constexpr Quat() = default;
+    constexpr Quat(float x_, float y_, float z_, float w_) : x(x_), y(y_), z(z_), w(w_) {}
+
+    static Quat Identity() { return Quat(0, 0, 0, 1); }
+
+    // Angle-axis (radians) rotation.
+    static Quat FromAxisAngle(Vec3 axis, float radians) {
+        float len = std::sqrt(axis.x*axis.x + axis.y*axis.y + axis.z*axis.z);
+        if (len < 1e-6f) return Identity();
+        float h = radians * 0.5f;
+        float s = std::sin(h) / len;
+        return Quat(axis.x * s, axis.y * s, axis.z * s, std::cos(h));
+    }
+
+    Quat operator*(const Quat& q) const {
+        return Quat(
+            w*q.x + x*q.w + y*q.z - z*q.y,
+            w*q.y - x*q.z + y*q.w + z*q.x,
+            w*q.z + x*q.y - y*q.x + z*q.w,
+            w*q.w - x*q.x - y*q.y - z*q.z);
+    }
+
+    void Normalize() {
+        float n2 = x*x + y*y + z*z + w*w;
+        if (n2 < 1e-12f) { x=y=z=0; w=1; return; }
+        float inv = 1.0f / std::sqrt(n2);
+        x *= inv; y *= inv; z *= inv; w *= inv;
+    }
+
+    // Rotate vector v by this quaternion.
+    Vec3 Rotate(Vec3 v) const {
+        // v' = v + 2*w*cross(q.xyz, v) + 2*cross(q.xyz, cross(q.xyz, v))
+        Vec3 qv{ x, y, z };
+        Vec3 c1 = Cross(qv, v);
+        Vec3 c2 = Cross(qv, c1);
+        return Vec3{
+            v.x + 2.0f * (w * c1.x + c2.x),
+            v.y + 2.0f * (w * c1.y + c2.y),
+            v.z + 2.0f * (w * c1.z + c2.z)
+        };
+    }
+
+    // Convert to Euler XYZ (radians) — used for display.
+    Vec3 ToEulerXYZ() const {
+        float sinp = 2.0f * (w*x - y*z);
+        sinp = std::clamp(sinp, -1.0f, 1.0f);
+        float pitch = std::asin(sinp);
+        float yaw, roll;
+        if (std::fabs(sinp) > 0.99999f) {
+            yaw  = std::atan2(2.0f * (w*y - x*z), 1.0f - 2.0f * (y*y + z*z));
+            roll = 0.0f;
+        } else {
+            yaw  = std::atan2(2.0f * (w*y + x*z), 1.0f - 2.0f * (x*x + y*y));
+            roll = std::atan2(2.0f * (w*z + x*y), 1.0f - 2.0f * (x*x + z*z));
+        }
+        return Vec3{ pitch, yaw, roll };
+    }
 };
 
 struct Mat4 {

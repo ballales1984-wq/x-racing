@@ -26,6 +26,7 @@ add_executable(xe_tests
     fly_camera_test.cpp
     console_test.cpp
     physics_test.cpp
+    obb_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

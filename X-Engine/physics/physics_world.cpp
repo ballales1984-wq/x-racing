@@ -1,7 +1,170 @@
 #include "physics/physics_world.h"
 #include <cmath>
+#include <algorithm>
 
 namespace xe {
+
+namespace {
+
+inline Quat QuatFromAngVel(const Vec3& w, float dt) {
+    float mag = Length(w);
+    if (mag < 1e-6f) return Quat::Identity();
+    return Quat::FromAxisAngle({ w.x/mag, w.y/mag, w.z/mag }, mag * dt);
+}
+
+inline void IntegrateOrientation(Quat& q, const Vec3& w, float dt) {
+    Quat dq = QuatFromAngVel(w, dt);
+    q = dq * q;
+    q.Normalize();
+}
+
+// --- Collision math ---------------------------------------------------------
+
+struct OBB {
+    Vec3 center;
+    Vec3 axes[3];       // local x,y,z axes in world space (unit length)
+    Vec3 half;          // half-extents
+};
+
+// Build OBB from a rigid body. Identity quaternion -> world axes.
+inline OBB MakeOBB(const RigidBody& b) {
+    OBB o;
+    o.center = b.position;
+    o.axes[0] = b.orientation.Rotate({ 1.0f, 0.0f, 0.0f });
+    o.axes[1] = b.orientation.Rotate({ 0.0f, 1.0f, 0.0f });
+    o.axes[2] = b.orientation.Rotate({ 0.0f, 0.0f, 1.0f });
+    o.half    = b.halfExtents;
+    return o;
+}
+
+// Get the 8 corners of an OBB in world space.
+inline void OBB_Corners(const OBB& o, Vec3 out[8]) {
+    Vec3 e[3] = { o.axes[0]*o.half.x, o.axes[1]*o.half.y, o.axes[2]*o.half.z };
+    int idx = 0;
+    for (int sx = -1; sx <= 1; sx += 2)
+    for (int sy = -1; sy <= 1; sy += 2)
+    for (int sz = -1; sz <= 1; sz += 2) {
+        out[idx++] = o.center + e[0]*(float)sx + e[1]*(float)sy + e[2]*(float)sz;
+    }
+}
+
+// Project OBB onto an axis. Returns (min, max).
+inline void OBB_Project(const OBB& o, const Vec3& axis, float& mn, float& mx) {
+    float r = o.half.x * std::fabs(Dot(o.axes[0], axis))
+            + o.half.y * std::fabs(Dot(o.axes[1], axis))
+            + o.half.z * std::fabs(Dot(o.axes[2], axis));
+    float c = Dot(o.center, axis);
+    mn = c - r; mx = c + r;
+}
+
+// Separating Axis Theorem test for two OBBs. Returns penetration depth
+// and the axis (pointing from A to B) on hit, or (0,+) on miss.
+struct SatHit { bool hit; Vec3 axis; float depth; Vec3 contact; };
+SatHit OBB_vs_OBB(const OBB& A, const OBB& B) {
+    SatHit r{ false, {0,1,0}, 0.0f, (A.center+B.center)*0.5f };
+    float minDepth = 1e30f;
+    Vec3  bestAxis = { 0, 1, 0 };
+
+    // 3 axes from A, 3 from B, 9 from cross products.
+    Vec3 axes[15];
+    int nAxis = 0;
+    for (int i = 0; i < 3; ++i) axes[nAxis++] = A.axes[i];
+    for (int i = 0; i < 3; ++i) axes[nAxis++] = B.axes[i];
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            Vec3 cr = Cross(A.axes[i], B.axes[j]);
+            float l = Length(cr);
+            if (l < 1e-6f) continue;
+            axes[nAxis++] = cr * (1.0f / l);
+        }
+    }
+
+    for (int i = 0; i < nAxis; ++i) {
+        const Vec3& ax = axes[i];
+        float aMin, aMax, bMin, bMax;
+        OBB_Project(A, ax, aMin, aMax);
+        OBB_Project(B, ax, bMin, bMax);
+        if (aMax < bMin || bMax < aMin) {
+            r.hit = false; return r;
+        }
+        float overlap = std::min(aMax, bMax) - std::max(aMin, bMin);
+        if (overlap < minDepth) {
+            minDepth = overlap;
+            bestAxis = ax;
+        }
+    }
+    // Ensure axis points from A to B.
+    Vec3 dir = B.center - A.center;
+    if (Dot(bestAxis, dir) < 0.0f) bestAxis = bestAxis * -1.0f;
+
+    r.hit   = true;
+    r.axis  = bestAxis;
+    r.depth = minDepth;
+
+    // Approximate contact: midpoint of OBBs' centers.
+    r.contact = (A.center + B.center) * 0.5f;
+    return r;
+}
+
+// OBB vs sphere. Returns hit + closest point on OBB to sphere center.
+SatHit OBB_vs_Sphere(const OBB& o, const Vec3& c, float radius) {
+    SatHit r{ false, {0,1,0}, 0.0f, c };
+    // Transform sphere center into OBB local space.
+    Vec3 d = c - o.center;
+    // Local axis components.
+    float lx = Dot(d, o.axes[0]);
+    float ly = Dot(d, o.axes[1]);
+    float lz = Dot(d, o.axes[2]);
+    // Closest point on box (clamp).
+    float qx = std::clamp(lx, -o.half.x, o.half.x);
+    float qy = std::clamp(ly, -o.half.y, o.half.y);
+    float qz = std::clamp(lz, -o.half.z, o.half.z);
+    // Difference in local space.
+    float dx = lx - qx, dy = ly - qy, dz = lz - qz;
+    float dist2 = dx*dx + dy*dy + dz*dz;
+    if (dist2 > radius * radius) { r.hit = false; return r; }
+
+    // If sphere center is INSIDE the box, use a safe axis (closest face).
+    Vec3 normalLocal;
+    float dist;
+    if (dist2 < 1e-6f) {
+        // Pick the axis with smallest penetration.
+        float px = o.half.x - std::fabs(lx);
+        float py = o.half.y - std::fabs(ly);
+        float pz = o.half.z - std::fabs(lz);
+        if (px < py && px < pz) {
+            normalLocal = { (lx >= 0 ? 1.0f : -1.0f), 0, 0 };
+            dist = -px;
+        } else if (py < pz) {
+            normalLocal = { 0, (ly >= 0 ? 1.0f : -1.0f), 0 };
+            dist = -py;
+        } else {
+            normalLocal = { 0, 0, (lz >= 0 ? 1.0f : -1.0f) };
+            dist = -pz;
+        }
+        // Contact point is sphere center.
+        r.contact = c;
+    } else {
+        float dist01 = std::sqrt(dist2);
+        normalLocal = { dx / dist01, dy / dist01, dz / dist01 };
+        dist = dist01;
+        // Contact point in local space.
+        Vec3 qLocal = { qx, qy, qz };
+        r.contact = o.center + o.axes[0]*qLocal.x + o.axes[1]*qLocal.y + o.axes[2]*qLocal.z;
+    }
+
+    // Convert local normal to world space.
+    Vec3 nWorld = o.axes[0]*normalLocal.x + o.axes[1]*normalLocal.y + o.axes[2]*normalLocal.z;
+    float nl = Length(nWorld);
+    if (nl > 1e-6f) nWorld = nWorld * (1.0f / nl);
+
+    r.hit   = true;
+    r.axis  = nWorld * -1.0f;   // points from sphere toward OBB
+    r.depth = radius - dist;
+    return r;
+}
+
+}  // namespace
 
 int PhysicsWorld::Add(const RigidBody& body) {
     bodies_.push_back(body);
@@ -10,24 +173,49 @@ int PhysicsWorld::Add(const RigidBody& body) {
 
 void PhysicsWorld::Clear() {
     bodies_.clear();
+    initial_.clear();
     collisions_.clear();
+}
+
+void PhysicsWorld::CaptureInitialState() {
+    initial_ = bodies_;
+}
+
+void PhysicsWorld::ResetAll() {
+    if (initial_.empty()) return;
+    for (size_t i = 0; i < bodies_.size() && i < initial_.size(); ++i) {
+        bodies_[i].position   = initial_[i].position;
+        bodies_[i].velocity   = initial_[i].velocity;
+        bodies_[i].angVel     = initial_[i].angVel;
+        bodies_[i].orientation = initial_[i].orientation;
+    }
 }
 
 void PhysicsWorld::Kick(int idx, Vec3 impulse) {
     if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return;
     if (!bodies_[idx].dynamic) return;
-    bodies_[idx].velocity.x += impulse.x / bodies_[idx].mass;
-    bodies_[idx].velocity.y += impulse.y / bodies_[idx].mass;
-    bodies_[idx].velocity.z += impulse.z / bodies_[idx].mass;
-    bodies_[idx].awake = true;
+    RigidBody& b = bodies_[idx];
+    float invM = 1.0f / b.mass;
+    b.velocity.x += impulse.x * invM;
+    b.velocity.y += impulse.y * invM;
+    b.velocity.z += impulse.z * invM;
+    b.awake = true;
 }
 
 void PhysicsWorld::Kick(int idx, float x, float y, float z) {
     Kick(idx, Vec3{ x, y, z });
 }
 
+void PhysicsWorld::Spin(int idx, Vec3 axisRadiansPerSec) {
+    if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return;
+    if (!bodies_[idx].dynamic) return;
+    bodies_[idx].angVel = axisRadiansPerSec;
+    bodies_[idx].awake = true;
+}
+
 int PhysicsWorld::Step(float dt, float damping, float restitution) {
     if (!enabled_) return 0;
+    if (restitution >= 0.0f) restitution_ = restitution;
     collisions_.clear();
 
     // 1. Integrate (semi-implicit Euler) with damping.
@@ -39,67 +227,94 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
         b.velocity.x *= damping;
         b.velocity.y *= damping;
         b.velocity.z *= damping;
+
+        // Damping on angular velocity too.
+        b.angVel.x *= damping;
+        b.angVel.y *= damping;
+        b.angVel.z *= damping;
+
+        IntegrateOrientation(b.orientation, b.angVel, dt);
     }
 
-    // 2. Broadphase-free n^2 sphere-sphere detection + impulse.
+    // 2. Collision detection.
     int resolved = 0;
     const int n = static_cast<int>(bodies_.size());
     for (int i = 0; i < n; ++i) {
         for (int j = i + 1; j < n; ++j) {
-            auto& A = bodies_[i];
-            auto& B = bodies_[j];
+            RigidBody& A = bodies_[i];
+            RigidBody& B = bodies_[j];
             if (!A.dynamic && !B.dynamic) continue;
-            float dx = B.position.x - A.position.x;
-            float dy = B.position.y - A.position.y;
-            float dz = B.position.z - A.position.z;
-            float d2 = dx*dx + dy*dy + dz*dz;
-            float r  = A.radius + B.radius;
-            if (d2 >= r * r) continue;
 
-            float d = std::sqrt(d2);
+            SatHit hit{ false, {0,1,0}, 0.0f, (A.position+B.position)*0.5f };
+            if (A.shape == ShapeKind::Sphere && B.shape == ShapeKind::Sphere) {
+                Vec3 d = B.position - A.position;
+                float d2 = d.x*d.x + d.y*d.y + d.z*d.z;
+                float r = A.radius + B.radius;
+                if (d2 >= r * r) continue;
+                float dist = std::sqrt(std::max(d2, 1e-12f));
+                Vec3 nrm = dist > 1e-6f ? d * (1.0f / dist) : Vec3{ 1, 0, 0 };
+                hit.hit   = true;
+                hit.axis  = nrm;          // from A toward B
+                hit.depth = r - dist;
+                hit.contact = A.position + nrm * (A.radius);
+            } else if (A.shape == ShapeKind::Box && B.shape == ShapeKind::Box) {
+                hit = OBB_vs_OBB(MakeOBB(A), MakeOBB(B));
+                if (!hit.hit) continue;
+            } else if (A.shape == ShapeKind::Sphere && B.shape == ShapeKind::Box) {
+                hit = OBB_vs_Sphere(MakeOBB(B), A.position, A.radius);
+                if (!hit.hit) continue;
+                // hit.axis points from sphere toward OBB; flip so A->B.
+                hit.axis = hit.axis * -1.0f;
+            } else {
+                // Box vs Sphere — symmetric to above.
+                hit = OBB_vs_Sphere(MakeOBB(A), B.position, B.radius);
+                if (!hit.hit) continue;
+                // hit.axis already points from sphere B toward OBB A => A->B.
+            }
+
             CollisionInfo info;
             info.a = i; info.b = j;
-            if (d > 1e-6f) {
-                info.normal = { dx / d, dy / d, dz / d };
-            }
-            info.penetration = r - d;
+            info.normal      = hit.axis;
+            info.penetration = hit.depth;
+            info.contact     = hit.contact;
 
-            // Positional correction (split by mass).
+            // Inverse masses.
             float invMa = A.dynamic ? 1.0f / A.mass : 0.0f;
             float invMb = B.dynamic ? 1.0f / B.mass : 0.0f;
             float invSum = invMa + invMb;
-            if (invSum > 0.0f) {
-                float corr = info.penetration / invSum;
-                A.position.x -= info.normal.x * corr * invMa;
-                A.position.y -= info.normal.y * corr * invMa;
-                A.position.z -= info.normal.z * corr * invMa;
-                B.position.x += info.normal.x * corr * invMb;
-                B.position.y += info.normal.y * corr * invMb;
-                B.position.z += info.normal.z * corr * invMb;
+            if (invSum <= 0.0f) {
+                collisions_.push_back(info);
+                resolved++;
+                continue;
             }
 
-            // Impulse along normal.
-            float rvx = B.velocity.x - A.velocity.x;
-            float rvy = B.velocity.y - A.velocity.y;
-            float rvz = B.velocity.z - A.velocity.z;
-            float velAlongNormal = rvx * info.normal.x + rvy * info.normal.y + rvz * info.normal.z;
-            if (velAlongNormal > 0.0f) {
-                // separating already
-            } else if (invSum > 0.0f) {
-                float j_imp = -(1.0f + restitution) * velAlongNormal / invSum;
-                float jx = j_imp * info.normal.x;
-                float jy = j_imp * info.normal.y;
-                float jz = j_imp * info.normal.z;
-                if (A.dynamic) {
-                    A.velocity.x -= jx * invMa;
-                    A.velocity.y -= jy * invMa;
-                    A.velocity.z -= jz * invMa;
-                }
-                if (B.dynamic) {
-                    B.velocity.x += jx * invMb;
-                    B.velocity.y += jy * invMb;
-                    B.velocity.z += jz * invMb;
-                }
+            // Positional correction.
+            float corr = info.penetration / invSum;
+            Vec3 corrA = info.normal * (-corr * invMa);
+            Vec3 corrB = info.normal * ( corr * invMb);
+            A.position = A.position + corrA;
+            B.position = B.position + corrB;
+
+            // Linear impulse along normal.
+            Vec3 rv = B.velocity - A.velocity;
+            float vAlong = Dot(rv, info.normal);
+            float jLin = 0.0f;
+            if (vAlong < 0.0f) {
+                jLin = -(1.0f + restitution_) * vAlong / invSum;
+                if (A.dynamic) A.velocity = A.velocity + info.normal * (-jLin * invMa);
+                if (B.dynamic) B.velocity = B.velocity + info.normal * ( jLin * invMb);
+            }
+
+            // Angular impulse: r × J (approximate, treat bodies as point mass with
+            // an isotropic inertia proportional to mass).  This gives a visible
+            // "spin" when boxes get hit, which is what V0.11 wants to demo.
+            // r = contact - center
+            if (jLin != 0.0f) {
+                Vec3 rA = info.contact - A.position;
+                Vec3 rB = info.contact - B.position;
+                Vec3 J  = info.normal * jLin;
+                if (A.dynamic) A.angVel = A.angVel + Cross(rA, J) * (0.5f * invMa);
+                if (B.dynamic) B.angVel = B.angVel + Cross(rB, J) * (0.5f * invMb);
             }
 
             collisions_.push_back(info);
