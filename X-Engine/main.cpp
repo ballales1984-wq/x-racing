@@ -227,7 +227,7 @@ protected:
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.16  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.17  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -318,7 +318,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.16");
+    XE_LOG_INFO("X-Engine V0.17");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -328,7 +328,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.16 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.17 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -603,6 +603,58 @@ int main() {
         std::ostringstream o; o << "Removed " << (nb + nh) << " joint(s).";
         console.PrintLn(o.str());
     });
+    console.Register("spawn", "Spawn a body (sphere|box|rope) at a position",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage:");
+            console.PrintLn("  spawn sphere <x> <y> <z> <radius> [mass]");
+            console.PrintLn("  spawn box    <x> <y> <z> <hx> <hy> <hz> [mass]");
+            console.PrintLn("  spawn rope   <x> <y> <z> <n> <segLen> <beadR> [mass]");
+            console.PrintLn("  spawn ground <x> <y> <z> <hx> <hy> <hz>    (static)");
+            return;
+        }
+        std::string kind = args[1];
+        if (kind == "sphere" && args.size() >= 6) {
+            float x = std::stof(args[2]), y = std::stof(args[3]), z = std::stof(args[4]);
+            float r = std::stof(args[5]);
+            float m = (args.size() >= 7) ? std::stof(args[6]) : 1.0f;
+            int id = physics.AddSphere({ x, y, z }, r, m);
+            std::ostringstream o; o << "Spawned sphere id=" << id << " pos=(" << x << "," << y << "," << z << ") r=" << r;
+            console.PrintLn(o.str());
+        } else if (kind == "box" && args.size() >= 8) {
+            float x = std::stof(args[2]), y = std::stof(args[3]), z = std::stof(args[4]);
+            float hx = std::stof(args[5]), hy = std::stof(args[6]), hz = std::stof(args[7]);
+            float m  = (args.size() >= 9) ? std::stof(args[8]) : 1.0f;
+            int id = physics.AddBox({ x, y, z }, { hx, hy, hz }, m);
+            std::ostringstream o; o << "Spawned box id=" << id << " pos=(" << x << "," << y << "," << z << ") half=(" << hx << "," << hy << "," << hz << ")";
+            console.PrintLn(o.str());
+        } else if (kind == "ground" && args.size() >= 8) {
+            float x = std::stof(args[2]), y = std::stof(args[3]), z = std::stof(args[4]);
+            float hx = std::stof(args[5]), hy = std::stof(args[6]), hz = std::stof(args[7]);
+            int id = physics.AddStaticBox({ x, y, z }, { hx, hy, hz });
+            std::ostringstream o; o << "Spawned ground (static) id=" << id;
+            console.PrintLn(o.str());
+        } else if (kind == "rope" && args.size() >= 7) {
+            float x = std::stof(args[2]), y = std::stof(args[3]), z = std::stof(args[4]);
+            int   n       = std::stoi(args[5]);
+            float segLen  = std::stof(args[6]);
+            float beadR   = std::stof(args[7]);
+            float mass    = (args.size() >= 9) ? std::stof(args[8]) : 0.2f;
+            int first = physics.BuildRope(-1, { x, y, z }, n, segLen, beadR, mass);
+            std::ostringstream o; o << "Spawned rope: " << n << " beads, first id=" << first
+                                    << " last id=" << (first + n - 1);
+            console.PrintLn(o.str());
+        } else {
+            console.PrintLn("Bad arguments. Try: spawn sphere|box|rope|ground");
+        }
+    });
+    console.Register("reset_all", "Clear all bodies and reset to a clean state",
+                     [&physics, &console](auto&) {
+        physics.Clear();
+        physics.ClearConstraints();
+        physics.ClearJoints();
+        console.PrintLn("World cleared.");
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -625,7 +677,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.16 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.17 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

@@ -131,6 +131,18 @@ public:
     int  Add(const RigidBody& body);
     void Clear();
 
+    // Convenience factories: build a body and return its index.
+    int  AddSphere(Vec3 position, float radius, float mass = 1.0f);
+    int  AddBox(Vec3 position, Vec3 halfExtents, float mass = 1.0f);
+    int  AddStaticBox(Vec3 position, Vec3 halfExtents);
+
+    // Build a chain of n spheres connected by distance constraints, hanging
+    // from `anchor` (a body index, or -1 to free-anchor at start).  Returns
+    // the index of the first (anchor) sphere.  Each segment has the given
+    // length and bead radius.
+    int  BuildRope(int anchorBodyIdx, Vec3 startPos, int n,
+                   float segLen, float beadRadius, float mass = 0.2f);
+
     // Step the simulation. Returns number of collisions resolved.
     int Step(float dt, float damping = 0.999f, float restitution = 0.5f);
 

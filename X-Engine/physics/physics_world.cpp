@@ -171,6 +171,65 @@ int PhysicsWorld::Add(const RigidBody& body) {
     return static_cast<int>(bodies_.size()) - 1;
 }
 
+int PhysicsWorld::AddSphere(Vec3 position, float radius, float mass) {
+    RigidBody b;
+    b.shape = ShapeKind::Sphere;
+    b.position = position;
+    b.radius = radius;
+    b.mass = mass;
+    b.dynamic = true;
+    return Add(b);
+}
+
+int PhysicsWorld::AddBox(Vec3 position, Vec3 halfExtents, float mass) {
+    RigidBody b;
+    b.shape = ShapeKind::Box;
+    b.position = position;
+    b.halfExtents = halfExtents;
+    b.mass = mass;
+    b.dynamic = true;
+    return Add(b);
+}
+
+int PhysicsWorld::AddStaticBox(Vec3 position, Vec3 halfExtents) {
+    RigidBody b;
+    b.shape = ShapeKind::Box;
+    b.position = position;
+    b.halfExtents = halfExtents;
+    b.mass = 1.0f;
+    b.dynamic = false;
+    return Add(b);
+}
+
+int PhysicsWorld::BuildRope(int anchorBodyIdx, Vec3 startPos, int n,
+                             float segLen, float beadRadius, float mass) {
+    if (n <= 0) return -1;
+    int firstIdx = -1;
+    int prevIdx  = anchorBodyIdx;  // -1 = free-anchor (first bead is dynamic)
+    Vec3 cursor = startPos;
+    for (int i = 0; i < n; ++i) {
+        RigidBody b;
+        b.shape = ShapeKind::Sphere;
+        b.position = cursor;
+        b.radius = beadRadius;
+        b.mass = mass;
+        b.dynamic = true;
+        int idx = Add(b);
+        if (i == 0) firstIdx = idx;
+
+        if (prevIdx >= 0) {
+            DistanceConstraint c;
+            c.a = prevIdx; c.b = idx;
+            c.restLength = segLen;
+            c.stiffness = 1.0f;
+            AddConstraint(c);
+        }
+        prevIdx = idx;
+        cursor.y -= segLen;
+    }
+    return firstIdx;
+}
+
 void PhysicsWorld::Clear() {
     bodies_.clear();
     initial_.clear();
