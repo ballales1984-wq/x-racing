@@ -236,6 +236,29 @@ int PhysicsWorld::Step(float dt, float damping, float restitution) {
         IntegrateOrientation(b.orientation, b.angVel, dt);
     }
 
+    // 1a. Drag override: drive dragged body so its anchor follows target.
+    if (drag_.active && drag_.body >= 0 && drag_.body < static_cast<int>(bodies_.size())) {
+        RigidBody& b = bodies_[drag_.body];
+        if (b.dynamic) {
+            // Anchor offset in local frame (approx; ignores orientation change
+            // during drag, which is fine for the demo).
+            Vec3 offset = drag_.anchor - b.position;  // current anchor in world
+            Vec3 desired = drag_.anchor - offset;      // where center needs to be
+            // We don't actually know target — caller updates anchor.
+            // Instead just set velocity so the anchor tracks it.
+            // anchor_world_new = center + offset
+            // So: v = (new_anchor - (center + offset)) / dt
+            // We have the delta prevAnchor -> anchor in UpdateDragAnchor.
+            Vec3 delta = drag_.anchor - drag_.prevAnchor;
+            if (dt > 1e-6f) {
+                b.velocity.x = delta.x / dt;
+                b.velocity.y = delta.y / dt;
+                b.velocity.z = delta.z / dt;
+                b.angVel = { 0, 0, 0 };
+            }
+        }
+    }
+
     // 1b. Refresh AABBs for broadphase.
     aabbs_.clear();
     aabbs_.reserve(bodies_.size());
@@ -392,6 +415,29 @@ std::vector<std::pair<int,int>> PhysicsWorld::ComputeBroadphasePairs() const {
 
 void PhysicsWorld::SetSelected(int idx) {
     if (idx >= -1 && idx < static_cast<int>(bodies_.size())) selected_ = idx;
+    // End any active drag if we deselect.
+    if (selected_ < 0) drag_ = Drag{};
+}
+
+bool PhysicsWorld::BeginDrag(int idx, Vec3 anchorWorld) {
+    if (idx < 0 || idx >= static_cast<int>(bodies_.size())) return false;
+    if (!bodies_[idx].dynamic) return false;
+    drag_.active  = true;
+    drag_.body    = idx;
+    drag_.anchor  = anchorWorld;
+    drag_.prevAnchor = anchorWorld;
+    selected_     = idx;
+    return true;
+}
+
+void PhysicsWorld::UpdateDragAnchor(Vec3 anchorWorld) {
+    if (!drag_.active) return;
+    drag_.prevAnchor = drag_.anchor;
+    drag_.anchor     = anchorWorld;
+}
+
+void PhysicsWorld::EndDrag() {
+    drag_ = Drag{};
 }
 
 namespace {

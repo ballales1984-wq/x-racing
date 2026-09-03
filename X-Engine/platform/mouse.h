@@ -28,6 +28,11 @@ struct MouseState {
         int i = static_cast<int>(b);
         return buttons[i] && !prev_buttons[i];
     }
+
+    bool WasReleased(MouseButton b) const {
+        int i = static_cast<int>(b);
+        return !buttons[i] && prev_buttons[i];
+    }
 };
 
 class Mouse {

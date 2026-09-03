@@ -139,34 +139,52 @@ protected:
                 }
             }
 
-            // Left-click picking (when cursor is captured, mousedown event means click).
+            // Drag / pick with left mouse button.
             if (physics_ && mouse_) {
                 const auto& mstate = mouse_->GetState();
+                auto fwd = controller_.GetForward();
+                xe::Ray r;
+                r.origin = { px, py, pz };
+                r.dir = { fwd.x, fwd.y, fwd.z };
+
                 if (mstate.WasPressed(xe::MouseButton::Left) && cursor_captured_) {
-                    auto fwd = controller_.GetForward();
-                    xe::Ray r;
-                    r.origin = { px, py, pz };
-                    r.dir = { fwd.x, fwd.y, fwd.z };
                     auto hit = physics_->RayCast(r, 200.0f);
-                    physics_->SetSelected(hit.body);
-                    if (console_) {
-                        if (hit.body >= 0) {
-                            const auto& b = physics_->Get(hit.body);
-                            std::ostringstream o; o << "Picked body " << hit.body
-                                                    << " t=" << hit.t
-                                                    << " pos=(" << b.position.x << "," << b.position.y << "," << b.position.z << ")";
+                    if (hit.body >= 0 && physics_->BeginDrag(hit.body, hit.point)) {
+                        drag_plane_dist_ = hit.t;
+                        if (console_) {
+                            std::ostringstream o; o << "Drag begin: body " << hit.body
+                                                    << " at t=" << hit.t;
                             console_->PrintLn(o.str());
-                        } else {
-                            console_->PrintLn("Picked: (nothing)");
                         }
+                    } else if (hit.body >= 0) {
+                        // Hit a static body — just select it.
+                        physics_->SetSelected(hit.body);
+                        if (console_) console_->PrintLn("Selected static body (no drag).");
+                    } else {
+                        physics_->SetSelected(-1);
+                        if (console_) console_->PrintLn("Picked: (nothing)");
                     }
+                } else if (mstate.IsDown(xe::MouseButton::Left) && physics_->IsDragging()) {
+                    // Update anchor: intersection of camera ray with plane
+                    // perpendicular to forward at the original hit distance.
+                    xe::Vec3 planePoint = { r.origin.x + r.dir.x * drag_plane_dist_,
+                                             r.origin.y + r.dir.y * drag_plane_dist_,
+                                             r.origin.z + r.dir.z * drag_plane_dist_ };
+                    physics_->UpdateDragAnchor(planePoint);
+                }
+                if (mstate.WasReleased(xe::MouseButton::Left) && physics_->IsDragging()) {
+                    if (console_) {
+                        std::ostringstream o; o << "Drag end: body " << physics_->DragIndex();
+                        console_->PrintLn(o.str());
+                    }
+                    physics_->EndDrag();
                 }
             }
 
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.12  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.13  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -179,6 +197,16 @@ protected:
                    << L"   `=console  ESC=toggle";
                 hud_->DrawText(10, 50, ss.str(),
                                cursor_captured_ ? RGB(255, 220, 120) : RGB(180, 180, 200));
+                if (physics_ && physics_->IsDragging()) {
+                    ss.str(L"");
+                    ss << L"DRAGGING body " << physics_->DragIndex();
+                    hud_->DrawText(10, 70, ss.str(), RGB(255, 100, 100));
+                } else if (physics_) {
+                    ss.str(L"");
+                    ss << L"Selected: " << physics_->Selected()
+                       << L"   |  LMB-drag a body  |  `=console  ESC=release";
+                    hud_->DrawText(10, 70, ss.str(), RGB(180, 180, 220));
+                }
                 hud_->EndDraw();
             }
         }
@@ -220,13 +248,14 @@ private:
     xe::Console* console_ = nullptr;
     xe::PhysicsWorld* physics_ = nullptr;
     bool cursor_captured_ = true;
+    float drag_plane_dist_ = 0.0f;
 };
 
 }  // namespace
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.12");
+    XE_LOG_INFO("X-Engine V0.13");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -236,7 +265,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.12 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.13 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -389,7 +418,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.12 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.13 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

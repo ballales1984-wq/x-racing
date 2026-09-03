@@ -28,6 +28,7 @@ add_executable(xe_tests
     physics_test.cpp
     obb_test.cpp
     broadphase_test.cpp
+    drag_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

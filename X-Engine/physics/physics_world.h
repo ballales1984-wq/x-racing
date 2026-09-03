@@ -129,6 +129,22 @@ public:
     void SetSelected(int idx);
     int  Selected() const { return selected_; }
 
+    // ---- Drag state (for V0.13 interactive editing) -------------------
+    // Begin dragging a body at a given world-space anchor point (typically
+    // the pick point on the body). Returns false if idx invalid or static.
+    bool BeginDrag(int idx, Vec3 anchorWorld);
+
+    // Update the anchor of the currently dragged body each frame.
+    void UpdateDragAnchor(Vec3 anchorWorld);
+
+    // Stop dragging.  If `applyImpulse`, the relative velocity is preserved
+    // (the body's velocity already follows the anchor's velocity each step).
+    void EndDrag();
+
+    bool IsDragging() const  { return drag_.active; }
+    int  DragIndex() const   { return drag_.body; }
+    Vec3 DragAnchor() const  { return drag_.anchor; }
+
     RigidBody&       Get(int idx)       { return bodies_[idx]; }
     const RigidBody& Get(int idx) const { return bodies_[idx]; }
     int Size() const { return static_cast<int>(bodies_.size()); }
@@ -144,6 +160,12 @@ public:
     float Restitution() const    { return restitution_; }
 
 private:
+    struct Drag {
+        bool  active  = false;
+        int   body    = -1;
+        Vec3  anchor{ 0,0,0 };   // world point on the body we grabbed
+        Vec3  prevAnchor{ 0,0,0 };
+    };
     std::vector<RigidBody>        bodies_;
     std::vector<RigidBody>        initial_;
     std::vector<CollisionInfo>    collisions_;
@@ -151,6 +173,7 @@ private:
     bool enabled_    = true;
     float restitution_ = 0.5f;
     int  selected_  = -1;
+    Drag drag_;
 };
 
 }  // namespace xe
