@@ -2,6 +2,7 @@
 
 #include "core/math.h"
 #include <vector>
+#include <string>
 
 namespace xe {
 
@@ -223,6 +224,20 @@ public:
     int  NumHingeJoints() const { return static_cast<int>(hingeJoints_.size()); }
     const BallJoint&  GetBallJoint(int id)  const { return ballJoints_[id]; }
     const HingeJoint& GetHingeJoint(int id) const { return hingeJoints_[id]; }
+
+    // ---- Serialization (V0.18) -----------------------------------------
+    // Serialize the entire world (bodies + constraints + joints) to a
+    // human-readable text format.  Parse with Deserialize.
+    std::string Serialize() const;
+    bool        Deserialize(const std::string& text);
+
+    // Convenience: write to / read from a file.  Returns true on success.
+    bool SaveToFile(const std::string& path) const;
+    bool LoadFromFile(const std::string& path);
+
+    // Spawn a sphere at the given world position, away from existing bodies
+    // (offset along the camera forward so it doesn't tunnel).  Returns idx.
+    int  SpawnSphereAt(Vec3 pos, float radius, float mass = 1.0f);
 
     RigidBody&       Get(int idx)       { return bodies_[idx]; }
     const RigidBody& Get(int idx) const { return bodies_[idx]; }

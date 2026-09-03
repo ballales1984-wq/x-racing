@@ -33,6 +33,7 @@ add_executable(xe_tests
     constraint_test.cpp
     joint_test.cpp
     spawn_test.cpp
+    serialize_test.cpp
     application_test.cpp
     renderer_test.cpp
 )

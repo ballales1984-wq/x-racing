@@ -222,12 +222,38 @@ protected:
                     }
                     rot_drag_body_ = -1;
                 }
+
+                // MMB = spawn sphere at crosshair.
+                if (mstate.WasPressed(xe::MouseButton::Middle) && cursor_captured_) {
+                    auto fwd2 = controller_.GetForward();
+                    xe::Ray r2;
+                    r2.origin = { px, py, pz };
+                    r2.dir = { fwd2.x, fwd2.y, fwd2.z };
+                    auto hit = physics_->RayCast(r2, 200.0f);
+                    xe::Vec3 spawnAt;
+                    if (hit.body >= 0) {
+                        spawnAt = { hit.point.x + fwd2.x * 0.8f,
+                                    hit.point.y + fwd2.y * 0.8f,
+                                    hit.point.z + fwd2.z * 0.8f };
+                    } else {
+                        spawnAt = { px + fwd2.x * 5.0f,
+                                    py + fwd2.y * 5.0f,
+                                    pz + fwd2.z * 5.0f };
+                    }
+                    int idx = physics_->AddSphere(spawnAt, 0.4f, 1.0f);
+                    if (console_) {
+                        std::ostringstream o; o << "Spawned sphere id=" << idx
+                                                << " at (" << spawnAt.x << ","
+                                                << spawnAt.y << "," << spawnAt.z << ")";
+                        console_->PrintLn(o.str());
+                    }
+                }
             }
 
             if (hud_) {
                 hud_->BeginDraw();
                 std::wostringstream ss;
-                ss << L"X-Engine V0.17  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
+                ss << L"X-Engine V0.18  |  FPS: " << static_cast<int>(1.0f / std::max(dt, 1e-6f))
                    << L"  |  Objs: " << scene.objects.size() << L"  |  t=" << t;
                 hud_->DrawText(10, 10, ss.str(), RGB(255, 255, 255));
                 ss.str(L"");
@@ -251,7 +277,7 @@ protected:
                 } else if (physics_) {
                     ss.str(L"");
                     ss << L"Selected: " << physics_->Selected()
-                       << L"   |  LMB=move  RMB=rotate  `=console  ESC=release";
+                       << L"   |  LMB=move  RMB=rotate  MMB=spawn  `=console";
                     hud_->DrawText(10, 70, ss.str(), RGB(180, 180, 220));
                 }
                 if (physics_) {
@@ -318,7 +344,7 @@ private:
 
 int main() {
     xe::Logger::Init();
-    XE_LOG_INFO("X-Engine V0.17");
+    XE_LOG_INFO("X-Engine V0.18");
 
     auto window   = std::make_unique<xe::Win32Window>();
     xe::Win32Window* raw_window = window.get();
@@ -328,7 +354,7 @@ int main() {
 
     SceneApp app(std::move(window), std::move(input), std::move(renderer));
 
-    if (!app.Create("X-Engine V0.17 — Fly Camera + Console + Physics", 1280, 720)) {
+    if (!app.Create("X-Engine V0.18 — Fly Camera + Console + Physics", 1280, 720)) {
         XE_LOG_ERROR("Failed to initialize engine");
         xe::Logger::Shutdown();
         return -1;
@@ -655,6 +681,35 @@ int main() {
         physics.ClearJoints();
         console.PrintLn("World cleared.");
     });
+    console.Register("save", "Save physics scene to file (save <path>)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage: save <path>");
+            return;
+        }
+        if (physics.SaveToFile(args[1])) {
+            std::ostringstream o; o << "Saved " << physics.Size() << " bodies, "
+                                    << physics.NumConstraints() << " constraints, "
+                                    << (physics.NumBallJoints() + physics.NumHingeJoints())
+                                    << " joints to " << args[1];
+            console.PrintLn(o.str());
+        } else {
+            console.PrintLn("Save failed.");
+        }
+    });
+    console.Register("load", "Load physics scene from file (load <path>)",
+                     [&physics, &console](const auto& args) {
+        if (args.size() < 2) {
+            console.PrintLn("Usage: load <path>");
+            return;
+        }
+        if (physics.LoadFromFile(args[1])) {
+            std::ostringstream o; o << "Loaded " << physics.Size() << " bodies from " << args[1];
+            console.PrintLn(o.str());
+        } else {
+            console.PrintLn("Load failed (bad path or file format).");
+        }
+    });
 
     app.SetMouse(mouse.get());
     app.SetHud(&hud);
@@ -677,7 +732,7 @@ int main() {
     }
 
     console.SetOpen(true);
-    console.PrintLn("X-Engine V0.17 console.  'help' for commands, '`' or ESC to close.");
+    console.PrintLn("X-Engine V0.18 console.  'help' for commands, '`' or ESC to close.");
 
     app.Run();
     app.Shutdown();

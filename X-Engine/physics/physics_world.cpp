@@ -1,6 +1,10 @@
 #include "physics/physics_world.h"
 #include <cmath>
 #include <algorithm>
+#include <sstream>
+#include <fstream>
+#include <cstring>
+#include <cctype>
 
 namespace xe {
 
@@ -779,6 +783,146 @@ void PhysicsWorld::RemoveBallJoint(int id) {
 void PhysicsWorld::RemoveHingeJoint(int id) {
     if (id < 0 || id >= static_cast<int>(hingeJoints_.size())) return;
     hingeJoints_.erase(hingeJoints_.begin() + id);
+}
+
+int PhysicsWorld::SpawnSphereAt(Vec3 pos, float radius, float mass) {
+    return AddSphere(pos, radius, mass);
+}
+
+// --- Serialization ---------------------------------------------------------
+
+std::string PhysicsWorld::Serialize() const {
+    std::ostringstream o;
+    o << "XE_PHYSICS_V1\n";
+    o << "gravity " << gravity_.x << " " << gravity_.y << " " << gravity_.z
+      << " " << (gravityEnabled_ ? 1 : 0) << "\n";
+    o << "bodies " << bodies_.size() << "\n";
+    for (const auto& b : bodies_) {
+        o << "  body "
+          << (int)b.shape << " "        // 0=Sphere, 1=Box
+          << " " << b.position.x << " " << b.position.y << " " << b.position.z
+          << " " << b.velocity.x << " " << b.velocity.y << " " << b.velocity.z
+          << " " << b.angVel.x << " " << b.angVel.y << " " << b.angVel.z
+          << " " << b.radius
+          << " " << b.halfExtents.x << " " << b.halfExtents.y << " " << b.halfExtents.z
+          << " " << b.mass
+          << " " << (b.dynamic ? 1 : 0)
+          << " " << (b.awake ? 1 : 0)
+          << " " << b.orientation.x << " " << b.orientation.y << " "
+          << b.orientation.z << " " << b.orientation.w
+          << "\n";
+    }
+    o << "constraints " << constraints_.size() << "\n";
+    for (const auto& c : constraints_) {
+        o << "  link " << c.a << " " << c.b << " " << c.restLength << " " << c.stiffness << "\n";
+    }
+    o << "ball_joints " << ballJoints_.size() << "\n";
+    for (const auto& j : ballJoints_) {
+        o << "  pin " << j.a << " " << j.b
+          << " " << j.localA.x << " " << j.localA.y << " " << j.localA.z
+          << " " << j.localB.x << " " << j.localB.y << " " << j.localB.z
+          << " " << j.stiffness << " " << j.maxForce << " " << (j.broken ? 1 : 0)
+          << "\n";
+    }
+    o << "hinge_joints " << hingeJoints_.size() << "\n";
+    for (const auto& j : hingeJoints_) {
+        o << "  hinge " << j.a << " " << j.b
+          << " " << j.localA.x << " " << j.localA.y << " " << j.localA.z
+          << " " << j.localB.x << " " << j.localB.y << " " << j.localB.z
+          << " " << j.localAxisA.x << " " << j.localAxisA.y << " " << j.localAxisA.z
+          << " " << j.stiffness << " " << j.maxTorque << " " << (j.broken ? 1 : 0)
+          << "\n";
+    }
+    return o.str();
+}
+
+bool PhysicsWorld::Deserialize(const std::string& text) {
+    Clear();
+    std::istringstream is(text);
+    std::string tag;
+    if (!(is >> tag) || tag != "XE_PHYSICS_V1") return false;
+    is >> tag; if (tag != "gravity") return false;
+    float gx, gy, gz; int ge;
+    is >> gx >> gy >> gz >> ge;
+    gravity_ = { gx, gy, gz };
+    gravityEnabled_ = (ge != 0);
+
+    int nBodies = 0;
+    is >> tag >> nBodies; if (tag != "bodies") return false;
+    bodies_.reserve(nBodies);
+    for (int i = 0; i < nBodies; ++i) {
+        std::string kind; is >> kind; if (kind != "body") return false;
+        int shapeI, dynI, awakeI;
+        float px, py, pz, vx, vy, vz, ax, ay, az;
+        float r, hx, hy, hz, mass;
+        float qx, qy, qz, qw;
+        is >> shapeI >> px >> py >> pz >> vx >> vy >> vz >> ax >> ay >> az
+           >> r >> hx >> hy >> hz >> mass
+           >> dynI >> awakeI
+           >> qx >> qy >> qz >> qw;
+        if (!is) return false;
+        RigidBody b;
+        b.shape = (shapeI == 1) ? ShapeKind::Box : ShapeKind::Sphere;
+        b.position = { px, py, pz };
+        b.velocity = { vx, vy, vz };
+        b.angVel   = { ax, ay, az };
+        b.radius   = r;
+        b.halfExtents = { hx, hy, hz };
+        b.mass     = mass;
+        b.dynamic  = (dynI != 0);
+        b.awake    = (awakeI != 0);
+        b.orientation = Quat{ qx, qy, qz, qw };
+        bodies_.push_back(b);
+    }
+
+    int nC = 0; is >> tag >> nC; if (tag != "constraints") return false;
+    for (int i = 0; i < nC; ++i) {
+        std::string k; is >> k; if (k != "link") return false;
+        DistanceConstraint dc;
+        is >> dc.a >> dc.b >> dc.restLength >> dc.stiffness;
+        constraints_.push_back(dc);
+    }
+    int nBJ = 0; is >> tag >> nBJ; if (tag != "ball_joints") return false;
+    for (int i = 0; i < nBJ; ++i) {
+        std::string k; is >> k; if (k != "pin") return false;
+        BallJoint bj;
+        int brokenI;
+        is >> bj.a >> bj.b
+           >> bj.localA.x >> bj.localA.y >> bj.localA.z
+           >> bj.localB.x >> bj.localB.y >> bj.localB.z
+           >> bj.stiffness >> bj.maxForce >> brokenI;
+        bj.broken = (brokenI != 0);
+        ballJoints_.push_back(bj);
+    }
+    int nHJ = 0; is >> tag >> nHJ; if (tag != "hinge_joints") return false;
+    for (int i = 0; i < nHJ; ++i) {
+        std::string k; is >> k; if (k != "hinge") return false;
+        HingeJoint hj;
+        int brokenI;
+        is >> hj.a >> hj.b
+           >> hj.localA.x >> hj.localA.y >> hj.localA.z
+           >> hj.localB.x >> hj.localB.y >> hj.localB.z
+           >> hj.localAxisA.x >> hj.localAxisA.y >> hj.localAxisA.z
+           >> hj.stiffness >> hj.maxTorque >> brokenI;
+        hj.broken = (brokenI != 0);
+        hingeJoints_.push_back(hj);
+    }
+    initial_ = bodies_;
+    return true;
+}
+
+bool PhysicsWorld::SaveToFile(const std::string& path) const {
+    std::ofstream f(path);
+    if (!f.is_open()) return false;
+    f << Serialize();
+    return f.good();
+}
+
+bool PhysicsWorld::LoadFromFile(const std::string& path) {
+    std::ifstream f(path);
+    if (!f.is_open()) return false;
+    std::stringstream ss; ss << f.rdbuf();
+    return Deserialize(ss.str());
 }
 
 }  // namespace xe
